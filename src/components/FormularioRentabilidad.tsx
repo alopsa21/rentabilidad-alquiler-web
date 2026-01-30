@@ -2,6 +2,8 @@ import { useState } from 'react';
 import type { FormularioRentabilidadState } from '../types/formulario';
 import { INITIAL_FORM_STATE } from '../types/formulario';
 import { COMUNIDADES_AUTONOMAS } from '../constants/comunidades';
+import { calcularRentabilidadApi } from '../services/api';
+import type { RentabilidadApiResponse } from '../types/api';
 
 function updateNum(
   state: FormularioRentabilidadState,
@@ -14,10 +16,22 @@ function updateNum(
 
 export function FormularioRentabilidad() {
   const [state, setState] = useState<FormularioRentabilidadState>(INITIAL_FORM_STATE);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [resultado, setResultado] = useState<RentabilidadApiResponse | null>(null);
 
-  const handleCalcular = () => {
-    // Sin acción real todavía (F3-02)
-    console.log('Form state:', state);
+  const handleCalcular = async () => {
+    setError(null);
+    setResultado(null);
+    setLoading(true);
+    try {
+      const data = await calcularRentabilidadApi(state);
+      setResultado(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al calcular');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -193,8 +207,22 @@ export function FormularioRentabilidad() {
         )}
       </div>
 
-      <button type="submit" style={{ padding: '10px 24px', fontSize: 16 }}>
-        Calcular
+      {error && (
+        <p role="alert" style={{ color: 'crimson', marginBottom: 16 }}>
+          {error}
+        </p>
+      )}
+      {resultado && (
+        <p style={{ color: 'green', marginBottom: 16 }}>
+          Cálculo correcto. Rentabilidad neta: {resultado.rentabilidadNeta} %
+        </p>
+      )}
+      <button
+        type="submit"
+        disabled={loading}
+        style={{ padding: '10px 24px', fontSize: 16 }}
+      >
+        {loading ? 'Cargando...' : 'Calcular'}
       </button>
     </form>
   );
