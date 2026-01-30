@@ -14,19 +14,23 @@ function updateNum(
   return { ...state, [key]: isNaN(num) ? 0 : num };
 }
 
-export function FormularioRentabilidad() {
+interface FormularioRentabilidadProps {
+  /** Se llama al iniciar el cálculo (null) y al terminar con éxito (datos) */
+  onResultadoChange?: (resultado: RentabilidadApiResponse | null) => void;
+}
+
+export function FormularioRentabilidad({ onResultadoChange }: FormularioRentabilidadProps) {
   const [state, setState] = useState<FormularioRentabilidadState>(INITIAL_FORM_STATE);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [resultado, setResultado] = useState<RentabilidadApiResponse | null>(null);
 
   const handleCalcular = async () => {
     setError(null);
-    setResultado(null);
+    onResultadoChange?.(null);
     setLoading(true);
     try {
       const data = await calcularRentabilidadApi(state);
-      setResultado(data);
+      onResultadoChange?.(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al calcular');
     } finally {
@@ -210,11 +214,6 @@ export function FormularioRentabilidad() {
       {error && (
         <p role="alert" style={{ color: 'crimson', marginBottom: 16 }}>
           {error}
-        </p>
-      )}
-      {resultado && (
-        <p style={{ color: 'green', marginBottom: 16 }}>
-          Cálculo correcto. Rentabilidad neta: {resultado.rentabilidadNeta} %
         </p>
       )}
       <button
