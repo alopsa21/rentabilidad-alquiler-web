@@ -4,6 +4,7 @@ import { INITIAL_FORM_STATE } from '../types/formulario';
 import { COMUNIDADES_AUTONOMAS } from '../constants/comunidades';
 import { calcularRentabilidadApi } from '../services/api';
 import type { RentabilidadApiResponse } from '../types/api';
+import { getFormErrors } from '../utils/validation';
 
 function updateNum(
   state: FormularioRentabilidadState,
@@ -23,6 +24,9 @@ export function FormularioRentabilidad({ onResultadoChange }: FormularioRentabil
   const [state, setState] = useState<FormularioRentabilidadState>(INITIAL_FORM_STATE);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const validationErrors = getFormErrors(state);
+  const canSubmit = validationErrors.length === 0;
 
   const handleCalcular = async () => {
     setError(null);
@@ -211,6 +215,11 @@ export function FormularioRentabilidad({ onResultadoChange }: FormularioRentabil
         )}
       </div>
 
+      {validationErrors.length > 0 && (
+        <p role="alert" style={{ color: '#b71c1c', marginBottom: 16 }}>
+          {validationErrors[0]}
+        </p>
+      )}
       {error && (
         <p role="alert" style={{ color: 'crimson', marginBottom: 16 }}>
           {error}
@@ -218,7 +227,7 @@ export function FormularioRentabilidad({ onResultadoChange }: FormularioRentabil
       )}
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || !canSubmit}
         style={{ padding: '10px 24px', fontSize: 16 }}
       >
         {loading ? 'Cargando...' : 'Calcular'}

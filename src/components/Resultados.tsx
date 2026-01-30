@@ -33,6 +33,7 @@ export function Resultados({ resultado }: ResultadosProps) {
 
   return (
     <section
+      id="resultados"
       aria-label="Resultados del cálculo"
       style={{
         maxWidth: 480,
