@@ -65,10 +65,9 @@
   top: 60px;
   z-index: 5;
   background-color: #fff;
-  border-bottom: 2px solid #e0e0e0;
   padding: 12px 0 8px;
   margin-bottom: 0.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  font-weight: bold;
 }
 
 .card-header-row {
@@ -104,6 +103,8 @@
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   animation: slideDown 0.3s ease-out;
+  display: flex;
+  justify-content: center;
 }
 
 @keyframes slideDown {
@@ -204,9 +205,15 @@
 }
 
 .detalle-analisis {
-  flex: 1;
-  min-width: 400px;
-  max-width: none;
+  flex: 0 1 auto;
+  min-width: 320px;
+  max-width: 40vw;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.detalle-valor-clickable:hover {
+  text-decoration: underline;
 }
 
 /* Desktop: mostrar detalle siempre */

@@ -188,7 +188,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
           <span style={{ fontSize: 15, fontWeight: 500 }}>{card.ubicacion || '—'}</span>
         </div>
         <div style={{ marginBottom: 12 }}>
-          <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Precio</strong>
+          <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Precio de compra</strong>
           <span style={{ fontSize: 15 }}>{formatEuro(card.precioCompra)}</span>
         </div>
         <div>
