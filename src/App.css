@@ -1,7 +1,14 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 0 1rem 2rem;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+.app {
+  min-height: 100vh;
+  max-width: 100%;
+  padding: 0;
 }
 
 .app {
@@ -10,11 +17,13 @@
 
 .app-main {
   padding-top: 1rem;
+  width: 100%;
+  max-width: 100%;
 }
 
 .app-error {
   color: #b71c1c;
-  margin: 0 0 1rem;
+  margin: 0 1.5rem 1rem;
   padding: 12px;
   background-color: #ffebee;
   border-radius: 6px;
@@ -22,25 +31,85 @@
 }
 
 .app-veredicto-global {
-  margin-bottom: 1rem;
+  margin: 0 1.5rem 1rem;
   padding: 12px;
   background-color: #f5f5f5;
   border-radius: 8px;
 }
 
 .app-layout-desktop {
-  display: flex;
-  gap: 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
   margin-bottom: 1.5rem;
-  align-items: flex-start;
 }
 
 .app-panel-tarjetas {
-  flex: 0 0 320px;
-  min-height: 120px;
+  width: 90%;
+  max-width: 90%;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  position: relative;
+}
+
+/* Cabecera sticky con títulos de columnas */
+.card-header-sticky {
+  position: sticky;
+  top: 60px;
+  z-index: 5;
+  background-color: #fff;
+  border-bottom: 2px solid #e0e0e0;
+  padding: 12px 0 8px;
+  margin-bottom: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.card-header-row {
+  margin: 0;
+  padding: 0;
+  align-items: center;
+}
+
+.card-header-row > div {
+  transition: background-color 0.2s;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.card-header-row > div:hover {
+  background-color: #f5f5f5;
+}
+
+/* Layout horizontal para información de tarjetas */
+.card-info-horizontal {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+/* Detalle expandido debajo de la tarjeta */
+.card-detalle-expandido {
+  margin-top: 0.75rem;
+  margin-left: 0;
+  margin-right: 0;
+  padding: 1.5rem;
+  background-color: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Card eliminar: mostrar botón solo en desktop */
@@ -48,7 +117,29 @@
   display: block;
 }
 
-/* Mobile: ocultar botón eliminar (se usa swipe) */
+/* Desktop: tarjetas compactas - ocultar información extra */
+.card-info-extra {
+  display: none;
+}
+
+/* Desktop: información clave en horizontal */
+@media (min-width: 769px) {
+  .card-info-horizontal {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+  }
+  
+  .card-analisis {
+    min-height: auto;
+  }
+  
+  .detalle-desktop {
+    display: none !important;
+  }
+}
+
+/* Mobile: mostrar toda la información */
 @media (max-width: 768px) {
   .card-delete-btn {
     display: none !important;
@@ -57,11 +148,28 @@
   .card-analisis {
     touch-action: pan-y;
   }
+  
+  .card-info-extra {
+    display: block;
+    margin-top: 8px;
+    font-size: 13px;
+  }
+  
+  .card-info-horizontal {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .card-detalle-expandido {
+    display: none !important;
+  }
 }
 
 .detalle-analisis {
   flex: 1;
-  max-width: 600px;
+  min-width: 400px;
+  max-width: none;
 }
 
 /* Desktop: mostrar detalle siempre */

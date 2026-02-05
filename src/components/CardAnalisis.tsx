@@ -16,14 +16,22 @@ const formatEuro = (value: number): string => {
   }).format(value);
 };
 
+const formatEuroFromString = (value: string): string => {
+  const num = Number(value);
+  if (Number.isNaN(num)) return value;
+  return formatEuro(num);
+};
+
 interface CardAnalisisProps {
   card: AnalisisCard;
   isActive?: boolean;
   onClick?: () => void;
   onDelete?: () => void;
+  mostrarDetalle?: boolean;
+  cashflow?: string;
 }
 
-export function CardAnalisis({ card, isActive = false, onClick, onDelete }: CardAnalisisProps) {
+export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostrarDetalle = false, cashflow }: CardAnalisisProps) {
   const color = estadoToColor[card.estado];
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -83,95 +91,88 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete }: Card
       style={{
         border: isActive ? '2px solid #333' : '1px solid #ddd',
         borderRadius: 8,
-        padding: '12px 16px',
-        backgroundColor: isActive ? '#f5f5f5' : '#fff',
+        padding: '12px 12px 12px 12px',
+        backgroundColor: isActive ? '#e8f5e9' : '#fff',
         display: 'flex',
         flexDirection: 'column',
-        gap: 4,
         cursor: onClick ? 'pointer' : 'default',
         transition: isDeleting ? 'transform 0.2s, opacity 0.2s' : swipeOffset === 0 ? 'all 0.2s' : 'none',
         transform: `translateX(${swipeOffset}px)`,
         opacity: isDeleting ? 0 : 1,
         position: 'relative',
+        boxShadow: isActive ? '0 2px 8px rgba(0, 0, 0, 0.15)' : 'none',
       }}
     >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 4,
-        }}
-      >
-        <span style={{ fontWeight: 500 }}>Veredicto</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 6, color }}>
-            <span
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: '50%',
-                backgroundColor: color,
-                display: 'inline-block',
-              }}
-            />
-            <span>{card.veredictoTitulo}</span>
-          </span>
-          {onDelete && (
-            <button
-              className="card-delete-btn"
-              onClick={handleDeleteClick}
-              aria-label="Eliminar tarjeta"
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '4px 8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#c62828',
-                fontSize: 18,
-                lineHeight: 1,
-                transition: 'opacity 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = '0.7';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = '1';
-              }}
-            >
-              ×
-            </button>
-          )}
+      {/* Información clave en horizontal - sin títulos */}
+      <div className="card-info-horizontal" style={{ position: 'relative' }}>
+        {/* Botón eliminar posicionado absolutamente dentro del contenido */}
+        {onDelete && (
+          <button
+            className="card-delete-btn"
+            onClick={handleDeleteClick}
+            aria-label="Eliminar tarjeta"
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: -8,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px 8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#c62828',
+              fontSize: 18,
+              lineHeight: 1,
+              transition: 'opacity 0.2s',
+              zIndex: 1,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '0.7';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '1';
+            }}
+          >
+            ×
+          </button>
+        )}
+        <div style={{ flex: 1 }}>
+          <span style={{ fontSize: 14 }}>{card.ubicacion || '—'}</span>
+        </div>
+        <div style={{ flex: 1 }}>
+          <span style={{ fontSize: 14 }}>{formatEuro(card.precioCompra)}</span>
+        </div>
+        <div style={{ flex: 1 }}>
+          <span style={{ fontSize: 14 }}>{formatEuro(card.alquilerEstimado)}/mes</span>
+        </div>
+        <div style={{ flex: 1 }}>
+          <span style={{ fontSize: 16, fontWeight: 600, color }}>{card.rentabilidadNetaPct.toFixed(2)} %</span>
+        </div>
+        <div style={{ flex: 1 }}>
+          <span style={{ fontSize: 14 }}>{cashflow ? formatEuroFromString(cashflow) : '—'}</span>
         </div>
       </div>
 
-      <div>
-        <strong>Ubicación:</strong> {card.ubicacion || '—'}
-      </div>
-      <div>
-        <strong>Precio:</strong> {formatEuro(card.precioCompra)}
-      </div>
-      <div>
-        <strong>Alquiler estimado:</strong> {formatEuro(card.alquilerEstimado)} / mes
-      </div>
-      <div>
-        <strong>Rentabilidad neta:</strong> {card.rentabilidadNetaPct.toFixed(2)} %
-      </div>
-      {card.veredictoRazones.length > 0 && (
-        <ul style={{ margin: '4px 0 0 1rem', padding: 0, fontSize: 13 }}>
-          {card.veredictoRazones.map((razon, idx) => (
-            <li key={idx}>{razon}</li>
-          ))}
-        </ul>
-      )}
-      {card.url && (
-        <div style={{ fontSize: 12, color: '#555', marginTop: 4 }}>
-          <strong>URL:</strong> {card.url}
+      {/* Información adicional - solo en mobile */}
+      <div className="card-info-extra">
+        <div>
+          <strong>Alquiler estimado:</strong> {formatEuro(card.alquilerEstimado)} / mes
         </div>
-      )}
+        {card.veredictoRazones.length > 0 && (
+          <ul style={{ margin: '4px 0 0 1rem', padding: 0, fontSize: 13 }}>
+            {card.veredictoRazones.map((razon, idx) => (
+              <li key={idx}>{razon}</li>
+            ))}
+          </ul>
+        )}
+        {card.url && (
+          <div style={{ fontSize: 12, color: '#555', marginTop: 4 }}>
+            <strong>URL:</strong> {card.url}
+          </div>
+        )}
+      </div>
     </article>
   );
 }

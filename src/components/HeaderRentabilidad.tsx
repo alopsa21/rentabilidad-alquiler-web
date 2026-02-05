@@ -47,7 +47,8 @@ export function HeaderRentabilidad({ onAnalizar, loading = false }: HeaderRentab
     >
       <div
         style={{
-          maxWidth: 1280,
+          maxWidth: '90%',
+          width: '90%',
           margin: '0 auto',
           display: 'flex',
           flexWrap: 'wrap',

@@ -45,27 +45,6 @@ export function DetalleAnalisis({ card, resultado }: DetalleAnalisisProps) {
         top: 80,
       }}
     >
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          <span
-            style={{
-              width: 16,
-              height: 16,
-              borderRadius: '50%',
-              backgroundColor: color,
-              display: 'inline-block',
-            }}
-          />
-          <h2 style={{ margin: 0, color }}>{card.veredictoTitulo}</h2>
-        </div>
-        {card.veredictoRazones.length > 0 && (
-          <ul style={{ margin: '8px 0 0 0', paddingLeft: 24, fontSize: 14 }}>
-            {card.veredictoRazones.map((razon, idx) => (
-              <li key={idx}>{razon}</li>
-            ))}
-          </ul>
-        )}
-      </div>
 
       <section style={{ marginBottom: 20 }}>
         <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 16 }}>Datos básicos</h3>
