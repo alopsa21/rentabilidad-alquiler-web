@@ -60,12 +60,15 @@ export function ModalDetalle({ card, resultado, isOpen, onClose }: ModalDetalleP
         style={{
           backgroundColor: '#fff',
           width: '100%',
+          maxWidth: '100%',
           maxHeight: '90vh',
           borderTopLeftRadius: 16,
           borderTopRightRadius: 16,
+          overflowX: 'hidden',
           overflowY: 'auto',
           position: 'relative',
           animation: 'slideUp 0.3s ease-out',
+          boxSizing: 'border-box',
         }}
       >
         {/* Botón cerrar */}
@@ -103,7 +106,7 @@ export function ModalDetalle({ card, resultado, isOpen, onClose }: ModalDetalleP
         </button>
 
         {/* Contenido del detalle */}
-        <div style={{ padding: '20px 20px 40px' }}>
+        <div style={{ padding: '20px 16px 40px', boxSizing: 'border-box', maxWidth: '100%', overflow: 'hidden' }}>
           <DetalleAnalisis card={card} resultado={resultado} />
         </div>
       </div>

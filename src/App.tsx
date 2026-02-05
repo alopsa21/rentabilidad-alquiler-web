@@ -4,6 +4,7 @@ import { CardAnalisis } from './components/CardAnalisis'
 import { DetalleAnalisis } from './components/DetalleAnalisis'
 import { ModalDetalle } from './components/ModalDetalle'
 import { calcularRentabilidadApi } from './services/api'
+import { COMUNIDADES_AUTONOMAS } from './constants/comunidades'
 import type { RentabilidadApiResponse } from './types/api'
 import type { FormularioRentabilidadState } from './types/formulario'
 import type { AnalisisCard } from './types/analisis'
@@ -46,9 +47,20 @@ function App() {
     setVeredictoGlobal(null)
     setLoading(true)
     try {
-      // Generar alquiler aleatorio entre 500 y 1000
+      // Generar valores aleatorios
       const alquilerAleatorio = Math.floor(Math.random() * (1000 - 500 + 1)) + 500
-      const payload = { ...DEFAULT_PAYLOAD, alquilerMensual: alquilerAleatorio }
+      const precioAleatorio = Math.floor(Math.random() * (400000 - 100000 + 1)) + 100000
+      const comunidadAleatoria = COMUNIDADES_AUTONOMAS[Math.floor(Math.random() * COMUNIDADES_AUTONOMAS.length)]
+      const habitacionesAleatorias = Math.floor(Math.random() * (4 - 1 + 1)) + 1 // 1-4 habitaciones
+      // m² de 10 en 10 entre 60 y 200 (60, 70, 80, ..., 200)
+      const metrosAleatorios = (Math.floor(Math.random() * ((200 - 60) / 10 + 1)) * 10) + 60
+      const banosAleatorios = Math.floor(Math.random() * (3 - 1 + 1)) + 1 // 1-3 baños
+      const payload = {
+        ...DEFAULT_PAYLOAD,
+        alquilerMensual: alquilerAleatorio,
+        precioCompra: precioAleatorio,
+        comunidadAutonoma: comunidadAleatoria,
+      }
       const data = await calcularRentabilidadApi(payload)
       setResultado(data)
 
@@ -72,11 +84,15 @@ function App() {
         estado: veredicto.estado,
         veredictoTitulo: veredicto.titulo,
         veredictoRazones: veredicto.razones,
+        habitaciones: habitacionesAleatorias,
+        metrosCuadrados: metrosAleatorios,
+        banos: banosAleatorios,
       }
 
       setAnalisis((prev) => [nuevaTarjeta, ...prev])
       setResultadosPorTarjeta((prev) => ({ ...prev, [nuevaTarjeta.id]: data }))
       setTarjetaActivaId(nuevaTarjeta.id)
+      setTarjetaConDetalleExpandido(nuevaTarjeta.id)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al analizar')
     } finally {
@@ -144,14 +160,13 @@ function App() {
     const isMobile = window.innerWidth <= 768
     setTarjetaActivaId(id)
     
-    // En mobile, abrir modal; en desktop toggle del detalle expandido
     if (isMobile) {
       setModalAbierto(true)
-      setTarjetaConDetalleExpandido(null) // Cerrar detalle expandido en mobile
+      setTarjetaConDetalleExpandido(null)
     } else {
       setModalAbierto(false)
-      // Toggle del detalle expandido: si ya está abierto, cerrarlo; si no, abrirlo
-      setTarjetaConDetalleExpandido(prev => prev === id ? null : id)
+      // En desktop: siempre mostrar detalle de la tarjeta clicada (sin toggle, no se oculta al volver a pulsar)
+      setTarjetaConDetalleExpandido(id)
     }
   }
 
@@ -159,16 +174,16 @@ function App() {
     setAnalisis((prev) => {
       const nuevasTarjetas = prev.filter((c) => c.id !== id)
       
-      // Si se elimina la tarjeta activa, seleccionar la primera disponible o null
       if (tarjetaActivaId === id) {
         setTarjetaActivaId(nuevasTarjetas.length > 0 ? nuevasTarjetas[0].id : null)
-        setModalAbierto(false) // Cerrar modal si estaba abierto
-        setTarjetaConDetalleExpandido(null) // Cerrar detalle expandido si estaba abierto
-        // Si no hay tarjetas, limpiar resultado
+        setModalAbierto(false)
+        setTarjetaConDetalleExpandido(nuevasTarjetas.length > 0 ? nuevasTarjetas[0].id : null)
         if (nuevasTarjetas.length === 0) {
           setResultado(null)
           setVeredictoGlobal(null)
         }
+      } else if (tarjetaConDetalleExpandido === id) {
+        setTarjetaConDetalleExpandido(nuevasTarjetas.length > 0 ? nuevasTarjetas[0].id : null)
       }
       
       // Eliminar resultado asociado
@@ -192,64 +207,74 @@ function App() {
           </p>
         )}
         <div className="app-layout-desktop">
-          <section aria-label="Panel de tarjetas" className="app-panel-tarjetas">
-            {/* Cabecera sticky con títulos de columnas - solo si hay tarjetas */}
-            {analisis.length > 0 && (
-              <div className="card-header-sticky">
-                <div className="card-info-horizontal card-header-row">
-                  <div 
-                    style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                    onClick={() => handleOrdenar('ubicacion')}
-                  >
-                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Ubicación</strong>
-                    {ordenarPor.campo === 'ubicacion' && (
-                      <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                  <div 
-                    style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                    onClick={() => handleOrdenar('precio')}
-                  >
-                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Precio</strong>
-                    {ordenarPor.campo === 'precio' && (
-                      <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                  <div 
-                    style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                    onClick={() => handleOrdenar('alquiler')}
-                  >
-                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Alquiler</strong>
-                    {ordenarPor.campo === 'alquiler' && (
-                      <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                  <div 
-                    style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                    onClick={() => handleOrdenar('rentabilidad')}
-                  >
-                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Rentabilidad neta</strong>
-                    {ordenarPor.campo === 'rentabilidad' && (
-                      <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                  <div 
-                    style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                    onClick={() => handleOrdenar('cashflow')}
-                  >
-                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Cashflow</strong>
-                    {ordenarPor.campo === 'cashflow' && (
-                      <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
+          {/* Cabecera sticky: misma estructura 70% + gap + 30% que el contenido */}
+          {analisis.length > 0 && (
+            <div className="card-header-sticky card-header-full-width" style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: '1rem', width: '100%' }}>
+              {/* Bloque 70%: títulos del panel de tarjetas */}
+              <div style={{ flex: '0 0 70%', display: 'flex', alignItems: 'center' }} className="card-info-horizontal card-header-row">
+                <div style={{ flex: 1.2, display: 'flex', alignItems: 'center' }}>
+                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Inmueble</strong>
+                </div>
+                <div 
+                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                  onClick={() => handleOrdenar('ubicacion')}
+                >
+                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Ubicación</strong>
+                  {ordenarPor.campo === 'ubicacion' && (
+                    <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
+                <div 
+                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                  onClick={() => handleOrdenar('precio')}
+                >
+                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Precio compra</strong>
+                  {ordenarPor.campo === 'precio' && (
+                    <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
+                <div 
+                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                  onClick={() => handleOrdenar('alquiler')}
+                >
+                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Alquiler estimado</strong>
+                  {ordenarPor.campo === 'alquiler' && (
+                    <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
+                <div 
+                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                  onClick={() => handleOrdenar('rentabilidad')}
+                >
+                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Rentabilidad neta</strong>
+                  {ordenarPor.campo === 'rentabilidad' && (
+                    <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
+                <div 
+                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                  onClick={() => handleOrdenar('cashflow')}
+                >
+                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Cashflow</strong>
+                  {ordenarPor.campo === 'cashflow' && (
+                    <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
+                  )}
                 </div>
               </div>
-            )}
-            {analisisOrdenados.map((card) => {
+              {/* Bloque 30%: titular del panel de detalle (mismo ancho y gap que el aside) */}
+              <div style={{ flex: '0 0 30%', display: 'flex', alignItems: 'center' }}>
+                <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Detalle</strong>
+              </div>
+            </div>
+          )}
+          {/* Contenedor flex-row para paneles lado a lado */}
+          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: '1rem', width: '100%' }}>
+            {/* Izquierda (70%): tarjetas */}
+            <section aria-label="Panel de tarjetas" className="app-panel-tarjetas">
+              {analisisOrdenados.map((card) => {
               const mostrarDetalle = card.id === tarjetaConDetalleExpandido
               const resultadoParaDetalle = resultadosPorTarjeta[card.id] || null
               const cashflow = resultadoParaDetalle?.cashflowFinal || null
-              
               return (
                 <div key={card.id}>
                   <CardAnalisis
@@ -258,9 +283,9 @@ function App() {
                     onClick={() => handleClickTarjeta(card.id)}
                     onDelete={() => handleEliminarTarjeta(card.id)}
                     mostrarDetalle={mostrarDetalle}
-                    cashflow={cashflow}
+                    cashflow={cashflow ?? undefined}
                   />
-                  {/* Detalle expandido debajo de la tarjeta */}
+                  {/* Detalle debajo de la tarjeta: solo en mobile (en desktop se muestra en panel derecho) */}
                   {mostrarDetalle && resultadoParaDetalle && (
                     <div className="card-detalle-expandido">
                       <DetalleAnalisis card={card} resultado={resultadoParaDetalle} />
@@ -269,7 +294,17 @@ function App() {
                 </div>
               )
             })}
-          </section>
+            </section>
+            {/* Derecha (30%): detalle de la tarjeta seleccionada - solo visible en desktop */}
+            <aside aria-label="Detalle del análisis" className="app-panel-detalle">
+            {tarjetaConDetalleExpandido && (() => {
+              const cardDetalle = analisis.find((c) => c.id === tarjetaConDetalleExpandido)
+              const resultadoDetalle = resultadosPorTarjeta[tarjetaConDetalleExpandido] || null
+              if (!cardDetalle || !resultadoDetalle) return null
+              return <DetalleAnalisis card={cardDetalle} resultado={resultadoDetalle} />
+              })()}
+            </aside>
+          </div>
         </div>
         
         {/* Mobile: mostrar modal cuando está abierto */}

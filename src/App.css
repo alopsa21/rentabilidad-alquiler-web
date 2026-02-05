@@ -59,6 +59,11 @@
   position: relative;
 }
 
+/* Panel derecho: detalle (solo visible en desktop) */
+.app-panel-detalle {
+  display: none;
+}
+
 /* Cabecera sticky con títulos de columnas */
 .card-header-sticky {
   position: sticky;
@@ -128,22 +133,60 @@
   display: none;
 }
 
-/* Desktop: información horizontal visible, mobile oculto */
+/* Desktop: dos columnas (70% tarjetas, 30% detalle) y detalle debajo de tarjeta oculto */
 @media (min-width: 769px) {
+  .app-layout-desktop {
+    display: flex;
+    flex-direction: column;
+    width: 90%;
+    max-width: 90%;
+    margin-left: auto;
+    margin-right: auto;
+    min-height: calc(100vh - 150px);
+    gap: 0;
+  }
+
+  .card-header-full-width {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+
+  .app-panel-tarjetas {
+    flex: 0 0 70%;
+    width: 70%;
+    max-width: 70%;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .app-panel-detalle {
+    display: block;
+    flex: 0 0 30%;
+    width: 30%;
+    min-width: 0;
+    position: sticky;
+    top: 20px;
+    align-self: flex-start;
+    height: fit-content;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+  }
+
+  .card-detalle-expandido {
+    display: none !important;
+  }
+
   .card-info-desktop {
     display: flex;
   }
-  
+
   .card-info-mobile {
     display: none !important;
   }
-  
+
   .card-analisis {
     min-height: auto;
-  }
-  
-  .detalle-desktop {
-    display: none !important;
   }
 }
 
@@ -212,6 +255,15 @@
   margin-right: auto;
 }
 
+/* En panel derecho desktop: ocupa el 30% del layout */
+.app-panel-detalle .detalle-analisis {
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+  position: static !important;
+  top: auto !important;
+}
+
 .detalle-valor-clickable:hover {
   text-decoration: underline;
 }
@@ -229,6 +281,33 @@
   
   .modal-detalle-overlay {
     display: flex !important;
+  }
+
+  /* Evitar que el detalle se salga por la derecha en el modal móvil */
+  .modal-detalle-content {
+    max-width: 100vw;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
+  .modal-detalle-content .detalle-analisis {
+    max-width: 100%;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .modal-detalle-content .detalle-analisis section dl {
+    grid-template-columns: 1fr auto;
+    min-width: 0;
+  }
+
+  .modal-detalle-content .detalle-analisis dd,
+  .modal-detalle-content .detalle-analisis dt {
+    min-width: 0;
+    overflow-wrap: break-word;
   }
 }
 
@@ -306,6 +385,157 @@
   .header-rentabilidad button {
     min-height: 44px !important;
     padding: 0 20px !important;
+  }
+}
+
+/* ========== Modo oscuro (prefers-color-scheme: dark) ========== */
+@media (prefers-color-scheme: dark) {
+  #root,
+  .app {
+    background-color: #1a1a1a;
+    color: #e4e4e4;
+  }
+
+  .app-main {
+    color: #e4e4e4;
+  }
+
+  .app-error {
+    background-color: #3d2020;
+    color: #f5b7b7;
+  }
+
+  .header-rentabilidad {
+    background-color: #2d2d2d !important;
+    border-bottom-color: #444 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .header-rentabilidad h1 {
+    color: #e4e4e4 !important;
+  }
+
+  .header-rentabilidad input {
+    background-color: #3d3d3d !important;
+    border-color: #555 !important;
+    color: #e4e4e4 !important;
+  }
+
+  .header-rentabilidad input::placeholder {
+    color: #999;
+  }
+
+  .header-rentabilidad button {
+    background-color: #505050 !important;
+    border-color: #666 !important;
+    color: #e4e4e4 !important;
+  }
+
+  .card-header-sticky {
+    background-color: #2d2d2d !important;
+    color: #e4e4e4;
+  }
+
+  .card-header-sticky strong {
+    color: #b0b0b0 !important;
+  }
+
+  .card-header-row > div:hover {
+    background-color: #3d3d3d !important;
+  }
+
+  .card-analisis {
+    background-color: #2d2d2d !important;
+    border-color: #444 !important;
+    color: #e4e4e4;
+  }
+
+  .card-analisis.is-active {
+    background-color: #1e3d1e !important;
+    border-color: #2e5c2e !important;
+  }
+
+  .card-analisis .card-info-mobile strong,
+  .card-analisis .card-info-desktop span {
+    color: #e4e4e4;
+  }
+
+  .card-analisis .card-info-mobile strong {
+    color: #9ca3af;
+  }
+
+  .card-delete-btn,
+  .card-delete-btn-mobile {
+    color: #f87171 !important;
+  }
+
+  .card-detalle-expandido {
+    background-color: #2d2d2d !important;
+    border-color: #444 !important;
+  }
+
+  .detalle-analisis {
+    background-color: #2d2d2d !important;
+    border-color: #444 !important;
+    color: #e4e4e4;
+  }
+
+  .detalle-analisis h3 {
+    color: #d4d4d4;
+  }
+
+  .detalle-analisis dt {
+    color: #b0b0b0 !important;
+  }
+
+  .detalle-analisis dd {
+    color: #e4e4e4 !important;
+  }
+
+  .detalle-valor-clickable:hover {
+    color: #93c5fd;
+  }
+
+  .modal-detalle-overlay {
+    background-color: rgba(0, 0, 0, 0.7) !important;
+  }
+
+  .modal-detalle-content {
+    background-color: #2d2d2d !important;
+  }
+
+  .modal-detalle-content .detalle-analisis {
+    background-color: transparent !important;
+    border-color: #444 !important;
+  }
+
+  .modal-detalle-content button[aria-label="Cerrar detalle"] {
+    color: #e4e4e4 !important;
+    background-color: transparent !important;
+  }
+
+  .modal-detalle-content button[aria-label="Cerrar detalle"]:hover {
+    background-color: #3d3d3d !important;
+  }
+
+  .app-panel-detalle {
+    color: #e4e4e4;
+  }
+
+  .detalle-popover-overlay {
+    background-color: rgba(0, 0, 0, 0.6) !important;
+  }
+
+  .detalle-popover-content {
+    background-color: #2d2d2d !important;
+    color: #e4e4e4 !important;
+    border-color: #444 !important;
+  }
+
+  .detalle-popover-btn {
+    background-color: #3d3d3d !important;
+    border-color: #555 !important;
+    color: #e4e4e4 !important;
   }
 }
 

@@ -241,6 +241,7 @@ export function DetalleAnalisis({ card, resultado }: DetalleAnalisisProps) {
         <div
           role="dialog"
           aria-label="Definición"
+          className="detalle-popover-overlay"
           style={{
             position: 'fixed',
             inset: 0,
@@ -254,6 +255,7 @@ export function DetalleAnalisis({ card, resultado }: DetalleAnalisisProps) {
           onClick={() => setDefinicionAbierta(null)}
         >
           <div
+            className="detalle-popover-content"
             style={{
               maxWidth: 360,
               maxHeight: '80vh',
@@ -273,6 +275,7 @@ export function DetalleAnalisis({ card, resultado }: DetalleAnalisisProps) {
             <button
               type="button"
               onClick={() => setDefinicionAbierta(null)}
+              className="detalle-popover-btn"
               style={{
                 marginTop: 12,
                 padding: '6px 12px',
@@ -296,6 +299,7 @@ export function DetalleAnalisis({ card, resultado }: DetalleAnalisisProps) {
           <div
             role="dialog"
             aria-label="Desglose del cálculo"
+            className="detalle-popover-overlay"
             style={{
               position: 'fixed',
               inset: 0,
@@ -309,6 +313,7 @@ export function DetalleAnalisis({ card, resultado }: DetalleAnalisisProps) {
             onClick={() => setDesgloseAbierto(null)}
           >
             <div
+              className="detalle-popover-content"
               style={{
                 maxWidth: 400,
                 maxHeight: '80vh',
@@ -333,6 +338,7 @@ export function DetalleAnalisis({ card, resultado }: DetalleAnalisisProps) {
               <button
                 type="button"
                 onClick={() => setDesgloseAbierto(null)}
+                className="detalle-popover-btn"
                 style={{
                   marginTop: 12,
                   padding: '6px 12px',

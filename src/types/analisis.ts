@@ -10,5 +10,8 @@ export interface AnalisisCard {
   estado: EstadoColor;
   veredictoTitulo: string;
   veredictoRazones: string[];
+  habitaciones: number;
+  metrosCuadrados: number;
+  banos: number;
 }
 

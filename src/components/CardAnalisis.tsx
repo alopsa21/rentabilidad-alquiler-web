@@ -83,7 +83,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
 
   return (
     <article
-      className="card-analisis"
+      className={`card-analisis${isActive ? ' is-active' : ''}`}
       onClick={onClick}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -138,6 +138,11 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
             ×
           </button>
         )}
+        <div style={{ flex: 1.2 }}>
+          <span style={{ fontSize: 13, lineHeight: 1.4 }}>
+            {card.habitaciones} hab · {card.metrosCuadrados} m² · {card.banos} {card.banos === 1 ? 'baño' : 'baños'}
+          </span>
+        </div>
         <div style={{ flex: 1 }}>
           <span style={{ fontSize: 14 }}>{card.ubicacion || '—'}</span>
         </div>
@@ -183,17 +188,37 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
             ×
           </button>
         )}
-        <div style={{ marginBottom: 12 }}>
-          <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Ubicación</strong>
-          <span style={{ fontSize: 15, fontWeight: 500 }}>{card.ubicacion || '—'}</span>
+        <div style={{ marginBottom: 12, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 0', minWidth: 0 }}>
+            <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Inmueble</strong>
+            <span style={{ fontSize: 14, lineHeight: 1.4 }}>
+              {card.habitaciones} hab · {card.metrosCuadrados} m² · {card.banos} {card.banos === 1 ? 'baño' : 'baños'}
+            </span>
+          </div>
+          <div style={{ flex: '1 1 0', minWidth: 0 }}>
+            <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Ubicación</strong>
+            <span style={{ fontSize: 15, fontWeight: 500 }}>{card.ubicacion || '—'}</span>
+          </div>
         </div>
-        <div style={{ marginBottom: 12 }}>
-          <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Precio de compra</strong>
-          <span style={{ fontSize: 15 }}>{formatEuro(card.precioCompra)}</span>
+        <div style={{ marginBottom: 12, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 0', minWidth: 0 }}>
+            <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Precio compra</strong>
+            <span style={{ fontSize: 15 }}>{formatEuro(card.precioCompra)}</span>
+          </div>
+          <div style={{ flex: '1 1 0', minWidth: 0 }}>
+            <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Alquiler estimado</strong>
+            <span style={{ fontSize: 15 }}>{formatEuro(card.alquilerEstimado)}/mes</span>
+          </div>
         </div>
-        <div>
-          <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Rentabilidad neta</strong>
-          <span style={{ fontSize: 18, fontWeight: 600, color }}>{card.rentabilidadNetaPct.toFixed(2)} %</span>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 0', minWidth: 0 }}>
+            <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Rentabilidad neta</strong>
+            <span style={{ fontSize: 18, fontWeight: 600, color }}>{card.rentabilidadNetaPct.toFixed(2)} %</span>
+          </div>
+          <div style={{ flex: '1 1 0', minWidth: 0 }}>
+            <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Cashflow</strong>
+            <span style={{ fontSize: 15 }}>{cashflow ? formatEuroFromString(cashflow) : '—'}</span>
+          </div>
         </div>
       </div>
 
