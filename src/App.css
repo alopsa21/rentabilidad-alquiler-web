@@ -17,12 +17,36 @@
   margin: 0 0 1rem;
 }
 
-.app-panel-tarjetas {
-  min-height: 120px;
+.app-veredicto-global {
+  margin-bottom: 1rem;
+}
+
+.app-layout-desktop {
+  display: flex;
+  gap: 1.5rem;
   margin-bottom: 1.5rem;
+}
+
+.app-panel-tarjetas {
+  flex: 0 0 320px;
+  min-height: 120px;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+.detalle-analisis {
+  flex: 1;
+}
+
+/* Mobile: volver a layout vertical */
+@media (max-width: 768px) {
+  .app-layout-desktop {
+    flex-direction: column;
+  }
+  .app-panel-tarjetas {
+    flex: 1;
+  }
 }
 
 .logo {

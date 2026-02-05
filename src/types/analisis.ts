@@ -8,5 +8,7 @@ export interface AnalisisCard {
   alquilerEstimado: number;
   rentabilidadNetaPct: number;
   estado: EstadoColor;
+  veredictoTitulo: string;
+  veredictoRazones: string[];
 }
 
