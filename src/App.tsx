@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { HeaderRentabilidad } from './components/HeaderRentabilidad'
-import { Resultados } from './components/Resultados'
 import { CardAnalisis } from './components/CardAnalisis'
 import { DetalleAnalisis } from './components/DetalleAnalisis'
 import { calcularRentabilidadApi } from './services/api'
@@ -79,12 +78,6 @@ function App() {
     }
   }
 
-  useEffect(() => {
-    if (resultado) {
-      document.getElementById('resultados')?.scrollIntoView({ behavior: 'smooth' })
-    }
-  }, [resultado])
-
   const tarjetaActiva = analisis.find((c) => c.id === tarjetaActivaId)
 
   return (
@@ -122,9 +115,6 @@ function App() {
           {tarjetaActiva && resultado && (
             <DetalleAnalisis card={tarjetaActiva} resultado={resultado} />
           )}
-        </div>
-        <div className="app-resultados-legacy">
-          <Resultados resultado={resultado} />
         </div>
       </main>
     </div>

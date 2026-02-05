@@ -31,7 +31,3 @@ export function getFormErrors(state: FormularioRentabilidadState): string[] {
 
   return errors;
 }
-
-export function isValidForm(state: FormularioRentabilidadState): boolean {
-  return getFormErrors(state).length === 0;
-}

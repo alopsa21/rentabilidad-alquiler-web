@@ -48,11 +48,6 @@
   max-width: 600px;
 }
 
-/* Ocultar Resultados (componente antiguo, redundante con DetalleAnalisis) */
-.app-resultados-legacy {
-  display: none;
-}
-
 /* Header responsive */
 .header-rentabilidad h1 {
   font-size: 1.25rem;
