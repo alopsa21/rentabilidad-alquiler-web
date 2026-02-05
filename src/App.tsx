@@ -80,6 +80,24 @@ function App() {
 
   const tarjetaActiva = analisis.find((c) => c.id === tarjetaActivaId)
 
+  const handleEliminarTarjeta = (id: string) => {
+    setAnalisis((prev) => {
+      const nuevasTarjetas = prev.filter((c) => c.id !== id)
+      
+      // Si se elimina la tarjeta activa, seleccionar la primera disponible o null
+      if (tarjetaActivaId === id) {
+        setTarjetaActivaId(nuevasTarjetas.length > 0 ? nuevasTarjetas[0].id : null)
+        // Si no hay tarjetas, limpiar resultado
+        if (nuevasTarjetas.length === 0) {
+          setResultado(null)
+          setVeredictoGlobal(null)
+        }
+      }
+      
+      return nuevasTarjetas
+    })
+  }
+
   return (
     <div className="app">
       <HeaderRentabilidad onAnalizar={handleAnalizar} loading={loading} />
@@ -109,6 +127,7 @@ function App() {
                 card={card}
                 isActive={card.id === tarjetaActivaId}
                 onClick={() => setTarjetaActivaId(card.id)}
+                onDelete={() => handleEliminarTarjeta(card.id)}
               />
             ))}
           </section>
