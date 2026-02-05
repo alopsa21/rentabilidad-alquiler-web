@@ -103,8 +103,8 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
         boxShadow: isActive ? '0 2px 8px rgba(0, 0, 0, 0.15)' : 'none',
       }}
     >
-      {/* Información clave en horizontal - sin títulos */}
-      <div className="card-info-horizontal" style={{ position: 'relative' }}>
+      {/* Desktop: Información horizontal */}
+      <div className="card-info-horizontal card-info-desktop" style={{ position: 'relative' }}>
         {/* Botón eliminar posicionado absolutamente dentro del contenido */}
         {onDelete && (
           <button
@@ -152,6 +152,48 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
         </div>
         <div style={{ flex: 1 }}>
           <span style={{ fontSize: 14 }}>{cashflow ? formatEuroFromString(cashflow) : '—'}</span>
+        </div>
+      </div>
+
+      {/* Mobile: Información vertical compacta */}
+      <div className="card-info-mobile" style={{ position: 'relative' }}>
+        {onDelete && (
+          <button
+            className="card-delete-btn-mobile"
+            onClick={handleDeleteClick}
+            aria-label="Eliminar tarjeta"
+            style={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px 8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#c62828',
+              fontSize: 20,
+              lineHeight: 1,
+              transition: 'opacity 0.2s',
+              zIndex: 1,
+            }}
+          >
+            ×
+          </button>
+        )}
+        <div style={{ marginBottom: 12 }}>
+          <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Ubicación</strong>
+          <span style={{ fontSize: 15, fontWeight: 500 }}>{card.ubicacion || '—'}</span>
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Precio</strong>
+          <span style={{ fontSize: 15 }}>{formatEuro(card.precioCompra)}</span>
+        </div>
+        <div>
+          <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Rentabilidad neta</strong>
+          <span style={{ fontSize: 18, fontWeight: 600, color }}>{card.rentabilidadNetaPct.toFixed(2)} %</span>
         </div>
       </div>
 

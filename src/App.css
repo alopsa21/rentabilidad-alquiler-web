@@ -3,12 +3,17 @@
   margin: 0;
   padding: 0;
   width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .app {
   min-height: 100vh;
   max-width: 100%;
   padding: 0;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .app {
@@ -122,12 +127,14 @@
   display: none;
 }
 
-/* Desktop: información clave en horizontal */
+/* Desktop: información horizontal visible, mobile oculto */
 @media (min-width: 769px) {
-  .card-info-horizontal {
+  .card-info-desktop {
     display: flex;
-    gap: 2rem;
-    align-items: flex-start;
+  }
+  
+  .card-info-mobile {
+    display: none !important;
   }
   
   .card-analisis {
@@ -139,30 +146,60 @@
   }
 }
 
-/* Mobile: mostrar toda la información */
+/* Mobile: layout vertical compacto */
 @media (max-width: 768px) {
   .card-delete-btn {
     display: none !important;
   }
   
+  .card-delete-btn-mobile {
+    display: block !important;
+  }
+  
   .card-analisis {
     touch-action: pan-y;
+    padding: 16px !important;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .card-info-desktop {
+    display: none !important;
+  }
+  
+  .card-info-mobile {
+    display: block !important;
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
   }
   
   .card-info-extra {
-    display: block;
-    margin-top: 8px;
-    font-size: 13px;
-  }
-  
-  .card-info-horizontal {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    display: none !important;
   }
   
   .card-detalle-expandido {
     display: none !important;
+  }
+  
+  /* Ocultar cabecera sticky en mobile */
+  .card-header-sticky {
+    display: none !important;
+  }
+  
+  .app-panel-tarjetas {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 1rem;
+    box-sizing: border-box;
+  }
+  
+  .app-layout-desktop {
+    padding: 0 !important;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 }
 

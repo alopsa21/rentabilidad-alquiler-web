@@ -3,7 +3,11 @@ import type { RentabilidadApiResponse, RentabilidadApiError } from '../types/api
 
 const getApiUrl = (): string => {
   const url = import.meta.env.VITE_API_URL;
-  return typeof url === 'string' && url.length > 0 ? url.replace(/\/$/, '') : 'http://localhost:3000';
+  if (typeof url === 'string' && url.length > 0) {
+    return url.replace(/\/$/, '');
+  }
+  // Por defecto usar localhost (útil para desarrollo desktop)
+  return 'http://localhost:3000';
 };
 
 /**
@@ -45,22 +49,30 @@ export async function calcularRentabilidadApi(
   const url = `${baseUrl}/rentabilidad`;
   const body = buildRentabilidadBody(state);
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
 
-  const data = await response.json().catch(() => ({}));
+    const data = await response.json().catch(() => ({}));
 
-  if (!response.ok) {
-    const err = data as RentabilidadApiError;
-    const message =
-      err?.message || `Error ${response.status}: ${response.statusText}`;
-    throw new Error(message);
+    if (!response.ok) {
+      const err = data as RentabilidadApiError;
+      const message =
+        err?.message || `Error ${response.status}: ${response.statusText}`;
+      throw new Error(message);
+    }
+
+    return data as RentabilidadApiResponse;
+  } catch (err) {
+    // Mejorar mensaje de error para "Failed to fetch"
+    if (err instanceof TypeError && err.message.includes('fetch')) {
+      throw new Error(`No se puede conectar con la API en ${baseUrl}. Verifica que el servidor esté corriendo.`);
+    }
+    throw err;
   }
-
-  return data as RentabilidadApiResponse;
 }
