@@ -64,6 +64,29 @@
   max-width: 600px;
 }
 
+/* Desktop: mostrar detalle siempre */
+.detalle-desktop {
+  display: block;
+}
+
+/* Mobile: ocultar detalle desktop, mostrar solo modal */
+@media (max-width: 768px) {
+  .detalle-desktop {
+    display: none !important;
+  }
+  
+  .modal-detalle-overlay {
+    display: flex !important;
+  }
+}
+
+/* Desktop: ocultar modal */
+@media (min-width: 769px) {
+  .modal-detalle-overlay {
+    display: none !important;
+  }
+}
+
 /* Header responsive */
 .header-rentabilidad h1 {
   font-size: 1.25rem;

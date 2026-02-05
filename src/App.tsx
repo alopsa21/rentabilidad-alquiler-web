@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { HeaderRentabilidad } from './components/HeaderRentabilidad'
 import { CardAnalisis } from './components/CardAnalisis'
 import { DetalleAnalisis } from './components/DetalleAnalisis'
+import { ModalDetalle } from './components/ModalDetalle'
 import { calcularRentabilidadApi } from './services/api'
 import type { RentabilidadApiResponse } from './types/api'
 import type { FormularioRentabilidadState } from './types/formulario'
@@ -34,6 +35,7 @@ function App() {
   const [analisis, setAnalisis] = useState<AnalisisCard[]>([])
   const [veredictoGlobal, setVeredictoGlobal] = useState<VeredictoHumano | null>(null)
   const [tarjetaActivaId, setTarjetaActivaId] = useState<string | null>(null)
+  const [modalAbierto, setModalAbierto] = useState(false)
 
   const handleAnalizar = async (_url: string) => {
     setError(null)
@@ -80,6 +82,17 @@ function App() {
 
   const tarjetaActiva = analisis.find((c) => c.id === tarjetaActivaId)
 
+  const handleClickTarjeta = (id: string) => {
+    const isMobile = window.innerWidth <= 768
+    setTarjetaActivaId(id)
+    // En mobile, abrir modal; en desktop solo seleccionar (modal oculto por CSS)
+    if (isMobile) {
+      setModalAbierto(true)
+    } else {
+      setModalAbierto(false)
+    }
+  }
+
   const handleEliminarTarjeta = (id: string) => {
     setAnalisis((prev) => {
       const nuevasTarjetas = prev.filter((c) => c.id !== id)
@@ -87,6 +100,7 @@ function App() {
       // Si se elimina la tarjeta activa, seleccionar la primera disponible o null
       if (tarjetaActivaId === id) {
         setTarjetaActivaId(nuevasTarjetas.length > 0 ? nuevasTarjetas[0].id : null)
+        setModalAbierto(false) // Cerrar modal si estaba abierto
         // Si no hay tarjetas, limpiar resultado
         if (nuevasTarjetas.length === 0) {
           setResultado(null)
@@ -126,15 +140,28 @@ function App() {
                 key={card.id}
                 card={card}
                 isActive={card.id === tarjetaActivaId}
-                onClick={() => setTarjetaActivaId(card.id)}
+                onClick={() => handleClickTarjeta(card.id)}
                 onDelete={() => handleEliminarTarjeta(card.id)}
               />
             ))}
           </section>
+          {/* Desktop: mostrar detalle siempre visible */}
           {tarjetaActiva && resultado && (
-            <DetalleAnalisis card={tarjetaActiva} resultado={resultado} />
+            <div className="detalle-desktop">
+              <DetalleAnalisis card={tarjetaActiva} resultado={resultado} />
+            </div>
           )}
         </div>
+        
+        {/* Mobile: mostrar modal cuando está abierto */}
+        {tarjetaActiva && resultado && (
+          <ModalDetalle
+            card={tarjetaActiva}
+            resultado={resultado}
+            isOpen={modalAbierto}
+            onClose={() => setModalAbierto(false)}
+          />
+        )}
       </main>
     </div>
   )
