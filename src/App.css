@@ -15,10 +15,17 @@
 .app-error {
   color: #b71c1c;
   margin: 0 0 1rem;
+  padding: 12px;
+  background-color: #ffebee;
+  border-radius: 6px;
+  font-size: 14px;
 }
 
 .app-veredicto-global {
   margin-bottom: 1rem;
+  padding: 12px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
 }
 
 .app-layout-desktop {
@@ -39,13 +46,78 @@
   flex: 1;
 }
 
-/* Mobile: volver a layout vertical */
+/* Ocultar Resultados (componente antiguo, redundante con DetalleAnalisis) */
+.app-resultados-legacy {
+  display: none;
+}
+
+/* Header responsive */
+.header-rentabilidad h1 {
+  font-size: 1.25rem;
+}
+
+.header-rentabilidad form {
+  width: 100%;
+}
+
+/* Mobile: layout vertical optimizado para uso con una mano */
 @media (max-width: 768px) {
+  #root {
+    padding: 0 0 1rem;
+  }
+
+  .app-main {
+    padding-top: 0.5rem;
+  }
+
+  .app-error {
+    margin: 0 1rem 1rem;
+  }
+
+  .app-veredicto-global {
+    margin: 0 1rem 1rem;
+    padding: 10px;
+  }
+
   .app-layout-desktop {
     flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1rem;
   }
+
   .app-panel-tarjetas {
     flex: 1;
+    padding: 0 1rem;
+  }
+
+  .detalle-analisis {
+    margin: 0 1rem;
+    position: static;
+  }
+
+  /* Header móvil: botón más grande para touch */
+  .header-rentabilidad {
+    padding: 10px 12px !important;
+  }
+
+  .header-rentabilidad h1 {
+    font-size: 1.1rem;
+    width: 100%;
+    margin-bottom: 4px;
+  }
+
+  .header-rentabilidad form {
+    width: 100%;
+  }
+
+  .header-rentabilidad input {
+    min-height: 44px;
+    font-size: 16px !important;
+  }
+
+  .header-rentabilidad button {
+    min-height: 44px !important;
+    padding: 0 20px !important;
   }
 }
 

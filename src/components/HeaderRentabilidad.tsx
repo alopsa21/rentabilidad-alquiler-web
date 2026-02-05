@@ -34,6 +34,7 @@ export function HeaderRentabilidad({ onAnalizar, loading = false }: HeaderRentab
 
   return (
     <header
+      className="header-rentabilidad"
       style={{
         position: 'sticky',
         top: 0,
@@ -74,7 +75,7 @@ export function HeaderRentabilidad({ onAnalizar, loading = false }: HeaderRentab
             placeholder="Pega la URL del anuncio..."
             style={{
               flex: 1,
-              padding: '8px 12px',
+              padding: '10px 12px',
               fontSize: 14,
               border: '1px solid #ccc',
               borderRadius: 6,
@@ -85,7 +86,7 @@ export function HeaderRentabilidad({ onAnalizar, loading = false }: HeaderRentab
             type="submit"
             disabled={loading}
             style={{
-              padding: '8px 16px',
+              padding: '10px 16px',
               fontSize: 14,
               fontWeight: 500,
               border: '1px solid #333',
@@ -93,6 +94,8 @@ export function HeaderRentabilidad({ onAnalizar, loading = false }: HeaderRentab
               backgroundColor: '#333',
               color: '#fff',
               cursor: loading ? 'not-allowed' : 'pointer',
+              whiteSpace: 'nowrap',
+              minHeight: 44,
             }}
           >
             {loading ? 'Analizando...' : 'Analizar'}

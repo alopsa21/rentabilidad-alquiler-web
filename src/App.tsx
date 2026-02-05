@@ -61,9 +61,9 @@ function App() {
       const nuevaTarjeta: AnalisisCard = {
         id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
         url: _url,
-        ubicacion: DEFAULT_PAYLOAD.comunidadAutonoma,
-        precioCompra: DEFAULT_PAYLOAD.precioCompra,
-        alquilerEstimado: DEFAULT_PAYLOAD.alquilerMensual,
+        ubicacion: payload.comunidadAutonoma,
+        precioCompra: payload.precioCompra,
+        alquilerEstimado: alquilerAleatorio,
         rentabilidadNetaPct: rentNetaPct,
         estado: veredicto.estado,
         veredictoTitulo: veredicto.titulo,
@@ -123,7 +123,9 @@ function App() {
             <DetalleAnalisis card={tarjetaActiva} resultado={resultado} />
           )}
         </div>
-        <Resultados resultado={resultado} />
+        <div className="app-resultados-legacy">
+          <Resultados resultado={resultado} />
+        </div>
       </main>
     </div>
   )
