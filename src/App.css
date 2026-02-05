@@ -32,6 +32,7 @@
   display: flex;
   gap: 1.5rem;
   margin-bottom: 1.5rem;
+  align-items: flex-start;
 }
 
 .app-panel-tarjetas {
@@ -44,6 +45,7 @@
 
 .detalle-analisis {
   flex: 1;
+  max-width: 600px;
 }
 
 /* Ocultar Resultados (componente antiguo, redundante con DetalleAnalisis) */
