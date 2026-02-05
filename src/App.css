@@ -1,11 +1,25 @@
 #root {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 0 1rem 2rem;
 }
 
 .app {
-  text-align: center;
+  min-height: 100vh;
+}
+
+.app-main {
+  padding-top: 1rem;
+}
+
+.app-error {
+  color: #b71c1c;
+  margin: 0 0 1rem;
+}
+
+.app-panel-tarjetas {
+  min-height: 120px;
+  margin-bottom: 1.5rem;
 }
 
 .logo {
