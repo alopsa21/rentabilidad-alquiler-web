@@ -144,7 +144,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
           </span>
         </div>
         <div style={{ flex: 1 }}>
-          <span style={{ fontSize: 14 }}>{card.ubicacion || '—'}</span>
+          <span style={{ fontSize: 14 }}>{card.ciudad || '—'}</span>
         </div>
         <div style={{ flex: 1 }}>
           <span style={{ fontSize: 14 }}>{formatEuro(card.precioCompra)}</span>
@@ -196,8 +196,8 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
             </span>
           </div>
           <div style={{ flex: '1 1 0', minWidth: 0 }}>
-            <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Ubicación</strong>
-            <span style={{ fontSize: 15, fontWeight: 500 }}>{card.ubicacion || '—'}</span>
+            <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Ciudad</strong>
+            <span style={{ fontSize: 15, fontWeight: 500 }}>{card.ciudad || '—'}</span>
           </div>
         </div>
         <div style={{ marginBottom: 12, display: 'flex', gap: 16, flexWrap: 'wrap' }}>

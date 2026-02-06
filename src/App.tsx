@@ -74,10 +74,14 @@ function App() {
           ? rentNetaRaw * 100
           : rentNetaRaw
 
+      // Importar función para obtener ciudad aleatoria
+      const { obtenerCiudadAleatoria } = await import('./utils/ciudades')
+      const ciudadAleatoria = obtenerCiudadAleatoria(payload.comunidadAutonoma)
+
       const nuevaTarjeta: AnalisisCard = {
         id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
         url: _url,
-        ubicacion: payload.comunidadAutonoma,
+        ciudad: ciudadAleatoria,
         precioCompra: payload.precioCompra,
         alquilerEstimado: alquilerAleatorio,
         rentabilidadNetaPct: rentNetaPct,
@@ -91,8 +95,8 @@ function App() {
 
       setAnalisis((prev) => [nuevaTarjeta, ...prev])
       setResultadosPorTarjeta((prev) => ({ ...prev, [nuevaTarjeta.id]: data }))
-      setTarjetaActivaId(nuevaTarjeta.id)
-      // No expandir automáticamente: el usuario debe hacer clic para ver el detalle
+      // No establecer tarjetaActivaId ni expandir automáticamente
+      // La tarjeta aparecerá sin resaltar hasta que el usuario haga clic
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al analizar')
     } finally {
@@ -121,9 +125,9 @@ function App() {
     let valorB: number | string
 
     switch (ordenarPor.campo) {
-      case 'ubicacion':
-        valorA = a.ubicacion || ''
-        valorB = b.ubicacion || ''
+      case 'ciudad':
+        valorA = a.ciudad || ''
+        valorB = b.ciudad || ''
         break
       case 'precio':
         valorA = a.precioCompra
@@ -227,10 +231,10 @@ function App() {
                 </div>
                 <div 
                   style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                  onClick={() => handleOrdenar('ubicacion')}
+                  onClick={() => handleOrdenar('ciudad')}
                 >
-                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Ubicación</strong>
-                  {ordenarPor.campo === 'ubicacion' && (
+                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Ciudad</strong>
+                  {ordenarPor.campo === 'ciudad' && (
                     <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
                   )}
                 </div>
@@ -282,7 +286,7 @@ function App() {
                   <div key={card.id}>
                     <CardAnalisis
                       card={card}
-                      isActive={card.id === tarjetaActivaId}
+                      isActive={mostrarDetalle}
                       onClick={() => handleClickTarjeta(card.id)}
                       onDelete={() => handleEliminarTarjeta(card.id)}
                       mostrarDetalle={mostrarDetalle}
