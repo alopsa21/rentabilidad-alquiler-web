@@ -11,6 +11,7 @@ import type { AnalisisCard } from './types/analisis'
 import type { VeredictoHumano } from './utils/veredicto'
 import { mapResultadosToVerdict } from './utils/veredicto'
 import { loadCards, saveCards, clearCards } from './utils/storage'
+import { cardsToCSV, downloadCSV } from './utils/csv'
 import './App.css'
 
 /** Payload por defecto para mantener la API conectada hasta que la URL se use para obtener datos */
@@ -392,6 +393,18 @@ function App() {
   }
 
   /**
+   * Exporta las tarjetas actuales a CSV.
+   */
+  const handleExportarCSV = () => {
+    try {
+      const csvString = cardsToCSV(analisis, resultadosPorTarjeta)
+      downloadCSV(csvString)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al exportar CSV')
+    }
+  }
+
+  /**
    * Revierte los cambios de una tarjeta restaurando originalInput.
    */
   const handleRevert = (tarjetaId: string) => {
@@ -419,7 +432,33 @@ function App() {
     <div className="app">
       <HeaderRentabilidad onAnalizar={handleAnalizar} loading={loading} />
       {analisis.length > 0 && (
-        <div style={{ padding: '8px 16px', backgroundColor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+        <div style={{ padding: '8px 16px', backgroundColor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+          <button
+            type="button"
+            onClick={handleExportarCSV}
+            style={{
+              padding: '6px 12px',
+              fontSize: 13,
+              backgroundColor: '#1976d2',
+              border: '1px solid #1976d2',
+              borderRadius: 4,
+              cursor: 'pointer',
+              color: '#fff',
+              transition: 'all 0.2s',
+              fontWeight: 500,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#1565c0';
+              e.currentTarget.style.borderColor = '#1565c0';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#1976d2';
+              e.currentTarget.style.borderColor = '#1976d2';
+            }}
+            title="Exportar todas las tarjetas a CSV"
+          >
+            Exportar CSV
+          </button>
           <button
             type="button"
             onClick={handleLimpiarTodo}
