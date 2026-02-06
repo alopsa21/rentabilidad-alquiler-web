@@ -4,10 +4,9 @@ import { STORAGE_KEY_URL } from '../constants/storage';
 interface HeaderRentabilidadProps {
   onAnalizar: (url: string) => void;
   loading?: boolean;
-  resetUrlTrigger?: number; // Cuando cambia, resetea la URL
 }
 
-export function HeaderRentabilidad({ onAnalizar, loading = false, resetUrlTrigger }: HeaderRentabilidadProps) {
+export function HeaderRentabilidad({ onAnalizar, loading = false }: HeaderRentabilidadProps) {
   const [url, setUrl] = useState(() => {
     try {
       return localStorage.getItem(STORAGE_KEY_URL) ?? '';
@@ -15,18 +14,6 @@ export function HeaderRentabilidad({ onAnalizar, loading = false, resetUrlTrigge
       return '';
     }
   });
-
-  // Resetear URL cuando cambia resetUrlTrigger
-  useEffect(() => {
-    if (resetUrlTrigger !== undefined && resetUrlTrigger > 0) {
-      setUrl('');
-      try {
-        localStorage.removeItem(STORAGE_KEY_URL);
-      } catch {
-        // ignore
-      }
-    }
-  }, [resetUrlTrigger]);
 
   useEffect(() => {
     try {
@@ -42,7 +29,18 @@ export function HeaderRentabilidad({ onAnalizar, loading = false, resetUrlTrigge
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onAnalizar(url);
+    e.stopPropagation();
+    if (url.trim()) {
+      onAnalizar(url.trim());
+    }
+  };
+
+  const handleButtonClick = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (url.trim()) {
+      onAnalizar(url.trim());
+    }
   };
 
   return (
@@ -51,7 +49,7 @@ export function HeaderRentabilidad({ onAnalizar, loading = false, resetUrlTrigge
       style={{
         position: 'sticky',
         top: 0,
-        zIndex: 10,
+        zIndex: 100,
         backgroundColor: '#fff',
         borderBottom: '1px solid #eee',
         padding: '12px 16px',
@@ -99,18 +97,23 @@ export function HeaderRentabilidad({ onAnalizar, loading = false, resetUrlTrigge
           />
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !url.trim()}
+            onClick={handleButtonClick}
+            onTouchEnd={handleButtonClick}
             style={{
               padding: '10px 16px',
               fontSize: 14,
               fontWeight: 500,
               border: '1px solid #333',
               borderRadius: 6,
-              backgroundColor: '#333',
+              backgroundColor: loading || !url.trim() ? '#999' : '#333',
               color: '#fff',
-              cursor: loading ? 'not-allowed' : 'pointer',
+              cursor: loading || !url.trim() ? 'not-allowed' : 'pointer',
               whiteSpace: 'nowrap',
               minHeight: 44,
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent',
+              userSelect: 'none',
             }}
           >
             {loading ? 'Analizando...' : 'Analizar'}

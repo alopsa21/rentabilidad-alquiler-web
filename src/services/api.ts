@@ -6,6 +6,16 @@ const getApiUrl = (): string => {
   if (typeof url === 'string' && url.length > 0) {
     return url.replace(/\/$/, '');
   }
+  
+  // Detectar si estamos en móvil y usar la IP local del hostname si está disponible
+  // En desarrollo, si accedes desde móvil usando la IP del ordenador, usar esa IP
+  const hostname = window.location.hostname;
+  
+  // Si el hostname es una IP (no localhost), usar esa IP para la API también
+  if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+    return `http://${hostname}:3000`;
+  }
+  
   // Por defecto usar localhost (útil para desarrollo desktop)
   return 'http://localhost:3000';
 };
@@ -71,7 +81,20 @@ export async function calcularRentabilidadApi(
   } catch (err) {
     // Mejorar mensaje de error para "Failed to fetch"
     if (err instanceof TypeError && err.message.includes('fetch')) {
-      throw new Error(`No se puede conectar con la API en ${baseUrl}. Verifica que el servidor esté corriendo.`);
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const hostname = window.location.hostname;
+      
+      let errorMessage = `No se puede conectar con la API en ${baseUrl}.`;
+      
+      if (isMobile && hostname === 'localhost') {
+        errorMessage += '\n\nDesde móvil, accede usando la IP de tu ordenador (ej: http://192.168.18.36:5173) en lugar de localhost.';
+      } else if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+        errorMessage += `\n\nVerifica que:\n1. La API esté corriendo y escuchando en 0.0.0.0:3000\n2. El firewall permita conexiones en el puerto 3000`;
+      } else {
+        errorMessage += '\n\nVerifica que el servidor de la API esté corriendo.';
+      }
+      
+      throw new Error(errorMessage);
     }
     throw err;
   }

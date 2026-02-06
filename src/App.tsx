@@ -478,19 +478,27 @@ function App() {
   }
 
   /**
-   * Comparte una tarjeta mediante link (copia al portapapeles)
+   * Comparte todas las tarjetas mediante link (copia al portapapeles)
    */
-  const handleShareLink = async (cardId: string) => {
-    const card = analisis.find((c) => c.id === cardId)
-    const resultado = resultadosPorTarjeta[cardId]
-    
-    if (!card || !resultado) {
-      mostrarNotificacion('No se puede compartir: faltan datos de la tarjeta', 'error')
+  const handleShareAll = async () => {
+    if (analisis.length === 0) {
+      mostrarNotificacion('No hay tarjetas para compartir', 'error')
       return
     }
 
     try {
-      const shareableData: ShareableCardData[] = [{ card, motorOutput: resultado }]
+      const shareableData: ShareableCardData[] = analisis
+        .filter((card) => resultadosPorTarjeta[card.id])
+        .map((card) => ({
+          card,
+          motorOutput: resultadosPorTarjeta[card.id],
+        }))
+
+      if (shareableData.length === 0) {
+        mostrarNotificacion('No hay tarjetas completas para compartir', 'error')
+        return
+      }
+
       const url = generateShareableUrl(shareableData)
       await copyToClipboard(url)
       mostrarNotificacion('Link copiado al portapapeles', 'success')
@@ -615,7 +623,6 @@ function App() {
                         resultado={resultadoParaDetalle ?? undefined}
                         onInputChange={(campo, valor) => handleInputChange(card.id, campo, valor)}
                         onRevert={() => handleRevert(card.id)}
-                        onShareLink={() => handleShareLink(card.id)}
                       />
                     {/* Detalle debajo de la tarjeta: toggle al hacer clic */}
                     {mostrarDetalle && resultadoParaDetalle && (
@@ -633,6 +640,32 @@ function App() {
             </section>
             {/* Botones de acción debajo de las tarjetas */}
             <div style={{ padding: '16px', backgroundColor: '#fff', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+              <button
+                type="button"
+                onClick={handleShareAll}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: 13,
+                  backgroundColor: '#4caf50',
+                  border: '1px solid #4caf50',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  color: '#fff',
+                  transition: 'all 0.2s',
+                  fontWeight: 500,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#45a049';
+                  e.currentTarget.style.borderColor = '#45a049';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#4caf50';
+                  e.currentTarget.style.borderColor = '#4caf50';
+                }}
+                title="Compartir todas las tarjetas (copiar link)"
+              >
+                Compartir
+              </button>
               <button
                 type="button"
                 onClick={handleExportarCSV}

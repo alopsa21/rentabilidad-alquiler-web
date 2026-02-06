@@ -33,10 +33,9 @@ interface CardAnalisisProps {
   resultado?: RentabilidadApiResponse;
   onInputChange?: (campo: keyof FormularioRentabilidadState, valor: number | string | boolean) => void;
   onRevert?: () => void;
-  onShareLink?: () => void;
 }
 
-export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostrarDetalle = false, resultado, onInputChange, onRevert, onShareLink }: CardAnalisisProps) {
+export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostrarDetalle = false, resultado, onInputChange, onRevert }: CardAnalisisProps) {
   // Color único del semáforo basado en el veredicto de la tarjeta
   const colorSemaforo = estadoToColor[card.estado];
   
@@ -52,6 +51,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
   const [isEditing, setIsEditing] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   
   // Estados locales para inputs editables (con debounce)
   const [precioCompra, setPrecioCompra] = useState(card.currentInput.precioCompra.toString());
@@ -98,6 +98,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
     return () => {
       if (precioTimeoutRef.current) clearTimeout(precioTimeoutRef.current);
       if (alquilerTimeoutRef.current) clearTimeout(alquilerTimeoutRef.current);
+      if (longPressTimer.current) clearTimeout(longPressTimer.current);
     };
   }, []);
   
@@ -147,9 +148,23 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
+    
+    // Long press para activar edición en móvil
+    if (onInputChange) {
+      longPressTimer.current = setTimeout(() => {
+        setIsEditing(true);
+        longPressTimer.current = null;
+      }, 500); // 500ms para long press
+    }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    // Cancelar long press si hay movimiento
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    
     if (touchStartX.current === null || touchStartY.current === null) return;
 
     const deltaX = e.touches[0].clientX - touchStartX.current;
@@ -163,6 +178,12 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
   };
 
   const handleTouchEnd = () => {
+    // Cancelar long press si se suelta antes de tiempo
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    
     if (swipeOffset < -50 && onDelete) {
       // Si se deslizó más de 50px, eliminar
       setIsDeleting(true);
@@ -192,7 +213,13 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
       ref={cardRef}
       data-card-id={card.id}
       className={`card-analisis${isActive ? ' is-active' : ''}`}
-      onClick={onClick}
+      onClick={(e) => {
+        // En móvil, solo activar onClick si no estamos en modo edición
+        // El long press se maneja en handleTouchStart
+        if (!isEditing) {
+          onClick?.();
+        }
+      }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -215,39 +242,6 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
       <div className="card-info-horizontal card-info-desktop" style={{ position: 'relative' }}>
         {/* Botones de acción posicionados absolutamente */}
         <div style={{ position: 'absolute', top: 0, right: -8, display: 'flex', gap: 4, zIndex: 2 }}>
-          {/* Botón Compartir */}
-          {onShareLink && (
-            <button
-              className="card-share-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                onShareLink();
-              }}
-              aria-label="Compartir tarjeta"
-              title="Compartir tarjeta"
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '4px 8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#1976d2',
-                fontSize: 16,
-                lineHeight: 1,
-                transition: 'opacity 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = '0.7';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = '1';
-              }}
-            >
-              🔗
-            </button>
-          )}
           {onInputChange && (
             <>
               <button
@@ -412,61 +406,13 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
       {/* Mobile: Información vertical compacta */}
       <div className="card-info-mobile" style={{ position: 'relative' }}>
         {/* Botones de acción */}
-        <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 8, zIndex: 1 }}>
-          {onInputChange && (
-            <>
-              <button
-                className="card-edit-btn-mobile"
-                onClick={handleEditClick}
-                aria-label={isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
-                title={isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '4px 8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: isEditing ? '#1976d2' : '#666',
-                  fontSize: 18,
-                  lineHeight: 1,
-                  transition: 'opacity 0.2s',
-                }}
-              >
-                ✏️
-              </button>
-              {tieneCambios && (
-                <button
-                  className="card-revert-btn-mobile"
-                  onClick={handleRevertClick}
-                  aria-label="Revertir cambios"
-                  title="Revertir cambios"
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '4px 8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#c62828',
-                    fontSize: 18,
-                    lineHeight: 1,
-                    transition: 'opacity 0.2s',
-                  }}
-                >
-                  ↺
-                </button>
-              )}
-            </>
-          )}
-          {onDelete && (
+        <div style={{ position: 'absolute', top: -4, right: -4, display: 'flex', gap: 4, zIndex: 10 }}>
+          {onInputChange && tieneCambios && (
             <button
-              className="card-delete-btn-mobile"
-              onClick={handleDeleteClick}
-              aria-label="Eliminar tarjeta"
-              title="Eliminar tarjeta"
+              className="card-revert-btn-mobile"
+              onClick={handleRevertClick}
+              aria-label="Revertir cambios"
+              title="Revertir cambios"
               style={{
                 background: 'none',
                 border: 'none',
@@ -476,12 +422,12 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: '#c62828',
-                fontSize: 20,
+                fontSize: 18,
                 lineHeight: 1,
                 transition: 'opacity 0.2s',
               }}
             >
-              ×
+              ↺
             </button>
           )}
         </div>
