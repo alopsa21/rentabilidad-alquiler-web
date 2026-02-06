@@ -147,6 +147,15 @@ function App() {
         valorA = cashflowA ? Number(cashflowA) : 0
         valorB = cashflowB ? Number(cashflowB) : 0
         break
+      case 'roce':
+        const roceA = resultadosPorTarjeta[a.id]?.roceFinal
+        const roceB = resultadosPorTarjeta[b.id]?.roceFinal
+        const roceANum = roceA ? Number(roceA) : 0
+        const roceBNum = roceB ? Number(roceB) : 0
+        // Normalizar si viene como decimal
+        valorA = (roceANum > -1 && roceANum < 1) ? roceANum * 100 : roceANum
+        valorB = (roceBNum > -1 && roceBNum < 1) ? roceBNum * 100 : roceBNum
+        break
       default:
         return 0
     }
@@ -274,6 +283,15 @@ function App() {
                     <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
                   )}
                 </div>
+                <div 
+                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                  onClick={() => handleOrdenar('roce')}
+                >
+                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>ROCE</strong>
+                  {ordenarPor.campo === 'roce' && (
+                    <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </div>
               </div>
             </div>
             {/* Panel de tarjetas: ancho completo */}
@@ -290,7 +308,7 @@ function App() {
                       onClick={() => handleClickTarjeta(card.id)}
                       onDelete={() => handleEliminarTarjeta(card.id)}
                       mostrarDetalle={mostrarDetalle}
-                      cashflow={cashflow ?? undefined}
+                      resultado={resultadoParaDetalle ?? undefined}
                     />
                     {/* Detalle debajo de la tarjeta: toggle al hacer clic */}
                     {mostrarDetalle && resultadoParaDetalle && (

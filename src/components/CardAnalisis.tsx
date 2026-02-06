@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import type { AnalisisCard } from '../types/analisis';
+import type { RentabilidadApiResponse } from '../types/api';
 
 const estadoToColor: Record<AnalisisCard['estado'], string> = {
   verde: '#2e7d32',
@@ -28,11 +29,20 @@ interface CardAnalisisProps {
   onClick?: () => void;
   onDelete?: () => void;
   mostrarDetalle?: boolean;
-  cashflow?: string;
+  resultado?: RentabilidadApiResponse;
 }
 
-export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostrarDetalle = false, cashflow }: CardAnalisisProps) {
-  const color = estadoToColor[card.estado];
+export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostrarDetalle = false, resultado }: CardAnalisisProps) {
+  // Color único del semáforo basado en el veredicto de la tarjeta
+  const colorSemaforo = estadoToColor[card.estado];
+  
+  // Extraer métricas para mostrar
+  const cashflowFinal = resultado ? Number(resultado.cashflowFinal) : null;
+  const rentabilidadNeta = card.rentabilidadNetaPct;
+  const roceFinalRaw = resultado ? Number(resultado.roceFinal) : null;
+  const roceFinal = roceFinalRaw !== null && !Number.isNaN(roceFinalRaw)
+    ? (roceFinalRaw > -1 && roceFinalRaw < 1 ? roceFinalRaw * 100 : roceFinalRaw)
+    : null;
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const touchStartX = useRef<number | null>(null);
@@ -153,10 +163,19 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
           <span style={{ fontSize: 14 }}>{formatEuro(card.alquilerEstimado)}/mes</span>
         </div>
         <div style={{ flex: 1 }}>
-          <span style={{ fontSize: 16, fontWeight: 600, color }}>{card.rentabilidadNetaPct.toFixed(2)} %</span>
+          <span style={{ fontSize: 14, color: colorSemaforo }}>
+            {card.rentabilidadNetaPct.toFixed(2)} %
+          </span>
         </div>
         <div style={{ flex: 1 }}>
-          <span style={{ fontSize: 14 }}>{cashflow ? formatEuroFromString(cashflow) : '—'}</span>
+          <span style={{ fontSize: 14, color: colorSemaforo }}>
+            {cashflowFinal !== null ? formatEuro(cashflowFinal) : '—'}
+          </span>
+        </div>
+        <div style={{ flex: 1 }}>
+          <span style={{ fontSize: 14, color: colorSemaforo }}>
+            {roceFinal !== null ? `${roceFinal.toFixed(2)} %` : '—'}
+          </span>
         </div>
       </div>
 
@@ -213,11 +232,21 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 0', minWidth: 0 }}>
             <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Rentabilidad neta</strong>
-            <span style={{ fontSize: 18, fontWeight: 600, color }}>{card.rentabilidadNetaPct.toFixed(2)} %</span>
+            <span style={{ fontSize: 15, color: colorSemaforo }}>
+              {card.rentabilidadNetaPct.toFixed(2)} %
+            </span>
           </div>
           <div style={{ flex: '1 1 0', minWidth: 0 }}>
             <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Cashflow</strong>
-            <span style={{ fontSize: 15 }}>{cashflow ? formatEuroFromString(cashflow) : '—'}</span>
+            <span style={{ fontSize: 15, color: colorSemaforo }}>
+              {cashflowFinal !== null ? formatEuro(cashflowFinal) : '—'}
+            </span>
+          </div>
+          <div style={{ flex: '1 1 0', minWidth: 0 }}>
+            <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>ROCE</strong>
+            <span style={{ fontSize: 15, color: colorSemaforo }}>
+              {roceFinal !== null ? `${roceFinal.toFixed(2)} %` : '—'}
+            </span>
           </div>
         </div>
       </div>
