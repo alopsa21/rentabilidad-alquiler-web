@@ -44,6 +44,7 @@ function App() {
   const [tarjetasExpandidas, setTarjetasExpandidas] = useState<Set<string>>(new Set())
   const [isHydrated, setIsHydrated] = useState(false)
   const [createdAtPorTarjeta, setCreatedAtPorTarjeta] = useState<Record<string, string>>({})
+  const [resetUrlTrigger, setResetUrlTrigger] = useState(0)
 
   // Hidratación inicial: cargar tarjetas desde localStorage al montar
   useEffect(() => {
@@ -376,10 +377,10 @@ function App() {
   }
 
   /**
-   * Limpia todas las tarjetas y el localStorage.
+   * Limpia todas las tarjetas y el localStorage (Nuevo análisis).
    */
-  const handleLimpiarTodo = () => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar todas las tarjetas? Esta acción no se puede deshacer.')) {
+  const handleNuevoAnalisis = () => {
+    if (window.confirm('¿Quieres borrar todos los análisis actuales?')) {
       setAnalisis([])
       setResultadosPorTarjeta({})
       setCreatedAtPorTarjeta({})
@@ -389,8 +390,15 @@ function App() {
       setModalAbierto(false)
       setTarjetasExpandidas(new Set())
       clearCards()
+      // Resetear URL input
+      setResetUrlTrigger((prev) => prev + 1)
     }
   }
+
+  /**
+   * Limpia todas las tarjetas y el localStorage (alias para mantener compatibilidad).
+   */
+  const handleLimpiarTodo = handleNuevoAnalisis
 
   /**
    * Exporta las tarjetas actuales a CSV.
@@ -430,62 +438,7 @@ function App() {
 
   return (
     <div className="app">
-      <HeaderRentabilidad onAnalizar={handleAnalizar} loading={loading} />
-      {analisis.length > 0 && (
-        <div style={{ padding: '8px 16px', backgroundColor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
-          <button
-            type="button"
-            onClick={handleExportarCSV}
-            style={{
-              padding: '6px 12px',
-              fontSize: 13,
-              backgroundColor: '#1976d2',
-              border: '1px solid #1976d2',
-              borderRadius: 4,
-              cursor: 'pointer',
-              color: '#fff',
-              transition: 'all 0.2s',
-              fontWeight: 500,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#1565c0';
-              e.currentTarget.style.borderColor = '#1565c0';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#1976d2';
-              e.currentTarget.style.borderColor = '#1976d2';
-            }}
-            title="Exportar todas las tarjetas a CSV"
-          >
-            Exportar CSV
-          </button>
-          <button
-            type="button"
-            onClick={handleLimpiarTodo}
-            style={{
-              padding: '6px 12px',
-              fontSize: 13,
-              backgroundColor: '#fff',
-              border: '1px solid #ccc',
-              borderRadius: 4,
-              cursor: 'pointer',
-              color: '#666',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#f0f0f0';
-              e.currentTarget.style.borderColor = '#999';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#fff';
-              e.currentTarget.style.borderColor = '#ccc';
-            }}
-            title="Eliminar todas las tarjetas guardadas"
-          >
-            Limpiar búsquedas
-          </button>
-        </div>
-      )}
+      <HeaderRentabilidad onAnalizar={handleAnalizar} loading={loading} resetUrlTrigger={resetUrlTrigger} />
       <main className="app-main">
         {error && (
           <p role="alert" className="app-error">
@@ -588,6 +541,60 @@ function App() {
                 )
               })}
             </section>
+            {/* Botones de acción debajo de las tarjetas */}
+            <div style={{ padding: '16px', backgroundColor: '#fff', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+              <button
+                type="button"
+                onClick={handleExportarCSV}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: 13,
+                  backgroundColor: '#1976d2',
+                  border: '1px solid #1976d2',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  color: '#fff',
+                  transition: 'all 0.2s',
+                  fontWeight: 500,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#1565c0';
+                  e.currentTarget.style.borderColor = '#1565c0';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#1976d2';
+                  e.currentTarget.style.borderColor = '#1976d2';
+                }}
+                title="Exportar todas las tarjetas a CSV"
+              >
+                Exportar CSV
+              </button>
+              <button
+                type="button"
+                onClick={handleNuevoAnalisis}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: 13,
+                  backgroundColor: '#fff',
+                  border: '1px solid #ccc',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  color: '#666',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f0f0f0';
+                  e.currentTarget.style.borderColor = '#999';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#fff';
+                  e.currentTarget.style.borderColor = '#ccc';
+                }}
+                title="Empezar un nuevo análisis (borrar todas las tarjetas)"
+              >
+                Nuevo análisis
+              </button>
+            </div>
           </div>
         )}
         

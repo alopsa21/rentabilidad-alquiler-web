@@ -4,9 +4,10 @@ import { STORAGE_KEY_URL } from '../constants/storage';
 interface HeaderRentabilidadProps {
   onAnalizar: (url: string) => void;
   loading?: boolean;
+  resetUrlTrigger?: number; // Cuando cambia, resetea la URL
 }
 
-export function HeaderRentabilidad({ onAnalizar, loading = false }: HeaderRentabilidadProps) {
+export function HeaderRentabilidad({ onAnalizar, loading = false, resetUrlTrigger }: HeaderRentabilidadProps) {
   const [url, setUrl] = useState(() => {
     try {
       return localStorage.getItem(STORAGE_KEY_URL) ?? '';
@@ -14,6 +15,18 @@ export function HeaderRentabilidad({ onAnalizar, loading = false }: HeaderRentab
       return '';
     }
   });
+
+  // Resetear URL cuando cambia resetUrlTrigger
+  useEffect(() => {
+    if (resetUrlTrigger !== undefined && resetUrlTrigger > 0) {
+      setUrl('');
+      try {
+        localStorage.removeItem(STORAGE_KEY_URL);
+      } catch {
+        // ignore
+      }
+    }
+  }, [resetUrlTrigger]);
 
   useEffect(() => {
     try {
