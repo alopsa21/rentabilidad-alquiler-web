@@ -1,10 +1,10 @@
-# F3b-08 — Definición del semáforo (3 modelos)
+# F3b-08 — Definición del semáforo (Modelo Balanceado)
 
 ## Objetivo
 
 Implementar el sistema de veredicto 🟢🟡🔴 usando métricas ya calculadas por el motor.
 
-Se deben implementar **tres modelos distintos**, dejando la selección hardcodeada por ahora (se elegirá uno más adelante).
+Se implementa **únicamente el modelo Balanceado**, con configuración centralizada para facilitar la modificación de reglas.
 
 No exponer fórmulas al usuario.
 
@@ -24,55 +24,7 @@ El veredicto debe derivarse exclusivamente de estas.
 
 ---
 
-## Modelo A — Conservador (Cashflow first)
-
-### Reglas
-
-🟢 Buena oportunidad
-
-cashflowFinal > 0  
-AND rentabilidadNeta >= 5%  
-AND ROCE_final >= 8%
-
----
-
-🟡 Oportunidad justa
-
-(cashflowFinal >= 0 AND rentabilidadNeta >= 3%)  
-OR (cashflowFinal < 0 AND ROCE_final >= 10%)
-
----
-
-🔴 Mala oportunidad
-
-Todo lo demás.
-
----
-
-## Modelo B — Apalancado (ROCE driven)
-
-### Reglas
-
-🟢
-
-ROCE_final >= 12%  
-AND cashflowFinal >= 0
-
----
-
-🟡
-
-ROCE_final >= 8%
-
----
-
-🔴
-
-ROCE_final < 8%
-
----
-
-## Modelo C — Balanceado (default recomendado)
+## Modelo Balanceado (implementado)
 
 ### Reglas
 
@@ -99,14 +51,27 @@ Todo lo demás.
 
 ## Implementación
 
-Crear función:
+### Función principal
 
-calculateVerdict(metrics) =>
+`mapResultadosToVerdict(resultado: RentabilidadApiResponse): VeredictoHumano`
 
+Retorna:
+```typescript
 {
-  status: "green" | "yellow" | "red",
-  reasons: string[]
+  estado: "verde" | "amarillo" | "rojo",
+  titulo: string,
+  razones: string[] // Máximo 3
 }
+```
+
+### Configuración centralizada
+
+Todas las reglas están en `src/config/verdict.config.ts`:
+
+- `VERDICT_CONFIG`: Umbrales numéricos para cada estado
+- `VERDICT_MESSAGES`: Títulos y plantillas de razones
+
+Esto permite modificar las reglas sin tocar la lógica de cálculo.
 
 ---
 
@@ -124,37 +89,52 @@ Generar reasons coherentes con el modelo aplicado.
 
 ---
 
-## Tareas
+## Tareas completadas
 
-### 1. Crear módulo verdict.ts
+### 1. ✅ Módulo de veredicto
 
-- implementar los tres modelos
-- exportar calculateVerdict(model, metrics)
-
----
-
-### 2. Integración frontend
-
-- usar Modelo C por defecto
-- pintar 🟢🟡🔴 en tarjetas y detalle
-- mostrar reasons
+- Implementado `src/utils/veredicto.ts` con modelo balanceado
+- Configuración centralizada en `src/config/verdict.config.ts`
+- Función `mapResultadosToVerdict()` que convierte métricas en veredicto
 
 ---
 
-### 3. Tests
+### 2. ✅ Integración frontend
 
-- casos verdes claros
-- casos amarillos límite
-- casos rojos
+- Veredicto calculado automáticamente al crear tarjetas
+- Colores del semáforo aplicados a:
+  - **Rentabilidad neta** (en tarjetas y detalle)
+  - **Cashflow** (en tarjetas y detalle)
+  - **ROCE** (en tarjetas y detalle)
+- Todos los colores reflejan el **veredicto general de la tarjeta** (no métricas individuales)
+- Columna ROCE añadida a las tarjetas con ordenamiento
+- Razones mostradas en el panel de detalle
 
 ---
 
-## Criterios de aceptación
+### 3. ✅ Documentación
 
-- Cambiar métricas cambia el semáforo
-- Cada modelo produce resultados distintos
-- Modelo C queda activo por defecto
-- Usuario solo ve veredicto + reasons
+- `docs/CONFIGURACION_VEREDICTO.md`: Guía completa para modificar reglas y mensajes
+
+---
+
+## Criterios de aceptación ✅
+
+- ✅ Cambiar métricas cambia el semáforo
+- ✅ Modelo balanceado activo por defecto
+- ✅ Usuario solo ve veredicto + razones (sin fórmulas)
+- ✅ Colores del semáforo aplicados consistentemente a rentabilidad neta, cashflow y ROCE
+- ✅ Configuración centralizada permite modificar reglas fácilmente
+- ✅ Columna ROCE visible y ordenable en las tarjetas
+
+## Archivos implementados
+
+- `src/utils/veredicto.ts`: Lógica de cálculo del veredicto
+- `src/config/verdict.config.ts`: Configuración de reglas y mensajes
+- `src/components/CardAnalisis.tsx`: Aplicación de colores del semáforo
+- `src/components/DetalleAnalisis.tsx`: Visualización de veredicto y razones
+- `src/App.tsx`: Integración del veredicto en el flujo principal
+- `docs/CONFIGURACION_VEREDICTO.md`: Documentación de configuración
 
 ---
 
@@ -164,3 +144,9 @@ Esto convierte números en decisiones.
 
 El usuario no debe ver fórmulas.
 Solo conclusiones.
+
+## Decisiones de diseño
+
+- **Un solo modelo**: Se simplificó a solo el modelo balanceado para reducir complejidad y facilitar mantenimiento
+- **Colores consistentes**: Todas las métricas relevantes (rentabilidad neta, cashflow, ROCE) usan el mismo color según el veredicto general de la tarjeta
+- **Configuración centralizada**: Todas las reglas en un solo archivo (`verdict.config.ts`) para facilitar ajustes futuros
