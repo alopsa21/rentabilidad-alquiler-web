@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { HeaderRentabilidad } from './components/HeaderRentabilidad'
 import { CardAnalisis } from './components/CardAnalisis'
 import { DetalleAnalisis } from './components/DetalleAnalisis'
@@ -10,6 +10,7 @@ import type { FormularioRentabilidadState } from './types/formulario'
 import type { AnalisisCard } from './types/analisis'
 import type { VeredictoHumano } from './utils/veredicto'
 import { mapResultadosToVerdict } from './utils/veredicto'
+import { loadCards, saveCards, clearCards } from './utils/storage'
 import './App.css'
 
 /** Payload por defecto para mantener la API conectada hasta que la URL se use para obtener datos */
@@ -40,6 +41,45 @@ function App() {
   const [modalAbierto, setModalAbierto] = useState(false)
   const [ordenarPor, setOrdenarPor] = useState<{ campo: string | null; direccion: 'asc' | 'desc' }>({ campo: null, direccion: 'asc' })
   const [tarjetasExpandidas, setTarjetasExpandidas] = useState<Set<string>>(new Set())
+  const [isHydrated, setIsHydrated] = useState(false)
+  const [createdAtPorTarjeta, setCreatedAtPorTarjeta] = useState<Record<string, string>>({})
+
+  // Hidratación inicial: cargar tarjetas desde localStorage al montar
+  useEffect(() => {
+    const loaded = loadCards()
+    if (loaded.length > 0) {
+      const cards: AnalisisCard[] = []
+      const resultados: Record<string, RentabilidadApiResponse> = {}
+      const createdAt: Record<string, string> = {}
+
+      loaded.forEach(({ card, motorOutput, createdAt: cardCreatedAt }) => {
+        cards.push(card)
+        resultados[card.id] = motorOutput
+        if (cardCreatedAt) {
+          createdAt[card.id] = cardCreatedAt
+        }
+      })
+
+      setAnalisis(cards)
+      setResultadosPorTarjeta(resultados)
+      setCreatedAtPorTarjeta(createdAt)
+    }
+    setIsHydrated(true)
+  }, [])
+
+  // Sincronización automática: guardar en localStorage cuando cambien las tarjetas o resultados
+  useEffect(() => {
+    // Solo sincronizar después de la hidratación inicial para evitar guardar datos vacíos
+    if (!isHydrated || analisis.length === 0) {
+      return
+    }
+
+    // Guardar solo si hay tarjetas y resultados correspondientes
+    const todasTienenResultados = analisis.every((card) => resultadosPorTarjeta[card.id])
+    if (todasTienenResultados) {
+      saveCards(analisis, resultadosPorTarjeta, createdAtPorTarjeta)
+    }
+  }, [analisis, resultadosPorTarjeta, createdAtPorTarjeta, isHydrated])
 
   const handleAnalizar = async (_url: string) => {
     setError(null)
@@ -95,8 +135,10 @@ function App() {
         currentInput: { ...payload },
       }
 
+      const ahora = new Date().toISOString()
       setAnalisis((prev) => [nuevaTarjeta, ...prev])
       setResultadosPorTarjeta((prev) => ({ ...prev, [nuevaTarjeta.id]: data }))
+      setCreatedAtPorTarjeta((prev) => ({ ...prev, [nuevaTarjeta.id]: ahora }))
       // No establecer tarjetaActivaId ni expandir automáticamente
       // La tarjeta aparecerá sin resaltar hasta que el usuario haga clic
     } catch (err) {
@@ -219,6 +261,13 @@ function App() {
         return nuevo
       })
       
+      // Eliminar createdAt asociado
+      setCreatedAtPorTarjeta((prev) => {
+        const nuevo = { ...prev }
+        delete nuevo[id]
+        return nuevo
+      })
+      
       return nuevasTarjetas
     })
   }
@@ -326,6 +375,23 @@ function App() {
   }
 
   /**
+   * Limpia todas las tarjetas y el localStorage.
+   */
+  const handleLimpiarTodo = () => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar todas las tarjetas? Esta acción no se puede deshacer.')) {
+      setAnalisis([])
+      setResultadosPorTarjeta({})
+      setCreatedAtPorTarjeta({})
+      setResultado(null)
+      setVeredictoGlobal(null)
+      setTarjetaActivaId(null)
+      setModalAbierto(false)
+      setTarjetasExpandidas(new Set())
+      clearCards()
+    }
+  }
+
+  /**
    * Revierte los cambios de una tarjeta restaurando originalInput.
    */
   const handleRevert = (tarjetaId: string) => {
@@ -352,6 +418,35 @@ function App() {
   return (
     <div className="app">
       <HeaderRentabilidad onAnalizar={handleAnalizar} loading={loading} />
+      {analisis.length > 0 && (
+        <div style={{ padding: '8px 16px', backgroundColor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+          <button
+            type="button"
+            onClick={handleLimpiarTodo}
+            style={{
+              padding: '6px 12px',
+              fontSize: 13,
+              backgroundColor: '#fff',
+              border: '1px solid #ccc',
+              borderRadius: 4,
+              cursor: 'pointer',
+              color: '#666',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#f0f0f0';
+              e.currentTarget.style.borderColor = '#999';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#fff';
+              e.currentTarget.style.borderColor = '#ccc';
+            }}
+            title="Eliminar todas las tarjetas guardadas"
+          >
+            Limpiar búsquedas
+          </button>
+        </div>
+      )}
       <main className="app-main">
         {error && (
           <p role="alert" className="app-error">

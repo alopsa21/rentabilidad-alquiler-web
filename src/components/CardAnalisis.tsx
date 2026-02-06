@@ -106,11 +106,42 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
       // Si está editando y hay cambios, revertir
       onRevert();
       setIsEditing(false);
+    } else if (!isEditing && tieneCambios && onRevert) {
+      // Si no está editando pero hay cambios, revertir directamente
+      onRevert();
     } else {
       // Si no está editando o no hay cambios, toggle edición
       setIsEditing(!isEditing);
     }
   };
+
+  // Ref para la tarjeta (para detectar clics fuera)
+  const cardRef = useRef<HTMLElement>(null);
+
+  // Cerrar modo edición al hacer clic fuera de la tarjeta
+  useEffect(() => {
+    if (!isEditing) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      // No cerrar si el clic es dentro de la tarjeta (inputs, botones, etc.)
+      if (cardRef.current?.contains(target)) {
+        return;
+      }
+      // Cerrar si el clic es fuera de la tarjeta
+      setIsEditing(false);
+    };
+
+    // Usar setTimeout para evitar que se cierre inmediatamente al abrir
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [isEditing]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -157,6 +188,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
 
   return (
     <article
+      ref={cardRef}
       className={`card-analisis${isActive ? ' is-active' : ''}`}
       onClick={onClick}
       onTouchStart={handleTouchStart}
@@ -185,8 +217,8 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
             <button
               className="card-edit-btn"
               onClick={handleEditClick}
-              aria-label={isEditing && tieneCambios ? 'Revertir cambios' : isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
-              title={isEditing && tieneCambios ? 'Revertir cambios' : isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
+              aria-label={tieneCambios ? 'Revertir cambios' : isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
+              title={tieneCambios ? 'Revertir cambios' : isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
               style={{
                 background: 'none',
                 border: 'none',
@@ -195,7 +227,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: isEditing && tieneCambios ? '#c62828' : isEditing ? '#1976d2' : '#666',
+                color: tieneCambios ? '#c62828' : isEditing ? '#1976d2' : '#666',
                 fontSize: 16,
                 lineHeight: 1,
                 transition: 'opacity 0.2s',
@@ -207,7 +239,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
                 e.currentTarget.style.opacity = '1';
               }}
             >
-              {isEditing && tieneCambios ? '↺' : isEditing ? '✏️' : '✏️'}
+              {tieneCambios ? '↺' : isEditing ? '✏️' : '✏️'}
             </button>
           )}
           {onDelete && (
@@ -319,8 +351,8 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
             <button
               className="card-edit-btn-mobile"
               onClick={handleEditClick}
-              aria-label={isEditing && tieneCambios ? 'Revertir cambios' : isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
-              title={isEditing && tieneCambios ? 'Revertir cambios' : isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
+              aria-label={tieneCambios ? 'Revertir cambios' : isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
+              title={tieneCambios ? 'Revertir cambios' : isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
               style={{
                 background: 'none',
                 border: 'none',
@@ -329,13 +361,13 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: isEditing && tieneCambios ? '#c62828' : isEditing ? '#1976d2' : '#666',
+                color: tieneCambios ? '#c62828' : isEditing ? '#1976d2' : '#666',
                 fontSize: 18,
                 lineHeight: 1,
                 transition: 'opacity 0.2s',
               }}
             >
-              {isEditing && tieneCambios ? '↺' : isEditing ? '✏️' : '✏️'}
+              {tieneCambios ? '↺' : isEditing ? '✏️' : '✏️'}
             </button>
           )}
           {onDelete && (
