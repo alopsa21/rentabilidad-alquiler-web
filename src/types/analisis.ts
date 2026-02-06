@@ -1,3 +1,5 @@
+import type { FormularioRentabilidadState } from './formulario';
+
 export type EstadoColor = 'verde' | 'amarillo' | 'rojo';
 
 export interface AnalisisCard {
@@ -13,5 +15,9 @@ export interface AnalisisCard {
   habitaciones: number;
   metrosCuadrados: number;
   banos: number;
+  /** Input original del análisis inicial (scraping/LLM) */
+  originalInput: FormularioRentabilidadState;
+  /** Input actual editable por el usuario */
+  currentInput: FormularioRentabilidadState;
 }
 

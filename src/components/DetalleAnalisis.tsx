@@ -3,7 +3,13 @@ import type { AnalisisCard } from '../types/analisis';
 import type { RentabilidadApiResponse } from '../types/api';
 
 /** Definiciones de métricas según contrato_del_motor_v1.md */
-const DEFINICIONES_RENTABILIDAD: Record<string, string> = {
+const DEFINICIONES_METRICAS: Record<string, string> = {
+  ingresosAnuales:
+    'Total de ingresos generados por el alquiler en un año. Se calcula multiplicando el alquiler mensual por 12 meses.',
+  gastosAnuales:
+    'Total de gastos anuales asociados a la propiedad, incluyendo comunidad, IBI, seguros, mantenimiento (7% de ingresos), periodo sin alquilar (3% de ingresos), servicios e intereses de financiación.',
+  beneficioAntesImpuestos:
+    'Beneficio obtenido después de restar todos los gastos anuales a los ingresos anuales, pero antes de considerar la amortización de capital de la hipoteca.',
   rentabilidadBruta:
     'Mide el porcentaje de ingresos anuales sobre el total invertido. Representa la rentabilidad teórica máxima del activo sin considerar gastos.',
   rentabilidadNeta:
@@ -49,7 +55,8 @@ const formatRatio = (value: string): string => {
  */
 function getDesgloseCalculo(
   id: string,
-  resultado: RentabilidadApiResponse
+  resultado: RentabilidadApiResponse,
+  card?: AnalisisCard
 ): { title: string; lines: string[] } {
   const t = Number(resultado.totalCompra);
   const b = Number(resultado.beneficioAntesImpuestos);
@@ -58,10 +65,39 @@ function getDesgloseCalculo(
   const rn = Number(resultado.rentabilidadNeta);
   const roceA = Number(resultado.roceAntes);
   const roceF = Number(resultado.roceFinal);
+  const ingresos = Number(resultado.ingresosAnuales);
+  const gastos = Number(resultado.gastosAnuales);
 
   const percent = (x: number) => (x > -1 && x < 1 ? x * 100 : x).toFixed(2);
 
   switch (id) {
+    case 'ingresosAnuales':
+      const alquilerMensual = card ? card.currentInput.alquilerMensual : 0;
+      return {
+        title: 'Ingresos anuales',
+        lines: [
+          `Fórmula: Alquiler mensual × 12`,
+          `${formatEuro(String(alquilerMensual))} × 12 = ${formatEuro(resultado.ingresosAnuales)}`,
+        ],
+      };
+    case 'gastosAnuales':
+      // Los gastos anuales incluyen múltiples componentes, mostramos la fórmula general
+      return {
+        title: 'Gastos anuales',
+        lines: [
+          `Fórmula: Suma de todos los gastos anuales`,
+          `Incluye: comunidad, IBI, seguros, mantenimiento (7%), periodo sin alquilar (3%), servicios e intereses`,
+          `Total: ${formatEuro(resultado.gastosAnuales)}`,
+        ],
+      };
+    case 'beneficioAntesImpuestos':
+      return {
+        title: 'Beneficio antes de impuestos',
+        lines: [
+          `Fórmula: Ingresos anuales − Gastos anuales`,
+          `${formatEuro(resultado.ingresosAnuales)} − ${formatEuro(resultado.gastosAnuales)} = ${formatEuro(resultado.beneficioAntesImpuestos)}`,
+        ],
+      };
     case 'rentabilidadBruta':
       return {
         title: 'Rentabilidad bruta',
@@ -179,22 +215,50 @@ export function DetalleAnalisis({ card, resultado, isHorizontalLayout = false }:
         <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '1fr auto', gap: isHorizontalLayout ? '6px 8px' : '6px 16px', fontSize: 14 }}>
           <dt style={{ fontWeight: 500 }}>Ciudad</dt>
           <dd style={{ margin: 0, textAlign: 'right' }}>{card.ciudad || '—'}</dd>
-          <dt style={{ fontWeight: 500 }}>Precio</dt>
-          <dd style={{ margin: 0, textAlign: 'right' }}>{formatEuro(String(card.precioCompra))}</dd>
+          <dt style={{ fontWeight: 500 }}>Precio compra</dt>
+          <dd style={{ margin: 0, textAlign: 'right' }}>
+            {formatEuro(String(card.currentInput.precioCompra))}
+          </dd>
           <dt style={{ fontWeight: 500 }}>Alquiler mensual</dt>
-          <dd style={{ margin: 0, textAlign: 'right' }}>{formatEuro(String(card.alquilerEstimado))}</dd>
+          <dd style={{ margin: 0, textAlign: 'right' }}>
+            {formatEuro(String(card.currentInput.alquilerMensual))}
+          </dd>
         </dl>
       </section>
 
       <section style={{ marginBottom: 20 }}>
         <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 16 }}>Métricas clave</h3>
         <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '1fr auto', gap: isHorizontalLayout ? '6px 8px' : '6px 16px', fontSize: 14 }}>
-          <dt style={{ fontWeight: 500 }}>Ingresos anuales</dt>
-          <dd style={{ margin: 0, textAlign: 'right' }}>{formatEuro(resultado.ingresosAnuales)}</dd>
-          <dt style={{ fontWeight: 500 }}>Gastos anuales</dt>
-          <dd style={{ margin: 0, textAlign: 'right' }}>{formatEuro(resultado.gastosAnuales)}</dd>
-          <dt style={{ fontWeight: 500 }}>Beneficio antes de impuestos</dt>
-          <dd style={{ margin: 0, textAlign: 'right' }}>{formatEuro(resultado.beneficioAntesImpuestos)}</dd>
+          {[
+            { id: 'ingresosAnuales', label: 'Ingresos anuales', value: formatEuro(resultado.ingresosAnuales) },
+            { id: 'gastosAnuales', label: 'Gastos anuales', value: formatEuro(resultado.gastosAnuales) },
+            { id: 'beneficioAntesImpuestos', label: 'Beneficio antes de impuestos', value: formatEuro(resultado.beneficioAntesImpuestos) },
+          ].map(({ id, label, value }) => (
+            <Fragment key={id}>
+              <dt style={{ fontWeight: 500, display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                {label}
+                <InfoIcon onClick={() => setDefinicionAbierta((k) => (k === id ? null : id))} />
+              </dt>
+              <dd style={{ margin: 0, textAlign: 'right' }}>
+                <button
+                  type="button"
+                  className="detalle-valor-clickable"
+                  onClick={() => setDesgloseAbierto((k) => (k === id ? null : id))}
+                  aria-label="Ver desglose del cálculo"
+                  style={{
+                    padding: 0,
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    font: 'inherit',
+                    color: 'inherit',
+                  }}
+                >
+                  {value}
+                </button>
+              </dd>
+            </Fragment>
+          ))}
         </dl>
       </section>
 
@@ -273,7 +337,7 @@ export function DetalleAnalisis({ card, resultado, isHorizontalLayout = false }:
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <p style={{ margin: 0 }}>{DEFINICIONES_RENTABILIDAD[definicionAbierta]}</p>
+            <p style={{ margin: 0 }}>{DEFINICIONES_METRICAS[definicionAbierta]}</p>
             <button
               type="button"
               onClick={() => setDefinicionAbierta(null)}
@@ -296,7 +360,7 @@ export function DetalleAnalisis({ card, resultado, isHorizontalLayout = false }:
 
       {/* Popover emergente: desglose del cálculo con números */}
       {desgloseAbierto && (() => {
-        const { title, lines } = getDesgloseCalculo(desgloseAbierto, resultado);
+        const { title, lines } = getDesgloseCalculo(desgloseAbierto, resultado, card);
         return (
           <div
             role="dialog"

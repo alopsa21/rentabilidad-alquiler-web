@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { AnalisisCard } from '../types/analisis';
 import type { RentabilidadApiResponse } from '../types/api';
+import type { FormularioRentabilidadState } from '../types/formulario';
 
 const estadoToColor: Record<AnalisisCard['estado'], string> = {
   verde: '#2e7d32',
@@ -30,9 +31,11 @@ interface CardAnalisisProps {
   onDelete?: () => void;
   mostrarDetalle?: boolean;
   resultado?: RentabilidadApiResponse;
+  onInputChange?: (campo: keyof FormularioRentabilidadState, valor: number | string | boolean) => void;
+  onRevert?: () => void;
 }
 
-export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostrarDetalle = false, resultado }: CardAnalisisProps) {
+export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostrarDetalle = false, resultado, onInputChange, onRevert }: CardAnalisisProps) {
   // Color único del semáforo basado en el veredicto de la tarjeta
   const colorSemaforo = estadoToColor[card.estado];
   
@@ -45,8 +48,69 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
     : null;
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
+  
+  // Estados locales para inputs editables (con debounce)
+  const [precioCompra, setPrecioCompra] = useState(card.currentInput.precioCompra.toString());
+  const [alquilerMensual, setAlquilerMensual] = useState(card.currentInput.alquilerMensual.toString());
+  
+  // Refs para debounce
+  const precioTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const alquilerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Sincronizar estados locales cuando cambia currentInput externamente (ej. revert)
+  useEffect(() => {
+    setPrecioCompra(card.currentInput.precioCompra.toString());
+    setAlquilerMensual(card.currentInput.alquilerMensual.toString());
+  }, [card.currentInput.precioCompra, card.currentInput.alquilerMensual]);
+  
+  // Verificar si hay cambios pendientes
+  const tieneCambios = JSON.stringify(card.currentInput) !== JSON.stringify(card.originalInput);
+  
+  // Handlers con debounce
+  const handlePrecioChange = (valor: string) => {
+    setPrecioCompra(valor);
+    const numValor = parseFloat(valor);
+    if (!isNaN(numValor) && numValor >= 0) {
+      if (precioTimeoutRef.current) clearTimeout(precioTimeoutRef.current);
+      precioTimeoutRef.current = setTimeout(() => {
+        onInputChange?.('precioCompra', numValor);
+      }, 300);
+    }
+  };
+  
+  const handleAlquilerChange = (valor: string) => {
+    setAlquilerMensual(valor);
+    const numValor = parseFloat(valor);
+    if (!isNaN(numValor) && numValor >= 0) {
+      if (alquilerTimeoutRef.current) clearTimeout(alquilerTimeoutRef.current);
+      alquilerTimeoutRef.current = setTimeout(() => {
+        onInputChange?.('alquilerMensual', numValor);
+      }, 300);
+    }
+  };
+  
+  // Cleanup de timeouts al desmontar
+  useEffect(() => {
+    return () => {
+      if (precioTimeoutRef.current) clearTimeout(precioTimeoutRef.current);
+      if (alquilerTimeoutRef.current) clearTimeout(alquilerTimeoutRef.current);
+    };
+  }, []);
+  
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isEditing && tieneCambios && onRevert) {
+      // Si está editando y hay cambios, revertir
+      onRevert();
+      setIsEditing(false);
+    } else {
+      // Si no está editando o no hay cambios, toggle edición
+      setIsEditing(!isEditing);
+    }
+  };
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -115,39 +179,67 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
     >
       {/* Desktop: Información horizontal */}
       <div className="card-info-horizontal card-info-desktop" style={{ position: 'relative' }}>
-        {/* Botón eliminar posicionado absolutamente dentro del contenido */}
-        {onDelete && (
-          <button
-            className="card-delete-btn"
-            onClick={handleDeleteClick}
-            aria-label="Eliminar tarjeta"
-            style={{
-              position: 'absolute',
-              top: 0,
-              right: -8,
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '4px 8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#c62828',
-              fontSize: 18,
-              lineHeight: 1,
-              transition: 'opacity 0.2s',
-              zIndex: 1,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.opacity = '0.7';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.opacity = '1';
-            }}
-          >
-            ×
-          </button>
-        )}
+        {/* Botones de acción posicionados absolutamente */}
+        <div style={{ position: 'absolute', top: 0, right: -8, display: 'flex', gap: 4, zIndex: 1 }}>
+          {onInputChange && (
+            <button
+              className="card-edit-btn"
+              onClick={handleEditClick}
+              aria-label={isEditing && tieneCambios ? 'Revertir cambios' : isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
+              title={isEditing && tieneCambios ? 'Revertir cambios' : isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: isEditing && tieneCambios ? '#c62828' : isEditing ? '#1976d2' : '#666',
+                fontSize: 16,
+                lineHeight: 1,
+                transition: 'opacity 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '0.7';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
+            >
+              {isEditing && tieneCambios ? '↺' : isEditing ? '✏️' : '✏️'}
+            </button>
+          )}
+          {onDelete && (
+            <button
+              className="card-delete-btn"
+              onClick={handleDeleteClick}
+              aria-label="Eliminar tarjeta"
+              title="Eliminar tarjeta"
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#c62828',
+                fontSize: 18,
+                lineHeight: 1,
+                transition: 'opacity 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '0.7';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
+            >
+              ×
+            </button>
+          )}
+        </div>
         <div style={{ flex: 1.2 }}>
           <span style={{ fontSize: 13, lineHeight: 1.4 }}>
             {card.habitaciones} hab · {card.metrosCuadrados} m² · {card.banos} {card.banos === 1 ? 'baño' : 'baños'}
@@ -157,10 +249,50 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
           <span style={{ fontSize: 14 }}>{card.ciudad || '—'}</span>
         </div>
         <div style={{ flex: 1 }}>
-          <span style={{ fontSize: 14 }}>{formatEuro(card.precioCompra)}</span>
+          {isEditing && onInputChange ? (
+            <input
+              type="number"
+              min="0"
+              step="1000"
+              value={precioCompra}
+              onChange={(e) => handlePrecioChange(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: '100%',
+                maxWidth: '120px',
+                padding: '2px 6px',
+                fontSize: 14,
+                border: '1px solid #1976d2',
+                borderRadius: 4,
+                textAlign: 'right',
+              }}
+            />
+          ) : (
+            <span style={{ fontSize: 14 }}>{formatEuro(card.precioCompra)}</span>
+          )}
         </div>
         <div style={{ flex: 1 }}>
-          <span style={{ fontSize: 14 }}>{formatEuro(card.alquilerEstimado)}/mes</span>
+          {isEditing && onInputChange ? (
+            <input
+              type="number"
+              min="0"
+              step="50"
+              value={alquilerMensual}
+              onChange={(e) => handleAlquilerChange(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: '100%',
+                maxWidth: '100px',
+                padding: '2px 6px',
+                fontSize: 14,
+                border: '1px solid #1976d2',
+                borderRadius: 4,
+                textAlign: 'right',
+              }}
+            />
+          ) : (
+            <span style={{ fontSize: 14 }}>{formatEuro(card.alquilerEstimado)}/mes</span>
+          )}
         </div>
         <div style={{ flex: 1 }}>
           <span style={{ fontSize: 14, color: colorSemaforo }}>
@@ -181,32 +313,55 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
 
       {/* Mobile: Información vertical compacta */}
       <div className="card-info-mobile" style={{ position: 'relative' }}>
-        {onDelete && (
-          <button
-            className="card-delete-btn-mobile"
-            onClick={handleDeleteClick}
-            aria-label="Eliminar tarjeta"
-            style={{
-              position: 'absolute',
-              top: 8,
-              right: 8,
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '4px 8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#c62828',
-              fontSize: 20,
-              lineHeight: 1,
-              transition: 'opacity 0.2s',
-              zIndex: 1,
-            }}
-          >
-            ×
-          </button>
-        )}
+        {/* Botones de acción */}
+        <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 8, zIndex: 1 }}>
+          {onInputChange && (
+            <button
+              className="card-edit-btn-mobile"
+              onClick={handleEditClick}
+              aria-label={isEditing && tieneCambios ? 'Revertir cambios' : isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
+              title={isEditing && tieneCambios ? 'Revertir cambios' : isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: isEditing && tieneCambios ? '#c62828' : isEditing ? '#1976d2' : '#666',
+                fontSize: 18,
+                lineHeight: 1,
+                transition: 'opacity 0.2s',
+              }}
+            >
+              {isEditing && tieneCambios ? '↺' : isEditing ? '✏️' : '✏️'}
+            </button>
+          )}
+          {onDelete && (
+            <button
+              className="card-delete-btn-mobile"
+              onClick={handleDeleteClick}
+              aria-label="Eliminar tarjeta"
+              title="Eliminar tarjeta"
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#c62828',
+                fontSize: 20,
+                lineHeight: 1,
+                transition: 'opacity 0.2s',
+              }}
+            >
+              ×
+            </button>
+          )}
+        </div>
         <div style={{ marginBottom: 12, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 0', minWidth: 0 }}>
             <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Inmueble</strong>
@@ -222,11 +377,47 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
         <div style={{ marginBottom: 12, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 0', minWidth: 0 }}>
             <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Precio compra</strong>
-            <span style={{ fontSize: 15 }}>{formatEuro(card.precioCompra)}</span>
+            {isEditing && onInputChange ? (
+              <input
+                type="number"
+                min="0"
+                step="1000"
+                value={precioCompra}
+                onChange={(e) => handlePrecioChange(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: '100%',
+                  padding: '4px 8px',
+                  fontSize: 14,
+                  border: '1px solid #1976d2',
+                  borderRadius: 4,
+                }}
+              />
+            ) : (
+              <span style={{ fontSize: 15 }}>{formatEuro(card.precioCompra)}</span>
+            )}
           </div>
           <div style={{ flex: '1 1 0', minWidth: 0 }}>
             <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Alquiler estimado</strong>
-            <span style={{ fontSize: 15 }}>{formatEuro(card.alquilerEstimado)}/mes</span>
+            {isEditing && onInputChange ? (
+              <input
+                type="number"
+                min="0"
+                step="50"
+                value={alquilerMensual}
+                onChange={(e) => handleAlquilerChange(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: '100%',
+                  padding: '4px 8px',
+                  fontSize: 14,
+                  border: '1px solid #1976d2',
+                  borderRadius: 4,
+                }}
+              />
+            ) : (
+              <span style={{ fontSize: 15 }}>{formatEuro(card.alquilerEstimado)}/mes</span>
+            )}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>

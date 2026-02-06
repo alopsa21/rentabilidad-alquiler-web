@@ -91,6 +91,8 @@ function App() {
         habitaciones: habitacionesAleatorias,
         metrosCuadrados: metrosAleatorios,
         banos: banosAleatorios,
+        originalInput: { ...payload },
+        currentInput: { ...payload },
       }
 
       setAnalisis((prev) => [nuevaTarjeta, ...prev])
@@ -221,6 +223,132 @@ function App() {
     })
   }
 
+  /**
+   * Recalcula las métricas de una tarjeta usando su currentInput.
+   * Actualiza el resultado, veredicto y los valores derivados de la tarjeta.
+   */
+  const recalcularTarjeta = async (tarjetaId: string) => {
+    const tarjeta = analisis.find((c) => c.id === tarjetaId);
+    if (!tarjeta) return;
+    await recalcularTarjetaConInput(tarjetaId, tarjeta.currentInput);
+  }
+
+  /**
+   * Maneja el cambio de un campo editable en una tarjeta.
+   * Actualiza currentInput y recalcula automáticamente.
+   * El debounce se maneja en CardAnalisis.
+   */
+  const handleInputChange = (tarjetaId: string, campo: keyof FormularioRentabilidadState, valor: number | string | boolean) => {
+    setAnalisis((prev) => {
+      const tarjetaActualizada = prev.find((c) => c.id === tarjetaId);
+      if (!tarjetaActualizada) return prev;
+
+      const nuevoCurrentInput = {
+        ...tarjetaActualizada.currentInput,
+        [campo]: valor,
+      };
+
+      // Recalcular inmediatamente con el nuevo input (el debounce ya se maneja en CardAnalisis)
+      // Usar setTimeout para asegurar que el estado se actualice primero
+      setTimeout(() => {
+        recalcularTarjetaConInput(tarjetaId, nuevoCurrentInput);
+      }, 0);
+
+      return prev.map((c) =>
+        c.id === tarjetaId
+          ? {
+              ...c,
+              currentInput: nuevoCurrentInput,
+            }
+          : c
+      );
+    });
+  }
+
+  /**
+   * Recalcula las métricas de una tarjeta usando un input específico.
+   * Versión interna que acepta el input directamente para evitar problemas de sincronización.
+   */
+  const recalcularTarjetaConInput = async (tarjetaId: string, input: FormularioRentabilidadState) => {
+    try {
+      const nuevoResultado = await calcularRentabilidadApi(input);
+      const nuevoVeredicto = mapResultadosToVerdict(nuevoResultado);
+
+      // Actualizar resultado
+      setResultadosPorTarjeta((prev) => ({ ...prev, [tarjetaId]: nuevoResultado }));
+
+      // Actualizar tarjeta con nuevos valores derivados
+      const rentNetaRaw = Number(nuevoResultado.rentabilidadNeta);
+      const rentNetaPct =
+        !Number.isNaN(rentNetaRaw) && rentNetaRaw > -1 && rentNetaRaw < 1
+          ? rentNetaRaw * 100
+          : rentNetaRaw;
+
+      setAnalisis((prev) => {
+        const tarjetaActual = prev.find((c) => c.id === tarjetaId);
+        if (!tarjetaActual) return prev;
+
+        // Solo cambiar la ciudad si cambió la comunidad autónoma
+        let nuevaCiudad = tarjetaActual.ciudad;
+        if (tarjetaActual.currentInput.comunidadAutonoma !== input.comunidadAutonoma) {
+          const { obtenerCiudadAleatoria } = require('./utils/ciudades');
+          nuevaCiudad = obtenerCiudadAleatoria(input.comunidadAutonoma);
+        }
+
+        return prev.map((c) =>
+          c.id === tarjetaId
+            ? {
+                ...c,
+                precioCompra: input.precioCompra,
+                alquilerEstimado: input.alquilerMensual,
+                ciudad: nuevaCiudad,
+                rentabilidadNetaPct: rentNetaPct,
+                estado: nuevoVeredicto.estado,
+                veredictoTitulo: nuevoVeredicto.titulo,
+                veredictoRazones: nuevoVeredicto.razones,
+              }
+            : c
+        );
+      });
+
+      // Si es la tarjeta activa, actualizar también el resultado global
+      setTarjetaActivaId((activaId) => {
+        if (activaId === tarjetaId) {
+          setResultado(nuevoResultado);
+          setVeredictoGlobal(nuevoVeredicto);
+        }
+        return activaId;
+      });
+    } catch (err) {
+      console.error('Error al recalcular tarjeta:', err);
+      // No mostrar error global, solo en consola para no interrumpir la UX
+    }
+  }
+
+  /**
+   * Revierte los cambios de una tarjeta restaurando originalInput.
+   */
+  const handleRevert = (tarjetaId: string) => {
+    setAnalisis((prev) => {
+      const tarjeta = prev.find((c) => c.id === tarjetaId);
+      if (!tarjeta) return prev;
+
+      const originalInput = { ...tarjeta.originalInput };
+
+      // Recalcular con valores originales usando el input directamente
+      recalcularTarjetaConInput(tarjetaId, originalInput);
+
+      return prev.map((c) =>
+        c.id === tarjetaId
+          ? {
+              ...c,
+              currentInput: originalInput,
+            }
+          : c
+      );
+    });
+  }
+
   return (
     <div className="app">
       <HeaderRentabilidad onAnalizar={handleAnalizar} loading={loading} />
@@ -309,11 +437,17 @@ function App() {
                       onDelete={() => handleEliminarTarjeta(card.id)}
                       mostrarDetalle={mostrarDetalle}
                       resultado={resultadoParaDetalle ?? undefined}
+                      onInputChange={(campo, valor) => handleInputChange(card.id, campo, valor)}
+                      onRevert={() => handleRevert(card.id)}
                     />
                     {/* Detalle debajo de la tarjeta: toggle al hacer clic */}
                     {mostrarDetalle && resultadoParaDetalle && (
                       <div className="card-detalle-expandido">
-                        <DetalleAnalisis card={card} resultado={resultadoParaDetalle} isHorizontalLayout={true} />
+                        <DetalleAnalisis
+                          card={card}
+                          resultado={resultadoParaDetalle}
+                          isHorizontalLayout={true}
+                        />
                       </div>
                     )}
                   </div>
@@ -324,10 +458,10 @@ function App() {
         )}
         
         {/* Mobile: mostrar modal cuando está abierto */}
-        {tarjetaActiva && resultado && (
+        {tarjetaActiva && resultadosPorTarjeta[tarjetaActiva.id] && (
           <ModalDetalle
             card={tarjetaActiva}
-            resultado={resultado}
+            resultado={resultadosPorTarjeta[tarjetaActiva.id]}
             isOpen={modalAbierto}
             onClose={() => setModalAbierto(false)}
           />
