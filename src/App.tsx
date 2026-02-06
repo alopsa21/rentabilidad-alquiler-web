@@ -11,6 +11,7 @@ import type { AnalisisCard } from './types/analisis'
 import type { VeredictoHumano } from './utils/veredicto'
 import { mapResultadosToVerdict } from './utils/veredicto'
 import { loadCards, saveCards, clearCards } from './utils/storage'
+import { generateShareableUrl, copyToClipboard, getStateFromUrl, deserializeCards, type ShareableCardData } from './utils/share'
 import { cardsToCSV, downloadCSV } from './utils/csv'
 import './App.css'
 
@@ -45,9 +46,47 @@ function App() {
   const [isHydrated, setIsHydrated] = useState(false)
   const [createdAtPorTarjeta, setCreatedAtPorTarjeta] = useState<Record<string, string>>({})
   const [resetUrlTrigger, setResetUrlTrigger] = useState(0)
+  const [notificacion, setNotificacion] = useState<{ mensaje: string; tipo: 'success' | 'error' } | null>(null)
 
-  // Hidratación inicial: cargar tarjetas desde localStorage al montar
+  // Función helper para mostrar notificaciones
+  const mostrarNotificacion = (mensaje: string, tipo: 'success' | 'error' = 'success') => {
+    setNotificacion({ mensaje, tipo })
+    setTimeout(() => {
+      setNotificacion(null)
+    }, 3000)
+  }
+
+  // Hidratación inicial: cargar tarjetas desde localStorage o URL al montar
   useEffect(() => {
+    // Primero intentar cargar desde URL (tiene prioridad)
+    const stateFromUrl = getStateFromUrl()
+    if (stateFromUrl) {
+      try {
+        const sharedCards = deserializeCards(stateFromUrl)
+        const cards: AnalisisCard[] = []
+        const resultados: Record<string, RentabilidadApiResponse> = {}
+
+        sharedCards.forEach(({ card, motorOutput }) => {
+          cards.push(card)
+          resultados[card.id] = motorOutput
+        })
+
+        setAnalisis(cards)
+        setResultadosPorTarjeta(resultados)
+        setCreatedAtPorTarjeta({})
+        
+        // Limpiar URL después de cargar
+        window.history.replaceState({}, '', window.location.pathname)
+        
+        setIsHydrated(true)
+        return
+      } catch (error) {
+        console.error('Error cargando tarjetas desde URL:', error)
+        // Continuar con localStorage si falla
+      }
+    }
+
+    // Si no hay URL o falló, cargar desde localStorage
     const loaded = loadCards()
     if (loaded.length > 0) {
       const cards: AnalisisCard[] = []
@@ -377,6 +416,20 @@ function App() {
   }
 
   /**
+   * Exporta todas las tarjetas a CSV
+   */
+  const handleExportarCSV = () => {
+    try {
+      const csvContent = cardsToCSV(analisis, resultadosPorTarjeta)
+      downloadCSV(csvContent)
+      mostrarNotificacion('CSV exportado correctamente', 'success')
+    } catch (error) {
+      console.error('Error exportando CSV:', error)
+      mostrarNotificacion('No se pudo exportar el CSV', 'error')
+    }
+  }
+
+  /**
    * Limpia todas las tarjetas y el localStorage (Nuevo análisis).
    */
   const handleNuevoAnalisis = () => {
@@ -399,18 +452,6 @@ function App() {
    * Limpia todas las tarjetas y el localStorage (alias para mantener compatibilidad).
    */
   const handleLimpiarTodo = handleNuevoAnalisis
-
-  /**
-   * Exporta las tarjetas actuales a CSV.
-   */
-  const handleExportarCSV = () => {
-    try {
-      const csvString = cardsToCSV(analisis, resultadosPorTarjeta)
-      downloadCSV(csvString)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al exportar CSV')
-    }
-  }
 
   /**
    * Revierte los cambios de una tarjeta restaurando originalInput.
@@ -436,8 +477,56 @@ function App() {
     });
   }
 
+  /**
+   * Comparte una tarjeta mediante link (copia al portapapeles)
+   */
+  const handleShareLink = async (cardId: string) => {
+    const card = analisis.find((c) => c.id === cardId)
+    const resultado = resultadosPorTarjeta[cardId]
+    
+    if (!card || !resultado) {
+      mostrarNotificacion('No se puede compartir: faltan datos de la tarjeta', 'error')
+      return
+    }
+
+    try {
+      const shareableData: ShareableCardData[] = [{ card, motorOutput: resultado }]
+      const url = generateShareableUrl(shareableData)
+      await copyToClipboard(url)
+      mostrarNotificacion('Link copiado al portapapeles', 'success')
+    } catch (error) {
+      console.error('Error compartiendo link:', error)
+      mostrarNotificacion('No se pudo copiar el link', 'error')
+    }
+  }
+
+
   return (
     <div className="app">
+      {/* Notificación toast */}
+      {notificacion && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 99999,
+            padding: '12px 24px',
+            backgroundColor: notificacion.tipo === 'success' ? '#4caf50' : '#f44336',
+            color: '#fff',
+            borderRadius: '4px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            fontSize: 14,
+            fontWeight: 500,
+            maxWidth: '90%',
+            textAlign: 'center',
+            pointerEvents: 'none',
+          }}
+        >
+          {notificacion.mensaje}
+        </div>
+      )}
       <HeaderRentabilidad onAnalizar={handleAnalizar} loading={loading} resetUrlTrigger={resetUrlTrigger} />
       <main className="app-main">
         {error && (
@@ -516,17 +605,18 @@ function App() {
                 const resultadoParaDetalle = resultadosPorTarjeta[card.id] || null
                 const cashflow = resultadoParaDetalle?.cashflowFinal || null
                 return (
-                  <div key={card.id}>
+                  <div key={card.id} data-card-id={card.id}>
                     <CardAnalisis
-                      card={card}
-                      isActive={mostrarDetalle}
-                      onClick={() => handleClickTarjeta(card.id)}
-                      onDelete={() => handleEliminarTarjeta(card.id)}
-                      mostrarDetalle={mostrarDetalle}
-                      resultado={resultadoParaDetalle ?? undefined}
-                      onInputChange={(campo, valor) => handleInputChange(card.id, campo, valor)}
-                      onRevert={() => handleRevert(card.id)}
-                    />
+                        card={card}
+                        isActive={mostrarDetalle}
+                        onClick={() => handleClickTarjeta(card.id)}
+                        onDelete={() => handleEliminarTarjeta(card.id)}
+                        mostrarDetalle={mostrarDetalle}
+                        resultado={resultadoParaDetalle ?? undefined}
+                        onInputChange={(campo, valor) => handleInputChange(card.id, campo, valor)}
+                        onRevert={() => handleRevert(card.id)}
+                        onShareLink={() => handleShareLink(card.id)}
+                      />
                     {/* Detalle debajo de la tarjeta: toggle al hacer clic */}
                     {mostrarDetalle && resultadoParaDetalle && (
                       <div className="card-detalle-expandido">

@@ -33,9 +33,10 @@ interface CardAnalisisProps {
   resultado?: RentabilidadApiResponse;
   onInputChange?: (campo: keyof FormularioRentabilidadState, valor: number | string | boolean) => void;
   onRevert?: () => void;
+  onShareLink?: () => void;
 }
 
-export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostrarDetalle = false, resultado, onInputChange, onRevert }: CardAnalisisProps) {
+export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostrarDetalle = false, resultado, onInputChange, onRevert, onShareLink }: CardAnalisisProps) {
   // Color único del semáforo basado en el veredicto de la tarjeta
   const colorSemaforo = estadoToColor[card.estado];
   
@@ -143,6 +144,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
     };
   }, [isEditing]);
 
+
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
@@ -189,6 +191,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
   return (
     <article
       ref={cardRef}
+      data-card-id={card.id}
       className={`card-analisis${isActive ? ' is-active' : ''}`}
       onClick={onClick}
       onTouchStart={handleTouchStart}
@@ -212,7 +215,40 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
       {/* Desktop: Información horizontal */}
       <div className="card-info-horizontal card-info-desktop" style={{ position: 'relative' }}>
         {/* Botones de acción posicionados absolutamente */}
-        <div style={{ position: 'absolute', top: 0, right: -8, display: 'flex', gap: 4, zIndex: 1 }}>
+        <div style={{ position: 'absolute', top: 0, right: -8, display: 'flex', gap: 4, zIndex: 2 }}>
+          {/* Botón Compartir */}
+          {onShareLink && (
+            <button
+              className="card-share-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                onShareLink();
+              }}
+              aria-label="Compartir tarjeta"
+              title="Compartir tarjeta"
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#1976d2',
+                fontSize: 16,
+                lineHeight: 1,
+                transition: 'opacity 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '0.7';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
+            >
+              🔗
+            </button>
+          )}
           {onInputChange && (
             <button
               className="card-edit-btn"
