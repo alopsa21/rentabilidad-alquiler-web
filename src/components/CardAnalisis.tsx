@@ -103,16 +103,15 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
   
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isEditing && tieneCambios && onRevert) {
-      // Si está editando y hay cambios, revertir
+    // Toggle modo edición
+    setIsEditing(!isEditing);
+  };
+
+  const handleRevertClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (tieneCambios && onRevert) {
       onRevert();
       setIsEditing(false);
-    } else if (!isEditing && tieneCambios && onRevert) {
-      // Si no está editando pero hay cambios, revertir directamente
-      onRevert();
-    } else {
-      // Si no está editando o no hay cambios, toggle edición
-      setIsEditing(!isEditing);
     }
   };
 
@@ -250,33 +249,64 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
             </button>
           )}
           {onInputChange && (
-            <button
-              className="card-edit-btn"
-              onClick={handleEditClick}
-              aria-label={tieneCambios ? 'Revertir cambios' : isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
-              title={tieneCambios ? 'Revertir cambios' : isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '4px 8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: tieneCambios ? '#c62828' : isEditing ? '#1976d2' : '#666',
-                fontSize: 16,
-                lineHeight: 1,
-                transition: 'opacity 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = '0.7';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = '1';
-              }}
-            >
-              {tieneCambios ? '↺' : isEditing ? '✏️' : '✏️'}
-            </button>
+            <>
+              <button
+                className="card-edit-btn"
+                onClick={handleEditClick}
+                aria-label={isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
+                title={isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: isEditing ? '#1976d2' : '#666',
+                  fontSize: 16,
+                  lineHeight: 1,
+                  transition: 'opacity 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '0.7';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '1';
+                }}
+              >
+                ✏️
+              </button>
+              {tieneCambios && (
+                <button
+                  className="card-revert-btn"
+                  onClick={handleRevertClick}
+                  aria-label="Revertir cambios"
+                  title="Revertir cambios"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '4px 8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#c62828',
+                    fontSize: 16,
+                    lineHeight: 1,
+                    transition: 'opacity 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '0.7';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '1';
+                  }}
+                >
+                  ↺
+                </button>
+              )}
+            </>
           )}
           {onDelete && (
             <button
@@ -384,27 +414,52 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
         {/* Botones de acción */}
         <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 8, zIndex: 1 }}>
           {onInputChange && (
-            <button
-              className="card-edit-btn-mobile"
-              onClick={handleEditClick}
-              aria-label={tieneCambios ? 'Revertir cambios' : isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
-              title={tieneCambios ? 'Revertir cambios' : isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '4px 8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: tieneCambios ? '#c62828' : isEditing ? '#1976d2' : '#666',
-                fontSize: 18,
-                lineHeight: 1,
-                transition: 'opacity 0.2s',
-              }}
-            >
-              {tieneCambios ? '↺' : isEditing ? '✏️' : '✏️'}
-            </button>
+            <>
+              <button
+                className="card-edit-btn-mobile"
+                onClick={handleEditClick}
+                aria-label={isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
+                title={isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: isEditing ? '#1976d2' : '#666',
+                  fontSize: 18,
+                  lineHeight: 1,
+                  transition: 'opacity 0.2s',
+                }}
+              >
+                ✏️
+              </button>
+              {tieneCambios && (
+                <button
+                  className="card-revert-btn-mobile"
+                  onClick={handleRevertClick}
+                  aria-label="Revertir cambios"
+                  title="Revertir cambios"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '4px 8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#c62828',
+                    fontSize: 18,
+                    lineHeight: 1,
+                    transition: 'opacity 0.2s',
+                  }}
+                >
+                  ↺
+                </button>
+              )}
+            </>
           )}
           {onDelete && (
             <button
