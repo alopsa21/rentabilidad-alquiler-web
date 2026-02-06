@@ -38,8 +38,8 @@ function App() {
   const [veredictoGlobal, setVeredictoGlobal] = useState<VeredictoHumano | null>(null)
   const [tarjetaActivaId, setTarjetaActivaId] = useState<string | null>(null)
   const [modalAbierto, setModalAbierto] = useState(false)
-  const [tarjetaConDetalleExpandido, setTarjetaConDetalleExpandido] = useState<string | null>(null)
   const [ordenarPor, setOrdenarPor] = useState<{ campo: string | null; direccion: 'asc' | 'desc' }>({ campo: null, direccion: 'asc' })
+  const [tarjetasExpandidas, setTarjetasExpandidas] = useState<Set<string>>(new Set())
 
   const handleAnalizar = async (_url: string) => {
     setError(null)
@@ -92,7 +92,7 @@ function App() {
       setAnalisis((prev) => [nuevaTarjeta, ...prev])
       setResultadosPorTarjeta((prev) => ({ ...prev, [nuevaTarjeta.id]: data }))
       setTarjetaActivaId(nuevaTarjeta.id)
-      setTarjetaConDetalleExpandido(nuevaTarjeta.id)
+      // No expandir automáticamente: el usuario debe hacer clic para ver el detalle
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al analizar')
     } finally {
@@ -162,11 +162,18 @@ function App() {
     
     if (isMobile) {
       setModalAbierto(true)
-      setTarjetaConDetalleExpandido(null)
     } else {
       setModalAbierto(false)
-      // En desktop: siempre mostrar detalle de la tarjeta clicada (sin toggle, no se oculta al volver a pulsar)
-      setTarjetaConDetalleExpandido(id)
+      // Toggle del detalle debajo de cada tarjeta (múltiples detalles visibles)
+      setTarjetasExpandidas((prev) => {
+        const nuevo = new Set(prev)
+        if (nuevo.has(id)) {
+          nuevo.delete(id)
+        } else {
+          nuevo.add(id)
+        }
+        return nuevo
+      })
     }
   }
 
@@ -177,14 +184,18 @@ function App() {
       if (tarjetaActivaId === id) {
         setTarjetaActivaId(nuevasTarjetas.length > 0 ? nuevasTarjetas[0].id : null)
         setModalAbierto(false)
-        setTarjetaConDetalleExpandido(nuevasTarjetas.length > 0 ? nuevasTarjetas[0].id : null)
         if (nuevasTarjetas.length === 0) {
           setResultado(null)
           setVeredictoGlobal(null)
         }
-      } else if (tarjetaConDetalleExpandido === id) {
-        setTarjetaConDetalleExpandido(nuevasTarjetas.length > 0 ? nuevasTarjetas[0].id : null)
       }
+      
+      // Eliminar de tarjetas expandidas
+      setTarjetasExpandidas((prev) => {
+        const nuevo = new Set(prev)
+        nuevo.delete(id)
+        return nuevo
+      })
       
       // Eliminar resultado asociado
       setResultadosPorTarjeta((prev) => {
@@ -206,12 +217,11 @@ function App() {
             {error}
           </p>
         )}
-        <div className="app-layout-desktop">
-          {/* Cabecera sticky: misma estructura 70% + gap + 30% que el contenido */}
-          {analisis.length > 0 && (
+        {analisis.length > 0 && (
+          <div className="app-layout-desktop layout-horizontal">
+            {/* Cabecera sticky con títulos de columnas */}
             <div className="card-header-sticky card-header-full-width" style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: '1rem', width: '100%' }}>
-              {/* Bloque 70%: títulos del panel de tarjetas */}
-              <div style={{ flex: '0 0 70%', display: 'flex', alignItems: 'center' }} className="card-info-horizontal card-header-row">
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center' }} className="card-info-horizontal card-header-row">
                 <div style={{ flex: 1.2, display: 'flex', alignItems: 'center' }}>
                   <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Inmueble</strong>
                 </div>
@@ -261,51 +271,35 @@ function App() {
                   )}
                 </div>
               </div>
-              {/* Bloque 30%: titular del panel de detalle (mismo ancho y gap que el aside) */}
-              <div style={{ flex: '0 0 30%', display: 'flex', alignItems: 'center' }}>
-                <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Detalle</strong>
-              </div>
             </div>
-          )}
-          {/* Contenedor flex-row para paneles lado a lado */}
-          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: '1rem', width: '100%' }}>
-            {/* Izquierda (70%): tarjetas */}
-            <section aria-label="Panel de tarjetas" className="app-panel-tarjetas">
+            {/* Panel de tarjetas: ancho completo */}
+            <section aria-label="Panel de tarjetas" className="app-panel-tarjetas app-panel-tarjetas-horizontal">
               {analisisOrdenados.map((card) => {
-              const mostrarDetalle = card.id === tarjetaConDetalleExpandido
-              const resultadoParaDetalle = resultadosPorTarjeta[card.id] || null
-              const cashflow = resultadoParaDetalle?.cashflowFinal || null
-              return (
-                <div key={card.id}>
-                  <CardAnalisis
-                    card={card}
-                    isActive={card.id === tarjetaActivaId}
-                    onClick={() => handleClickTarjeta(card.id)}
-                    onDelete={() => handleEliminarTarjeta(card.id)}
-                    mostrarDetalle={mostrarDetalle}
-                    cashflow={cashflow ?? undefined}
-                  />
-                  {/* Detalle debajo de la tarjeta: solo en mobile (en desktop se muestra en panel derecho) */}
-                  {mostrarDetalle && resultadoParaDetalle && (
-                    <div className="card-detalle-expandido">
-                      <DetalleAnalisis card={card} resultado={resultadoParaDetalle} />
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+                const mostrarDetalle = tarjetasExpandidas.has(card.id)
+                const resultadoParaDetalle = resultadosPorTarjeta[card.id] || null
+                const cashflow = resultadoParaDetalle?.cashflowFinal || null
+                return (
+                  <div key={card.id}>
+                    <CardAnalisis
+                      card={card}
+                      isActive={card.id === tarjetaActivaId}
+                      onClick={() => handleClickTarjeta(card.id)}
+                      onDelete={() => handleEliminarTarjeta(card.id)}
+                      mostrarDetalle={mostrarDetalle}
+                      cashflow={cashflow ?? undefined}
+                    />
+                    {/* Detalle debajo de la tarjeta: toggle al hacer clic */}
+                    {mostrarDetalle && resultadoParaDetalle && (
+                      <div className="card-detalle-expandido">
+                        <DetalleAnalisis card={card} resultado={resultadoParaDetalle} isHorizontalLayout={true} />
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </section>
-            {/* Derecha (30%): detalle de la tarjeta seleccionada - solo visible en desktop */}
-            <aside aria-label="Detalle del análisis" className="app-panel-detalle">
-            {tarjetaConDetalleExpandido && (() => {
-              const cardDetalle = analisis.find((c) => c.id === tarjetaConDetalleExpandido)
-              const resultadoDetalle = resultadosPorTarjeta[tarjetaConDetalleExpandido] || null
-              if (!cardDetalle || !resultadoDetalle) return null
-              return <DetalleAnalisis card={cardDetalle} resultado={resultadoDetalle} />
-              })()}
-            </aside>
           </div>
-        </div>
+        )}
         
         {/* Mobile: mostrar modal cuando está abierto */}
         {tarjetaActiva && resultado && (

@@ -89,7 +89,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       style={{
-        border: isActive ? '2px solid #333' : '1px solid #ddd',
+        border: '1px solid #ddd',
         borderRadius: 8,
         padding: '12px 12px 12px 12px',
         backgroundColor: isActive ? '#e8f5e9' : '#fff',

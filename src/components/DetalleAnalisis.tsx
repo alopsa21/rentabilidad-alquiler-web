@@ -126,6 +126,7 @@ function getDesgloseCalculo(
 interface DetalleAnalisisProps {
   card: AnalisisCard;
   resultado: RentabilidadApiResponse;
+  isHorizontalLayout?: boolean;
 }
 
 const iconBtnStyle = {
@@ -156,13 +157,13 @@ function InfoIcon({ onClick }: { onClick: () => void }) {
   );
 }
 
-export function DetalleAnalisis({ card, resultado }: DetalleAnalisisProps) {
+export function DetalleAnalisis({ card, resultado, isHorizontalLayout = false }: DetalleAnalisisProps) {
   const [definicionAbierta, setDefinicionAbierta] = useState<string | null>(null);
   const [desgloseAbierto, setDesgloseAbierto] = useState<string | null>(null);
 
   return (
     <aside
-      className="detalle-analisis"
+      className={`detalle-analisis ${isHorizontalLayout ? 'detalle-analisis-horizontal' : ''}`}
       style={{
         border: '1px solid #ddd',
         borderRadius: 8,
@@ -172,10 +173,10 @@ export function DetalleAnalisis({ card, resultado }: DetalleAnalisisProps) {
         top: 80,
       }}
     >
-
-      <section style={{ marginBottom: 20 }}>
+      <div className={isHorizontalLayout ? 'detalle-secciones-container' : ''}>
+        <section style={{ marginBottom: 20 }}>
         <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 16 }}>Datos básicos</h3>
-        <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '1fr auto', gap: '6px 16px', fontSize: 14 }}>
+        <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '1fr auto', gap: isHorizontalLayout ? '6px 8px' : '6px 16px', fontSize: 14 }}>
           <dt style={{ fontWeight: 500 }}>Ubicación</dt>
           <dd style={{ margin: 0, textAlign: 'right' }}>{card.ubicacion || '—'}</dd>
           <dt style={{ fontWeight: 500 }}>Precio</dt>
@@ -187,7 +188,7 @@ export function DetalleAnalisis({ card, resultado }: DetalleAnalisisProps) {
 
       <section style={{ marginBottom: 20 }}>
         <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 16 }}>Métricas clave</h3>
-        <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '1fr auto', gap: '6px 16px', fontSize: 14 }}>
+        <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '1fr auto', gap: isHorizontalLayout ? '6px 8px' : '6px 16px', fontSize: 14 }}>
           <dt style={{ fontWeight: 500 }}>Ingresos anuales</dt>
           <dd style={{ margin: 0, textAlign: 'right' }}>{formatEuro(resultado.ingresosAnuales)}</dd>
           <dt style={{ fontWeight: 500 }}>Gastos anuales</dt>
@@ -199,7 +200,7 @@ export function DetalleAnalisis({ card, resultado }: DetalleAnalisisProps) {
 
       <section>
         <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 16 }}>Rentabilidades</h3>
-        <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '1fr auto', gap: '6px 16px', fontSize: 14 }}>
+        <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '1fr auto', gap: isHorizontalLayout ? '6px 8px' : '6px 16px', fontSize: 14 }}>
           {[
             { id: 'rentabilidadBruta', label: 'Rentabilidad bruta', value: formatPercent(resultado.rentabilidadBruta) },
             { id: 'rentabilidadNeta', label: 'Rentabilidad neta', value: formatPercent(resultado.rentabilidadNeta) },
@@ -235,6 +236,7 @@ export function DetalleAnalisis({ card, resultado }: DetalleAnalisisProps) {
           ))}
         </dl>
       </section>
+      </div>
 
       {/* Popover emergente: por encima del contenido, sin desplazar */}
       {definicionAbierta && (

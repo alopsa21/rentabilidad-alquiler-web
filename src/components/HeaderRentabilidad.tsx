@@ -80,6 +80,7 @@ export function HeaderRentabilidad({ onAnalizar, loading = false }: HeaderRentab
               fontSize: 14,
               border: '1px solid #ccc',
               borderRadius: 6,
+              fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
             }}
             aria-label="URL del anuncio"
           />

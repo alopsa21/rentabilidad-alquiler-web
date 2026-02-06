@@ -13,7 +13,7 @@
   padding: 0;
   width: 100%;
   box-sizing: border-box;
-  overflow-x: hidden;
+  overflow-x: visible;
 }
 
 .app {
@@ -24,6 +24,8 @@
   padding-top: 1rem;
   width: 100%;
   max-width: 100%;
+  overflow-y: visible;
+  overflow-x: visible;
 }
 
 .app-error {
@@ -59,20 +61,19 @@
   position: relative;
 }
 
-/* Panel derecho: detalle (solo visible en desktop) */
-.app-panel-detalle {
-  display: none;
-}
 
 /* Cabecera sticky con títulos de columnas */
 .card-header-sticky {
   position: sticky;
   top: 60px;
-  z-index: 5;
-  background-color: #fff;
+  z-index: 9;
+  background-color: #f8f9fa;
   padding: 12px 0 8px;
   margin-bottom: 0.5rem;
   font-weight: bold;
+  width: 100%;
+  border-bottom: 2px solid #e0e0e0;
+  margin-top: 0;
 }
 
 .card-header-row {
@@ -100,16 +101,18 @@
 
 /* Detalle expandido debajo de la tarjeta */
 .card-detalle-expandido {
-  margin-top: 0.75rem;
+  margin-top: 0.5rem;
+  margin-bottom: 1.5rem;
   margin-left: 0;
   margin-right: 0;
-  padding: 1.5rem;
-  background-color: #f9f9f9;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  padding: 0;
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
   animation: slideDown 0.3s ease-out;
   display: flex;
   justify-content: center;
+  width: 100%;
 }
 
 @keyframes slideDown {
@@ -128,12 +131,30 @@
   display: block;
 }
 
+/* Estilos para destacar las tarjetas sobre el detalle */
+@media (min-width: 769px) {
+  .card-analisis {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  
+  .card-analisis:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    transform: translateY(-2px);
+  }
+  
+  .card-analisis.is-active {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+    transform: translateY(-2px);
+  }
+}
+
 /* Desktop: tarjetas compactas - ocultar información extra */
 .card-info-extra {
   display: none;
 }
 
-/* Desktop: dos columnas (70% tarjetas, 30% detalle) y detalle debajo de tarjeta oculto */
+/* Desktop: layout horizontal */
 @media (min-width: 769px) {
   .app-layout-desktop {
     display: flex;
@@ -144,37 +165,44 @@
     margin-right: auto;
     min-height: calc(100vh - 150px);
     gap: 0;
+    overflow-y: visible;
+    overflow-x: visible;
   }
+
+  .layout-horizontal {
+    gap: 1.5rem;
+  }
+
+  .app-panel-tarjetas-horizontal {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-top: 0.5rem;
+  }
+  
 
   .card-header-full-width {
     width: 100%;
     margin-bottom: 0.5rem;
   }
 
-  .app-panel-tarjetas {
-    flex: 0 0 70%;
-    width: 70%;
-    max-width: 70%;
-    margin: 0;
+  .card-header-sticky {
     display: flex;
-    flex-direction: column;
-  }
-
-  .app-panel-detalle {
-    display: block;
-    flex: 0 0 30%;
-    width: 30%;
-    min-width: 0;
     position: sticky;
-    top: 20px;
-    align-self: flex-start;
-    height: fit-content;
-    max-height: calc(100vh - 40px);
-    overflow-y: auto;
+    top: 60px;
+    z-index: 10;
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #e0e0e0;
+    margin-bottom: 0.5rem;
+    margin-top: 0;
   }
 
-  .card-detalle-expandido {
-    display: none !important;
+  /* Mostrar detalle expandido debajo de tarjetas cuando está visible */
+  .app-panel-tarjetas-horizontal .card-detalle-expandido {
+    display: flex !important;
   }
 
   .card-info-desktop {
@@ -250,35 +278,50 @@
 .detalle-analisis {
   flex: 0 1 auto;
   min-width: 320px;
-  max-width: 40vw;
+  max-width: 100%;
   margin-left: auto;
   margin-right: auto;
+  width: 100%;
+  background-color: #fafafa;
+  padding: 2rem;
+  border-radius: 8px;
+  border: 1px solid #e8e8e8;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-/* En panel derecho desktop: ocupa el 30% del layout */
-.app-panel-detalle .detalle-analisis {
-  max-width: 100%;
-  margin-left: 0;
-  margin-right: 0;
-  position: static !important;
-  top: auto !important;
+/* Layout horizontal: mostrar secciones en fila */
+.detalle-analisis-horizontal .detalle-secciones-container {
+  display: flex;
+  flex-direction: row;
+  gap: 5rem;
+  align-items: flex-start;
+  width: 100%;
 }
+
+.detalle-analisis-horizontal .detalle-secciones-container > section {
+  flex: 1;
+  margin-bottom: 0 !important;
+  min-width: 200px;
+}
+
+.detalle-analisis-horizontal .detalle-secciones-container > section h3 {
+  font-size: 14px;
+  margin-bottom: 8px;
+  margin-top: 0;
+}
+
+.detalle-analisis-horizontal .detalle-secciones-container > section dl {
+  font-size: 13px;
+  gap: 6px 12px !important;
+}
+
 
 .detalle-valor-clickable:hover {
   text-decoration: underline;
 }
 
-/* Desktop: mostrar detalle siempre */
-.detalle-desktop {
-  display: block;
-}
-
-/* Mobile: ocultar detalle desktop, mostrar solo modal */
+/* Mobile: mostrar modal cuando está abierto */
 @media (max-width: 768px) {
-  .detalle-desktop {
-    display: none !important;
-  }
-  
   .modal-detalle-overlay {
     display: flex !important;
   }
@@ -518,9 +561,6 @@
     background-color: #3d3d3d !important;
   }
 
-  .app-panel-detalle {
-    color: #e4e4e4;
-  }
 
   .detalle-popover-overlay {
     background-color: rgba(0, 0, 0, 0.6) !important;
