@@ -491,7 +491,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
         </div>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 0', minWidth: 0 }}>
-            <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Rentabilidad neta</strong>
+            <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Rentabilidad neta</strong>
             <span style={{ fontSize: 15, color: colorSemaforo }}>
               {card.rentabilidadNetaPct.toFixed(2)} %
             </span>
