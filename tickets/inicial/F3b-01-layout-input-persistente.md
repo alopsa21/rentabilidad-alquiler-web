@@ -10,7 +10,7 @@ NO crear proyecto nuevo.
 
 ## Contexto importante
 
-Este proyecto ya tiene frontend funcional (F3).  
+Este proyecto ya tiene frontend funcional. Los tickets de la carpata training.
 Este ticket debe REUTILIZAR esa base.
 
 Eliminar:
