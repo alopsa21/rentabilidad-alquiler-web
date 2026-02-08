@@ -11,6 +11,7 @@ import type { AnalisisCard } from './types/analisis'
 import type { VeredictoHumano } from './utils/veredicto'
 import { mapResultadosToVerdict } from './utils/veredicto'
 import { loadCards, saveCards, clearCards } from './utils/storage'
+import { getFavoriteCards, calculatePortfolioStats } from './utils/portfolioStats'
 import { generateShareableUrl, copyToClipboard, getStateFromUrl, deserializeCards, type ShareableCardData } from './utils/share'
 import { cardsToCSV, downloadCSV } from './utils/csv'
 import './App.css'
@@ -210,9 +211,12 @@ function App() {
     })
   }
 
-  // Filtrar por vista (Todas / Favoritos)
+  // Filtrar por vista (Todas / Mi Portfolio)
   const analisisParaLista =
     vistaFiltro === 'favorites' ? analisis.filter((c) => c.isFavorite) : analisis
+
+  const favoriteCards = getFavoriteCards(analisis)
+  const portfolioStats = calculatePortfolioStats(favoriteCards, resultadosPorTarjeta)
 
   // Ordenar tarjetas según el criterio seleccionado
   const analisisOrdenados = [...analisisParaLista].sort((a, b) => {
@@ -557,7 +561,7 @@ function App() {
         )}
         {analisis.length > 0 && (
           <div className="app-layout-desktop layout-horizontal">
-            {/* Tabs Todas / Favoritos */}
+            {/* Tabs Todas / Mi Portfolio */}
             <div style={{ display: 'flex', gap: 0, padding: '8px 16px 0', borderBottom: '1px solid #e0e0e0', marginBottom: 8 }}>
               <button
                 type="button"
@@ -589,9 +593,48 @@ function App() {
                   color: vistaFiltro === 'favorites' ? '#1976d2' : '#666',
                 }}
               >
-                Favoritos
+                Mi Portfolio
               </button>
             </div>
+            {/* Stats del portfolio (solo en vista Mi Portfolio) */}
+            {vistaFiltro === 'favorites' && (
+              <div
+                style={{
+                  padding: '12px 16px',
+                  marginBottom: 8,
+                  backgroundColor: '#f5f5f5',
+                  borderRadius: 8,
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '16px 24px',
+                  alignItems: 'center',
+                }}
+                aria-label="Resumen del portfolio"
+              >
+                <strong style={{ fontSize: 15, color: '#333', marginRight: 8 }}>
+                  📊 Mi portfolio
+                </strong>
+                <span style={{ fontSize: 14, color: '#555' }}>
+                  Propiedades: {portfolioStats.count}
+                </span>
+                <span style={{ fontSize: 14, color: '#555' }}>
+                  ROE medio:{' '}
+                  {portfolioStats.avgROE !== null
+                    ? `${portfolioStats.avgROE.toFixed(2)} %`
+                    : '—'}
+                </span>
+                <span style={{ fontSize: 14, color: '#555' }}>
+                  Cashflow anual total:{' '}
+                  {portfolioStats.totalCashflow >= 0 ? '+' : ''}
+                  {new Intl.NumberFormat('es-ES', {
+                    style: 'currency',
+                    currency: 'EUR',
+                    maximumFractionDigits: 0,
+                    minimumFractionDigits: 0,
+                  }).format(portfolioStats.totalCashflow)}
+                </span>
+              </div>
+            )}
             {/* Cabecera sticky con títulos de columnas */}
             <div className="card-header-sticky card-header-full-width" style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: '1rem', width: '100%' }}>
               <div style={{ flex: 1, display: 'flex', alignItems: 'center' }} className="card-info-horizontal card-header-row">
