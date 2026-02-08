@@ -11,7 +11,7 @@ import type { AnalisisCard } from './types/analisis'
 import type { VeredictoHumano } from './utils/veredicto'
 import { mapResultadosToVerdict } from './utils/veredicto'
 import { loadCards, saveCards, clearCards } from './utils/storage'
-import { getFavoriteCards, calculatePortfolioStats } from './utils/portfolioStats'
+import { getFavoriteCards, calculatePortfolioStats, calculatePortfolioScore, getScoreColor } from './utils/portfolioStats'
 import { generateShareableUrl, copyToClipboard, getStateFromUrl, deserializeCards, type ShareableCardData } from './utils/share'
 import { cardsToCSV, downloadCSV } from './utils/csv'
 import './App.css'
@@ -217,6 +217,10 @@ function App() {
 
   const favoriteCards = getFavoriteCards(analisis)
   const portfolioStats = calculatePortfolioStats(favoriteCards, resultadosPorTarjeta)
+  const portfolioScore = calculatePortfolioScore(favoriteCards, resultadosPorTarjeta)
+  const scoreColorKey = getScoreColor(portfolioScore)
+  const scoreColorMap = { verde: '#2e7d32', amarillo: '#f9a825', rojo: '#c62828' } as const
+  const scoreColor = scoreColorMap[scoreColorKey]
 
   // Ordenar tarjetas según el criterio seleccionado
   const analisisOrdenados = [...analisisParaLista].sort((a, b) => {
@@ -632,6 +636,9 @@ function App() {
                     maximumFractionDigits: 0,
                     minimumFractionDigits: 0,
                   }).format(portfolioStats.totalCashflow)}
+                </span>
+                <span style={{ fontSize: 14, color: scoreColor, fontWeight: 600 }}>
+                  🏆 Score: {portfolioScore} / 100
                 </span>
               </div>
             )}
