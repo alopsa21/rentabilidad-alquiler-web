@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { HeaderRentabilidad } from './components/HeaderRentabilidad'
+import { HeroSearch } from './components/HeroSearch'
+import { CompactSearchHeader } from './components/CompactSearchHeader'
 import { CardAnalisis } from './components/CardAnalisis'
 import { DetalleAnalisis } from './components/DetalleAnalisis'
 import { ModalDetalle } from './components/ModalDetalle'
@@ -570,8 +571,21 @@ function App() {
           {notificacion.mensaje}
         </div>
       )}
-      <HeaderRentabilidad onAnalizar={handleAnalizar} loading={loading} resetUrlTrigger={resetUrlTrigger} />
-      <main className="app-main">
+      {analisis.length === 0 ? (
+        <>
+          <HeroSearch onAnalizar={handleAnalizar} loading={loading} />
+          <main className="app-main">
+            {error && (
+              <p role="alert" className="app-error">
+                {error}
+              </p>
+            )}
+          </main>
+        </>
+      ) : (
+        <>
+          <CompactSearchHeader onAnalizar={handleAnalizar} loading={loading} />
+          <main className="app-main">
         {error && (
           <p role="alert" className="app-error">
             {error}
@@ -858,6 +872,8 @@ function App() {
           ) : null
         })()}
       </main>
+        </>
+      )}
     </div>
   )
 }
