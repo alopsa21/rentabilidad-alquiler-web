@@ -1,4 +1,7 @@
 import { Fragment, useState } from 'react';
+import IconButton from '@mui/material/IconButton';
+import Chip from '@mui/material/Chip';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import type { AnalisisCard } from '../types/analisis';
 import type { RentabilidadApiResponse } from '../types/api';
 
@@ -65,8 +68,6 @@ function getDesgloseCalculo(
   const rn = Number(resultado.rentabilidadNeta);
   const roceA = Number(resultado.roceAntes);
   const roceF = Number(resultado.roceFinal);
-  const ingresos = Number(resultado.ingresosAnuales);
-  const gastos = Number(resultado.gastosAnuales);
 
   const percent = (x: number) => (x > -1 && x < 1 ? x * 100 : x).toFixed(2);
 
@@ -165,31 +166,19 @@ interface DetalleAnalisisProps {
   isHorizontalLayout?: boolean;
 }
 
-const iconBtnStyle = {
-  marginLeft: 6,
-  padding: 0,
-  border: 'none' as const,
-  background: 'none',
-  cursor: 'pointer' as const,
-  color: '#666',
-  fontSize: 14,
-  lineHeight: 1,
-  verticalAlign: 'middle' as const,
-};
-
 function InfoIcon({ onClick }: { onClick: () => void }) {
   return (
-    <button
-      type="button"
+    <IconButton
+      size="small"
       onClick={(e) => {
         e.preventDefault();
         onClick();
       }}
       aria-label="Ver definición"
-      style={iconBtnStyle}
+      sx={{ ml: 0.5, p: 0.25, color: '#666', verticalAlign: 'middle' }}
     >
-      ⓘ
-    </button>
+      <InfoOutlinedIcon sx={{ fontSize: 18 }} />
+    </IconButton>
   );
 }
 
@@ -224,6 +213,14 @@ export function DetalleAnalisis({ card, resultado, isHorizontalLayout = false }:
             {formatEuro(String(card.currentInput.alquilerMensual))}
           </dd>
         </dl>
+        <div style={{ marginTop: 12 }}>
+          <Chip
+            label={card.veredictoTitulo}
+            size="small"
+            color={card.estado === 'verde' ? 'success' : card.estado === 'amarillo' ? 'warning' : 'error'}
+            sx={{ fontWeight: 500, fontSize: '0.75rem' }}
+          />
+        </div>
       </section>
 
       <section style={{ marginBottom: 20 }}>
@@ -341,7 +338,7 @@ export function DetalleAnalisis({ card, resultado, isHorizontalLayout = false }:
             <button
               type="button"
               onClick={() => setDefinicionAbierta(null)}
-              className="detalle-popover-btn"
+              className="detalle-popover-btn no-focus-outline"
               style={{
                 marginTop: 12,
                 padding: '6px 12px',
@@ -404,7 +401,7 @@ export function DetalleAnalisis({ card, resultado, isHorizontalLayout = false }:
               <button
                 type="button"
                 onClick={() => setDesgloseAbierto(null)}
-                className="detalle-popover-btn"
+                className="detalle-popover-btn no-focus-outline"
                 style={{
                   marginTop: 12,
                   padding: '6px 12px',

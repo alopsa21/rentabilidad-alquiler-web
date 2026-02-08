@@ -1,4 +1,6 @@
 import { useEffect } from 'react';
+import IconButton from '@mui/material/IconButton';
+import CloseIcon from '@mui/icons-material/Close';
 import type { AnalisisCard } from '../types/analisis';
 import type { RentabilidadApiResponse } from '../types/api';
 import { DetalleAnalisis } from './DetalleAnalisis';
@@ -72,38 +74,21 @@ export function ModalDetalle({ card, resultado, isOpen, onClose }: ModalDetalleP
         }}
       >
         {/* Botón cerrar */}
-        <button
+        <IconButton
           onClick={onClose}
           aria-label="Cerrar detalle"
-          style={{
+          size="medium"
+          sx={{
             position: 'absolute',
             top: 12,
             right: 12,
-            background: 'none',
-            border: 'none',
-            fontSize: 28,
-            lineHeight: 1,
-            cursor: 'pointer',
             color: '#666',
             zIndex: 10,
-            padding: 8,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 40,
-            height: 40,
-            borderRadius: '50%',
-            transition: 'background-color 0.2s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#f0f0f0';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
+            '&:hover': { backgroundColor: 'rgba(0,0,0,0.06)' },
           }}
         >
-          ×
-        </button>
+          <CloseIcon />
+        </IconButton>
 
         {/* Contenido del detalle */}
         <div style={{ padding: '20px 16px 40px', boxSizing: 'border-box', maxWidth: '100%', overflow: 'hidden' }}>

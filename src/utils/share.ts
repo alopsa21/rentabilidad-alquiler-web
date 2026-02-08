@@ -7,6 +7,8 @@ import type { RentabilidadApiResponse } from '../types/api';
 export interface ShareableCardData {
   card: AnalisisCard;
   motorOutput: RentabilidadApiResponse;
+  /** Resultado con originalInput; solo cuando la tarjeta tiene cambios para mostrar deltas al cargar */
+  motorOutputOriginal?: RentabilidadApiResponse;
 }
 
 /**

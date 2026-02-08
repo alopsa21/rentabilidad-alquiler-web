@@ -1,4 +1,8 @@
 import { useState, useEffect } from 'react';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
 import { STORAGE_KEY_URL } from '../constants/storage';
 
 interface CompactSearchHeaderProps {
@@ -52,70 +56,51 @@ export function CompactSearchHeader({ onAnalizar, loading = false }: CompactSear
         boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
       }}
     >
-      <div
-        style={{
-          maxWidth: '90%',
-          width: '90%',
-          margin: '0 auto',
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          gap: 12,
-        }}
-      >
-        <h1 style={{ margin: 0, fontSize: '1.25rem', whiteSpace: 'nowrap' }}>
+      <Box sx={{ maxWidth: '90%', width: '90%', margin: '0 auto', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1.5 }}>
+        <Typography variant="h6" component="h1" sx={{ margin: 0, whiteSpace: 'nowrap', flexShrink: 0 }}>
           Rentabilidad Alquiler
-        </h1>
+        </Typography>
         <form
           onSubmit={handleSubmit}
           style={{
             flex: 1,
             minWidth: 200,
             display: 'flex',
-            gap: 8,
+            gap: 1,
             alignItems: 'center',
           }}
         >
-          <input
+          <TextField
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="Pega la URL del anuncio..."
-            style={{
-              flex: 1,
-              padding: '10px 12px',
-              fontSize: 14,
-              border: '1px solid #ccc',
-              borderRadius: 6,
-              fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-            }}
             aria-label="URL del anuncio"
+            size="small"
+            sx={{ flex: 1, minWidth: 0 }}
           />
-          <button
+          <Button
             type="submit"
+            variant="contained"
+            color="primary"
             disabled={loading || !url.trim()}
             onClick={handleButtonClick}
             onTouchEnd={handleButtonClick}
-            style={{
-              padding: '10px 16px',
-              fontSize: 14,
-              fontWeight: 500,
-              border: '1px solid #333',
-              borderRadius: 6,
-              backgroundColor: loading || !url.trim() ? '#999' : '#333',
-              color: '#fff',
-              cursor: loading || !url.trim() ? 'not-allowed' : 'pointer',
+            disableRipple
+            sx={{
               whiteSpace: 'nowrap',
-              minHeight: 44,
-              touchAction: 'manipulation',
-              WebkitTapHighlightColor: 'transparent',
-              userSelect: 'none',
+              minHeight: 40,
+              outline: 'none',
+              border: 'none',
+              '&:focus': { outline: 'none', border: 'none', boxShadow: 'none' },
+              '&:focus-visible': { outline: 'none', border: 'none', boxShadow: 'none' },
+              '&:active': { outline: 'none', border: 'none', boxShadow: 'none' },
             }}
           >
             {loading ? 'Analizando...' : 'Analizar'}
-          </button>
+          </Button>
         </form>
-      </div>
+      </Box>
     </header>
   );
 }

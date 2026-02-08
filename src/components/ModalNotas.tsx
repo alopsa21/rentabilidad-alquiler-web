@@ -1,4 +1,8 @@
 import { useEffect, useState } from 'react';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
 
 interface ModalNotasProps {
   isOpen: boolean;
@@ -38,9 +42,9 @@ export function ModalNotas({ isOpen, onClose, initialNotes, onSave }: ModalNotas
   if (!isOpen) return null;
 
   return (
-    <div
+    <Box
       onClick={onClose}
-      style={{
+      sx={{
         position: 'fixed',
         top: 0,
         left: 0,
@@ -51,82 +55,49 @@ export function ModalNotas({ isOpen, onClose, initialNotes, onSave }: ModalNotas
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 16,
-        boxSizing: 'border-box',
+        p: 2,
       }}
     >
-      <div
+      <Box
         onClick={(e) => e.stopPropagation()}
-        style={{
-          backgroundColor: '#fff',
+        sx={{
+          backgroundColor: 'background.paper',
           width: '100%',
           maxWidth: 420,
-          borderRadius: 12,
+          borderRadius: 2,
           overflow: 'hidden',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+          boxShadow: 3,
           display: 'flex',
           flexDirection: 'column',
           maxHeight: '80vh',
         }}
       >
-        <div style={{ padding: '16px 16px 0', flexShrink: 0 }}>
-          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#333' }}>
+        <Box sx={{ px: 2, pt: 2, flexShrink: 0 }}>
+          <Typography variant="h6" component="h3">
             Notas sobre este piso
-          </h3>
-        </div>
-        <div style={{ padding: 12, flex: 1, minHeight: 120 }}>
-          <textarea
+          </Typography>
+        </Box>
+        <Box sx={{ p: 1.5, flex: 1, minHeight: 120 }}>
+          <TextField
             value={notesDraft}
             onChange={(e) => setNotesDraft(e.target.value)}
             placeholder="Escribe aquí tus apuntes..."
-            style={{
-              width: '100%',
-              minHeight: 120,
-              padding: 12,
-              fontSize: 14,
-              border: '1px solid #ddd',
-              borderRadius: 8,
-              resize: 'vertical',
-              boxSizing: 'border-box',
-              fontFamily: 'inherit',
-            }}
+            multiline
+            minRows={4}
+            fullWidth
             autoFocus
+            sx={{ '& .MuiOutlinedInput-root': { fontSize: 14 } }}
           />
-        </div>
-        <div style={{ padding: 16, display: 'flex', gap: 8, justifyContent: 'flex-end', flexShrink: 0 }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              padding: '8px 16px',
-              fontSize: 14,
-              border: '1px solid #ccc',
-              borderRadius: 8,
-              background: '#fff',
-              cursor: 'pointer',
-              color: '#666',
-            }}
-          >
+        </Box>
+        <Box sx={{ p: 2, display: 'flex', gap: 1, justifyContent: 'flex-end', flexShrink: 0 }}>
+          <Button variant="outlined" onClick={onClose}>
             Cerrar
-          </button>
-          <button
-            type="button"
-            onClick={handleGuardar}
-            style={{
-              padding: '8px 16px',
-              fontSize: 14,
-              border: 'none',
-              borderRadius: 8,
-              background: '#1976d2',
-              cursor: 'pointer',
-              color: '#fff',
-              fontWeight: 500,
-            }}
-          >
+          </Button>
+          <Button variant="contained" onClick={handleGuardar}>
             Guardar
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </Box>
+      </Box>
+    </Box>
   );
 }

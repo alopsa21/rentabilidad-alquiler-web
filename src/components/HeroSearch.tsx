@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
 import { STORAGE_KEY_URL } from '../constants/storage';
 
 interface HeroSearchProps {
@@ -53,29 +56,12 @@ export function HeroSearch({ onAnalizar, loading = false }: HeroSearchProps) {
         textAlign: 'center',
       }}
     >
-      <h1
-        style={{
-          margin: '0 0 12px',
-          fontSize: 'clamp(1.75rem, 5vw, 2.25rem)',
-          fontWeight: 700,
-          lineHeight: 1.2,
-          color: '#1a1a1a',
-          maxWidth: 520,
-        }}
-      >
+      <Typography variant="h1" sx={{ mb: 1.5, maxWidth: 520, fontSize: { xs: '1.75rem', sm: '2.25rem' }, fontWeight: 700 }}>
         Invertir en alquiler, sin hojas de Excel
-      </h1>
-      <p
-        style={{
-          margin: '0 0 28px',
-          fontSize: 'clamp(0.95rem, 2.5vw, 1.1rem)',
-          color: '#666',
-          maxWidth: 420,
-          lineHeight: 1.45,
-        }}
-      >
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3.5, maxWidth: 420 }}>
         Pega el enlace de un piso y te decimos en segundos si merece la pena.
-      </p>
+      </Typography>
       <form
         onSubmit={handleSubmit}
         style={{
@@ -87,53 +73,40 @@ export function HeroSearch({ onAnalizar, loading = false }: HeroSearchProps) {
           alignItems: 'stretch',
         }}
       >
-        <input
+        <TextField
           type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="Pega aquí el enlace del anuncio"
-          style={{
-            width: '100%',
-            padding: '14px 16px',
-            fontSize: 16,
-            border: '1px solid #ccc',
-            borderRadius: 8,
-            boxSizing: 'border-box',
-            fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          }}
           aria-label="URL del anuncio"
+          fullWidth
+          size="medium"
+          sx={{ '& .MuiOutlinedInput-root': { fontSize: 16 } }}
         />
-        <button
+        <Button
           type="submit"
+          variant="contained"
           disabled={loading || !url.trim()}
           onClick={handleButtonClick}
           onTouchEnd={handleButtonClick}
-          style={{
-            padding: '14px 24px',
+          disableRipple
+          sx={{
+            py: 1.75,
             fontSize: 16,
             fontWeight: 600,
+            outline: 'none',
             border: 'none',
-            borderRadius: 8,
-            backgroundColor: loading || !url.trim() ? '#999' : '#1976d2',
-            color: '#fff',
-            cursor: loading || !url.trim() ? 'not-allowed' : 'pointer',
-            minHeight: 48,
-            touchAction: 'manipulation',
-            WebkitTapHighlightColor: 'transparent',
+            '&:focus': { outline: 'none', border: 'none', boxShadow: 'none' },
+            '&:focus-visible': { outline: 'none', border: 'none', boxShadow: 'none' },
+            '&:active': { outline: 'none', border: 'none', boxShadow: 'none' },
           }}
         >
           {loading ? 'Analizando...' : 'Analizar piso'}
-        </button>
+        </Button>
       </form>
-      <p
-        style={{
-          margin: '24px 0 0',
-          fontSize: 13,
-          color: '#888',
-        }}
-      >
+      <Typography variant="body2" color="text.disabled" sx={{ mt: 3 }}>
         Sin registros · Sin spam · Análisis instantáneo
-      </p>
+      </Typography>
     </section>
   );
 }

@@ -5,7 +5,6 @@
  */
 
 import { VERDICT_CONFIG } from '../config/verdict.config';
-import type { EstadoColor } from '../types/analisis';
 
 /**
  * Colores del semáforo para cada estado.

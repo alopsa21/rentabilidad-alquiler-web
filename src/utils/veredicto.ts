@@ -67,7 +67,7 @@ export function mapResultadosToVerdict(resultado: RentabilidadApiResponse): Vere
 
   const razones: string[] = [];
   let estado: EstadoColor = 'rojo';
-  let titulo = VERDICT_MESSAGES.rojo.titulo;
+  let titulo: string = VERDICT_MESSAGES.rojo.titulo;
 
   // 🟢 Verificar si es buena oportunidad
   const esVerde =

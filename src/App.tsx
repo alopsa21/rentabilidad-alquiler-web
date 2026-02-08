@@ -17,6 +17,9 @@ import { STORAGE_KEY_HAS_ANALYZED } from './constants/storage'
 import { getFavoriteCards, calculatePortfolioStats, calculatePortfolioScore, getScoreColor } from './utils/portfolioStats'
 import { generateShareableUrl, copyToClipboard, getStateFromUrl, deserializeCards, type ShareableCardData } from './utils/share'
 import { cardsToCSV, downloadCSV } from './utils/csv'
+import Button from '@mui/material/Button'
+import Typography from '@mui/material/Typography'
+import Box from '@mui/material/Box'
 import './App.css'
 
 /** Payload por defecto para mantener la API conectada hasta que la URL se use para obtener datos */
@@ -37,19 +40,21 @@ const DEFAULT_PAYLOAD: FormularioRentabilidadState = {
 }
 
 function App() {
-  const [resultado, setResultado] = useState<RentabilidadApiResponse | null>(null)
+  const [, setResultado] = useState<RentabilidadApiResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [analisis, setAnalisis] = useState<AnalisisCard[]>([])
   const [resultadosPorTarjeta, setResultadosPorTarjeta] = useState<Record<string, RentabilidadApiResponse>>({})
-  const [veredictoGlobal, setVeredictoGlobal] = useState<VeredictoHumano | null>(null)
+  /** Resultado con originalInput; se guarda al primer cambio para mostrar deltas (y al compartir/cargar URL) */
+  const [resultadoOriginalPorTarjeta, setResultadoOriginalPorTarjeta] = useState<Record<string, RentabilidadApiResponse>>({})
+  const [, setVeredictoGlobal] = useState<VeredictoHumano | null>(null)
   const [tarjetaActivaId, setTarjetaActivaId] = useState<string | null>(null)
   const [modalAbierto, setModalAbierto] = useState(false)
   const [ordenarPor, setOrdenarPor] = useState<{ campo: string | null; direccion: 'asc' | 'desc' }>({ campo: null, direccion: 'asc' })
   const [tarjetasExpandidas, setTarjetasExpandidas] = useState<Set<string>>(new Set())
   const [isHydrated, setIsHydrated] = useState(false)
   const [createdAtPorTarjeta, setCreatedAtPorTarjeta] = useState<Record<string, string>>({})
-  const [resetUrlTrigger, setResetUrlTrigger] = useState(0)
+  const [, setResetUrlTrigger] = useState(0)
   const [notificacion, setNotificacion] = useState<{ mensaje: string; tipo: 'success' | 'error' } | null>(null)
   const [vistaFiltro, setVistaFiltro] = useState<'all' | 'favorites'>('all')
   const [modalNotasCardId, setModalNotasCardId] = useState<string | null>(null)
@@ -75,14 +80,18 @@ function App() {
         const sharedCards = deserializeCards(stateFromUrl)
         const cards: AnalisisCard[] = []
         const resultados: Record<string, RentabilidadApiResponse> = {}
+        const resultadosOriginal: Record<string, RentabilidadApiResponse> = {}
 
-        sharedCards.forEach(({ card, motorOutput }) => {
+        sharedCards.forEach((item) => {
+          const { card, motorOutput, motorOutputOriginal } = item
           cards.push({ ...card, isFavorite: card.isFavorite ?? false, notes: card.notes ?? '' })
           resultados[card.id] = motorOutput
+          if (motorOutputOriginal) resultadosOriginal[card.id] = motorOutputOriginal
         })
 
         setAnalisis(cards)
         setResultadosPorTarjeta(resultados)
+        setResultadoOriginalPorTarjeta(resultadosOriginal)
         setCreatedAtPorTarjeta({})
         if (cards.length > 0) {
           hasAnalyzed = true
@@ -114,6 +123,7 @@ function App() {
 
       setAnalisis(cards)
       setResultadosPorTarjeta(resultados)
+      setResultadoOriginalPorTarjeta({})
       setCreatedAtPorTarjeta(createdAt)
       hasAnalyzed = true
       try { localStorage.setItem(STORAGE_KEY_HAS_ANALYZED, '1') } catch { /* ignore */ }
@@ -364,21 +374,16 @@ function App() {
   }
 
   /**
-   * Recalcula las métricas de una tarjeta usando su currentInput.
-   * Actualiza el resultado, veredicto y los valores derivados de la tarjeta.
-   */
-  const recalcularTarjeta = async (tarjetaId: string) => {
-    const tarjeta = analisis.find((c) => c.id === tarjetaId);
-    if (!tarjeta) return;
-    await recalcularTarjetaConInput(tarjetaId, tarjeta.currentInput);
-  }
-
-  /**
    * Maneja el cambio de un campo editable en una tarjeta.
    * Actualiza currentInput y recalcula automáticamente.
-   * El debounce se maneja en CardAnalisis.
+   * En el primer cambio guarda el resultado actual como "original" para mostrar deltas.
    */
   const handleInputChange = (tarjetaId: string, campo: keyof FormularioRentabilidadState, valor: number | string | boolean) => {
+    const tarjeta = analisis.find((c) => c.id === tarjetaId);
+    const hadNoChanges = tarjeta && JSON.stringify(tarjeta.currentInput) === JSON.stringify(tarjeta.originalInput);
+    if (hadNoChanges && resultadosPorTarjeta[tarjetaId]) {
+      setResultadoOriginalPorTarjeta((prev) => ({ ...prev, [tarjetaId]: resultadosPorTarjeta[tarjetaId] }));
+    }
     setAnalisis((prev) => {
       const tarjetaActualizada = prev.find((c) => c.id === tarjetaId);
       if (!tarjetaActualizada) return prev;
@@ -388,8 +393,6 @@ function App() {
         [campo]: valor,
       };
 
-      // Recalcular inmediatamente con el nuevo input (el debounce ya se maneja en CardAnalisis)
-      // Usar setTimeout para asegurar que el estado se actualice primero
       setTimeout(() => {
         recalcularTarjetaConInput(tarjetaId, nuevoCurrentInput);
       }, 0);
@@ -424,24 +427,25 @@ function App() {
           ? rentNetaRaw * 100
           : rentNetaRaw;
 
+      // Resolver nueva ciudad si cambió la comunidad (fuera del setState para poder usar await)
+      const tarjetaActual = analisis.find((c) => c.id === tarjetaId);
+      let nuevaCiudad: string | null = null;
+      if (tarjetaActual && tarjetaActual.currentInput.comunidadAutonoma !== input.comunidadAutonoma) {
+        const { obtenerCiudadAleatoria } = await import('./utils/ciudades');
+        nuevaCiudad = obtenerCiudadAleatoria(input.comunidadAutonoma);
+      }
+
       setAnalisis((prev) => {
-        const tarjetaActual = prev.find((c) => c.id === tarjetaId);
-        if (!tarjetaActual) return prev;
-
-        // Solo cambiar la ciudad si cambió la comunidad autónoma
-        let nuevaCiudad = tarjetaActual.ciudad;
-        if (tarjetaActual.currentInput.comunidadAutonoma !== input.comunidadAutonoma) {
-          const { obtenerCiudadAleatoria } = require('./utils/ciudades');
-          nuevaCiudad = obtenerCiudadAleatoria(input.comunidadAutonoma);
-        }
-
+        const t = prev.find((c) => c.id === tarjetaId);
+        if (!t) return prev;
+        const ciudad = nuevaCiudad !== null ? nuevaCiudad : t.ciudad;
         return prev.map((c) =>
           c.id === tarjetaId
             ? {
                 ...c,
                 precioCompra: input.precioCompra,
                 alquilerEstimado: input.alquilerMensual,
-                ciudad: nuevaCiudad,
+                ciudad,
                 rentabilidadNetaPct: rentNetaPct,
                 estado: nuevoVeredicto.estado,
                 veredictoTitulo: nuevoVeredicto.titulo,
@@ -486,6 +490,7 @@ function App() {
   const handleConfirmarLimpiarPanel = () => {
     setAnalisis([])
     setResultadosPorTarjeta({})
+    setResultadoOriginalPorTarjeta({})
     setCreatedAtPorTarjeta({})
     setResultado(null)
     setVeredictoGlobal(null)
@@ -502,31 +507,35 @@ function App() {
   }
 
   /**
-   * Limpia todas las tarjetas y el localStorage (alias para mantener compatibilidad).
-   */
-  const handleLimpiarTodo = () => {
-    setModalLimpiarPanelOpen(true)
-  }
-
-  /**
    * Revierte los cambios de una tarjeta restaurando originalInput.
    */
-  const handleRevert = (tarjetaId: string) => {
+  /**
+   * Revierte un solo campo (precio compra o alquiler) al valor original.
+   */
+  const handleRevertField = (tarjetaId: string, campo: 'precioCompra' | 'alquilerMensual') => {
     setAnalisis((prev) => {
       const tarjeta = prev.find((c) => c.id === tarjetaId);
       if (!tarjeta) return prev;
 
-      const originalInput = { ...tarjeta.originalInput };
+      const nuevoCurrentInput = {
+        ...tarjeta.currentInput,
+        [campo]: tarjeta.originalInput[campo],
+      };
 
-      // Recalcular con valores originales usando el input directamente
-      recalcularTarjetaConInput(tarjetaId, originalInput);
+      const quedaSinCambios = JSON.stringify(nuevoCurrentInput) === JSON.stringify(tarjeta.originalInput);
+      if (quedaSinCambios) {
+        setResultadoOriginalPorTarjeta((p) => {
+          const next = { ...p };
+          delete next[tarjetaId];
+          return next;
+        });
+      }
+
+      recalcularTarjetaConInput(tarjetaId, nuevoCurrentInput);
 
       return prev.map((c) =>
         c.id === tarjetaId
-          ? {
-              ...c,
-              currentInput: originalInput,
-            }
+          ? { ...c, currentInput: nuevoCurrentInput }
           : c
       );
     });
@@ -544,10 +553,15 @@ function App() {
     try {
       const shareableData: ShareableCardData[] = analisis
         .filter((card) => resultadosPorTarjeta[card.id])
-        .map((card) => ({
-          card,
-          motorOutput: resultadosPorTarjeta[card.id],
-        }))
+        .map((card) => {
+          const hasChanges = JSON.stringify(card.currentInput) !== JSON.stringify(card.originalInput);
+          const original = hasChanges ? resultadoOriginalPorTarjeta[card.id] : undefined;
+          return {
+            card,
+            motorOutput: resultadosPorTarjeta[card.id],
+            ...(original && { motorOutputOriginal: original }),
+          };
+        })
 
       if (shareableData.length === 0) {
         mostrarNotificacion('No hay tarjetas completas para compartir', 'error')
@@ -612,40 +626,40 @@ function App() {
         )}
           <div className="app-layout-desktop layout-horizontal">
             {/* Tabs Todas / Mi Portfolio */}
-            <div style={{ display: 'flex', gap: 0, padding: '8px 16px 0', borderBottom: '1px solid #e0e0e0', marginBottom: 8 }}>
-              <button
-                type="button"
+            <Box sx={{ display: 'flex', gap: 0, pt: 1, px: 2, borderBottom: '1px solid #e0e0e0', mb: 1 }}>
+              <Button
+                variant="text"
                 onClick={() => setVistaFiltro('all')}
-                style={{
-                  padding: '8px 16px',
-                  fontSize: 14,
-                  fontWeight: 500,
+                disableRipple
+                sx={{
+                  color: vistaFiltro === 'all' ? 'primary.main' : 'text.secondary',
+                  borderRadius: 0,
+                  outline: 'none',
                   border: 'none',
-                  borderBottom: vistaFiltro === 'all' ? '2px solid #1976d2' : '2px solid transparent',
-                  background: 'none',
-                  cursor: 'pointer',
-                  color: vistaFiltro === 'all' ? '#1976d2' : '#666',
+                  '&:focus': { outline: 'none', border: 'none', boxShadow: 'none' },
+                  '&:focus-visible': { outline: 'none', border: 'none', boxShadow: 'none' },
+                  '&:active': { outline: 'none', border: 'none', boxShadow: 'none' },
                 }}
               >
                 Todas
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="text"
                 onClick={() => setVistaFiltro('favorites')}
-                style={{
-                  padding: '8px 16px',
-                  fontSize: 14,
-                  fontWeight: 500,
+                disableRipple
+                sx={{
+                  color: vistaFiltro === 'favorites' ? 'primary.main' : 'text.secondary',
+                  borderRadius: 0,
+                  outline: 'none',
                   border: 'none',
-                  borderBottom: vistaFiltro === 'favorites' ? '2px solid #1976d2' : '2px solid transparent',
-                  background: 'none',
-                  cursor: 'pointer',
-                  color: vistaFiltro === 'favorites' ? '#1976d2' : '#666',
+                  '&:focus': { outline: 'none', border: 'none', boxShadow: 'none' },
+                  '&:focus-visible': { outline: 'none', border: 'none', boxShadow: 'none' },
+                  '&:active': { outline: 'none', border: 'none', boxShadow: 'none' },
                 }}
               >
                 Mi Portfolio
-              </button>
-            </div>
+              </Button>
+            </Box>
             {/* Stats del portfolio (solo en vista Mi Portfolio) */}
             {vistaFiltro === 'favorites' && (
               <div
@@ -690,59 +704,41 @@ function App() {
             )}
             {/* Cabecera sticky con títulos de columnas */}
             <div className="card-header-sticky card-header-full-width" style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: '1rem', width: '100%' }}>
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center' }} className="card-info-horizontal card-header-row">
-                <div style={{ flex: 1.2, display: 'flex', alignItems: 'center' }}>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', minWidth: 0 }} className="card-info-horizontal card-header-row">
+                <div style={{ flex: '1.2 1 0', minWidth: 0, display: 'flex', alignItems: 'center' }}>
                   <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Inmueble</strong>
                 </div>
-                <div 
-                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                  onClick={() => handleOrdenar('ciudad')}
-                >
+                <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('ciudad')}>
                   <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Ciudad</strong>
                   {ordenarPor.campo === 'ciudad' && (
                     <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
                   )}
                 </div>
-                <div 
-                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                  onClick={() => handleOrdenar('precio')}
-                >
+                <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('precio')}>
                   <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Precio compra</strong>
                   {ordenarPor.campo === 'precio' && (
                     <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
                   )}
                 </div>
-                <div 
-                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                  onClick={() => handleOrdenar('alquiler')}
-                >
+                <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('alquiler')}>
                   <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Alquiler estimado</strong>
                   {ordenarPor.campo === 'alquiler' && (
                     <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
                   )}
                 </div>
-                <div 
-                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                  onClick={() => handleOrdenar('rentabilidad')}
-                >
+                <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('rentabilidad')}>
                   <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Rentabilidad neta</strong>
                   {ordenarPor.campo === 'rentabilidad' && (
                     <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
                   )}
                 </div>
-                <div 
-                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                  onClick={() => handleOrdenar('cashflow')}
-                >
+                <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('cashflow')}>
                   <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Cashflow</strong>
                   {ordenarPor.campo === 'cashflow' && (
                     <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
                   )}
                 </div>
-                <div 
-                  style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                  onClick={() => handleOrdenar('roce')}
-                >
+                <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('roce')}>
                   <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>ROCE</strong>
                   {ordenarPor.campo === 'roce' && (
                     <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
@@ -755,7 +751,6 @@ function App() {
               {analisisOrdenados.map((card) => {
                 const mostrarDetalle = tarjetasExpandidas.has(card.id)
                 const resultadoParaDetalle = resultadosPorTarjeta[card.id] || null
-                const cashflow = resultadoParaDetalle?.cashflowFinal || null
                 return (
                   <div key={card.id} data-card-id={card.id}>
                     <CardAnalisis
@@ -765,10 +760,10 @@ function App() {
                         onDelete={() => handleEliminarTarjeta(card.id)}
                         onToggleFavorite={() => handleToggleFavorite(card.id)}
                         onOpenNotes={() => handleOpenNotes(card.id)}
-                        mostrarDetalle={mostrarDetalle}
                         resultado={resultadoParaDetalle ?? undefined}
+                        resultadoOriginal={resultadoOriginalPorTarjeta[card.id]}
                         onInputChange={(campo, valor) => handleInputChange(card.id, campo, valor)}
-                        onRevert={() => handleRevert(card.id)}
+                        onRevertField={(campo) => handleRevertField(card.id, campo)}
                       />
                     {/* Detalle debajo de la tarjeta: toggle al hacer clic */}
                     {mostrarDetalle && resultadoParaDetalle && (
@@ -785,95 +780,55 @@ function App() {
               })}
             </section>
             {/* Botones de acción debajo de las tarjetas */}
-            <div style={{ padding: '16px', backgroundColor: '#fff', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
-              <button
-                type="button"
+            <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
+              <Button
+                variant="contained"
+                color="success"
                 disabled={analisis.length === 0}
                 onClick={handleShareAll}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: 13,
-                  backgroundColor: analisis.length === 0 ? '#ccc' : '#4caf50',
-                  border: `1px solid ${analisis.length === 0 ? '#ccc' : '#4caf50'}`,
-                  borderRadius: 4,
-                  cursor: analisis.length === 0 ? 'not-allowed' : 'pointer',
-                  color: '#fff',
-                  transition: 'all 0.2s',
-                  fontWeight: 500,
-                }}
-                onMouseEnter={(e) => {
-                  if (analisis.length > 0) {
-                    e.currentTarget.style.backgroundColor = '#45a049';
-                    e.currentTarget.style.borderColor = '#45a049';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (analisis.length > 0) {
-                    e.currentTarget.style.backgroundColor = '#4caf50';
-                    e.currentTarget.style.borderColor = '#4caf50';
-                  }
-                }}
                 title="Compartir todas las tarjetas (copiar link)"
+                disableRipple
+                sx={{
+                  outline: 'none',
+                  border: 'none',
+                  '&:focus': { outline: 'none', border: 'none', boxShadow: 'none' },
+                  '&:focus-visible': { outline: 'none', border: 'none', boxShadow: 'none' },
+                  '&:active': { outline: 'none', border: 'none', boxShadow: 'none' },
+                }}
               >
                 Compartir
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="contained"
                 disabled={analisis.length === 0}
                 onClick={handleExportarCSV}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: 13,
-                  backgroundColor: analisis.length === 0 ? '#ccc' : '#1976d2',
-                  border: `1px solid ${analisis.length === 0 ? '#ccc' : '#1976d2'}`,
-                  borderRadius: 4,
-                  cursor: analisis.length === 0 ? 'not-allowed' : 'pointer',
-                  color: '#fff',
-                  transition: 'all 0.2s',
-                  fontWeight: 500,
-                }}
-                onMouseEnter={(e) => {
-                  if (analisis.length > 0) {
-                    e.currentTarget.style.backgroundColor = '#1565c0';
-                    e.currentTarget.style.borderColor = '#1565c0';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (analisis.length > 0) {
-                    e.currentTarget.style.backgroundColor = '#1976d2';
-                    e.currentTarget.style.borderColor = '#1976d2';
-                  }
-                }}
                 title="Exportar todas las tarjetas a CSV"
+                disableRipple
+                sx={{
+                  outline: 'none',
+                  border: 'none',
+                  '&:focus': { outline: 'none', border: 'none', boxShadow: 'none' },
+                  '&:focus-visible': { outline: 'none', border: 'none', boxShadow: 'none' },
+                  '&:active': { outline: 'none', border: 'none', boxShadow: 'none' },
+                }}
               >
                 Exportar CSV
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="outlined"
                 onClick={handleNuevoAnalisis}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: 13,
-                  backgroundColor: '#fff',
-                  border: '1px solid #ccc',
-                  borderRadius: 4,
-                  cursor: 'pointer',
-                  color: '#666',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f0f0f0';
-                  e.currentTarget.style.borderColor = '#999';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#fff';
-                  e.currentTarget.style.borderColor = '#ccc';
-                }}
                 title="Borrar todas las tarjetas y limpiar el panel"
+                disableRipple
+                sx={{
+                  outline: 'none',
+                  '&:focus': { outline: 'none', boxShadow: 'none' },
+                  '&:focus-visible': { outline: 'none', boxShadow: 'none' },
+                  '&:active': { outline: 'none', boxShadow: 'none' },
+                }}
               >
                 Limpiar panel
-              </button>
-            </div>
+              </Button>
+            </Box>
           </div>
         
         {/* Mobile: mostrar modal cuando está abierto */}
@@ -919,46 +874,42 @@ function App() {
                 boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
               }}
             >
-              <h2 id="modal-limpiar-titulo" style={{ margin: '0 0 12px', fontSize: 18, fontWeight: 600, color: '#1a1a1a' }}>
+              <Typography id="modal-limpiar-titulo" variant="h6" component="h2" sx={{ mb: 1.5 }}>
                 Limpiar panel
-              </h2>
-              <p style={{ margin: '0 0 24px', fontSize: 15, color: '#555', lineHeight: 1.5 }}>
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
                 ¿Quieres borrar todos los análisis actuales?
-              </p>
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'flex-end' }}>
+                <Button
+                  variant="outlined"
                   onClick={() => setModalLimpiarPanelOpen(false)}
-                  style={{
-                    padding: '10px 18px',
-                    fontSize: 14,
-                    border: '1px solid #ccc',
-                    borderRadius: 8,
-                    background: '#fff',
-                    cursor: 'pointer',
-                    color: '#666',
-                    fontWeight: 500,
+                  disableRipple
+                  sx={{
+                    outline: 'none',
+                    '&:focus': { outline: 'none', boxShadow: 'none' },
+                    '&:focus-visible': { outline: 'none', boxShadow: 'none' },
+                    '&:active': { outline: 'none', boxShadow: 'none' },
                   }}
                 >
                   Cancelar
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
+                  variant="contained"
+                  color="error"
                   onClick={handleConfirmarLimpiarPanel}
-                  style={{
-                    padding: '10px 18px',
-                    fontSize: 14,
+                  disableRipple
+                  sx={{
+                    outline: 'none',
                     border: 'none',
-                    borderRadius: 8,
-                    background: '#c62828',
-                    cursor: 'pointer',
-                    color: '#fff',
-                    fontWeight: 500,
+                    '&:focus': { outline: 'none', border: 'none', boxShadow: 'none' },
+                    '&:focus-visible': { outline: 'none', border: 'none', boxShadow: 'none' },
+                    '&:active': { outline: 'none', border: 'none', boxShadow: 'none' },
                   }}
                 >
                   Limpiar panel
-                </button>
-              </div>
+                </Button>
+              </Box>
             </div>
           </div>
         )}

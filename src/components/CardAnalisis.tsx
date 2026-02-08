@@ -1,4 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import StarIcon from '@mui/icons-material/Star';
+import StarBorderIcon from '@mui/icons-material/StarBorder';
+import EditNoteIcon from '@mui/icons-material/StickyNote2Outlined';
+import EditIcon from '@mui/icons-material/Edit';
+import UndoIcon from '@mui/icons-material/Undo';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import type { AnalisisCard } from '../types/analisis';
 import type { RentabilidadApiResponse } from '../types/api';
 import type { FormularioRentabilidadState } from '../types/formulario';
@@ -18,12 +31,6 @@ const formatEuro = (value: number): string => {
   }).format(value);
 };
 
-const formatEuroFromString = (value: string): string => {
-  const num = Number(value);
-  if (Number.isNaN(num)) return value;
-  return formatEuro(num);
-};
-
 interface CardAnalisisProps {
   card: AnalisisCard;
   isActive?: boolean;
@@ -31,19 +38,35 @@ interface CardAnalisisProps {
   onDelete?: () => void;
   onToggleFavorite?: () => void;
   onOpenNotes?: () => void;
-  mostrarDetalle?: boolean;
   resultado?: RentabilidadApiResponse;
+  resultadoOriginal?: RentabilidadApiResponse;
   onInputChange?: (campo: keyof FormularioRentabilidadState, valor: number | string | boolean) => void;
-  onRevert?: () => void;
+  onRevertField?: (campo: 'precioCompra' | 'alquilerMensual') => void;
 }
 
-export function CardAnalisis({ card, isActive = false, onClick, onDelete, onToggleFavorite, onOpenNotes, mostrarDetalle = false, resultado, onInputChange, onRevert }: CardAnalisisProps) {
+function normalizePct(raw: number): number {
+  if (Number.isNaN(raw)) return 0;
+  return raw > -1 && raw < 1 ? raw * 100 : raw;
+}
+
+function DeltaLabel({ delta, unit }: { delta: number; unit: '%' | '€' }) {
+  if (delta === 0) return null;
+  const isPositive = delta > 0;
+  const sign = delta > 0 ? '+' : '';
+  const value = unit === '€' ? `${sign}${Math.round(delta)}€` : `${sign}${delta.toFixed(2)}%`;
+  return (
+    <Typography component="span" variant="caption" sx={{ color: isPositive ? 'success.main' : 'error.main', fontWeight: 600, ml: 0.5 }}>
+      ({value})
+    </Typography>
+  );
+}
+
+export function CardAnalisis({ card, isActive = false, onClick, onDelete, onToggleFavorite, onOpenNotes, resultado, resultadoOriginal, onInputChange, onRevertField }: CardAnalisisProps) {
   // Color único del semáforo basado en el veredicto de la tarjeta
   const colorSemaforo = estadoToColor[card.estado];
   
   // Extraer métricas para mostrar
   const cashflowFinal = resultado ? Number(resultado.cashflowFinal) : null;
-  const rentabilidadNeta = card.rentabilidadNetaPct;
   const roceFinalRaw = resultado ? Number(resultado.roceFinal) : null;
   const roceFinal = roceFinalRaw !== null && !Number.isNaN(roceFinalRaw)
     ? (roceFinalRaw > -1 && roceFinalRaw < 1 ? roceFinalRaw * 100 : roceFinalRaw)
@@ -51,26 +74,42 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isCardHovered, setIsCardHovered] = useState(false);
+  const [editingField, setEditingField] = useState<'precioCompra' | 'alquilerMensual' | null>(null);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
-  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Estados locales para inputs editables (con debounce)
   const [precioCompra, setPrecioCompra] = useState(card.currentInput.precioCompra.toString());
   const [alquilerMensual, setAlquilerMensual] = useState(card.currentInput.alquilerMensual.toString());
   
   // Refs para debounce
-  const precioTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const alquilerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const precioTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const alquilerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Sincronizar estados locales cuando cambia currentInput externamente (ej. revert)
   useEffect(() => {
     setPrecioCompra(card.currentInput.precioCompra.toString());
     setAlquilerMensual(card.currentInput.alquilerMensual.toString());
   }, [card.currentInput.precioCompra, card.currentInput.alquilerMensual]);
-  
-  // Verificar si hay cambios pendientes
+
+  // Verificar si hay cambios pendientes (global y por campo)
   const tieneCambios = JSON.stringify(card.currentInput) !== JSON.stringify(card.originalInput);
+  const precioCambiado = card.currentInput.precioCompra !== card.originalInput.precioCompra;
+  const alquilerCambiado = card.currentInput.alquilerMensual !== card.originalInput.alquilerMensual;
+
+  // Deltas respecto al resultado original (solo cuando hay cambios y tenemos ambos resultados)
+  const showDeltas = tieneCambios && resultado && resultadoOriginal;
+  const deltaRentabilidad = showDeltas
+    ? normalizePct(Number(resultado.rentabilidadNeta)) - normalizePct(Number(resultadoOriginal.rentabilidadNeta))
+    : 0;
+  const deltaCashflow = showDeltas
+    ? Number(resultado.cashflowFinal) - Number(resultadoOriginal.cashflowFinal)
+    : 0;
+  const roceCur = showDeltas ? normalizePct(Number(resultado.roceFinal)) : 0;
+  const roceOrig = showDeltas ? normalizePct(Number(resultadoOriginal.roceFinal)) : 0;
+  const deltaRoce = showDeltas ? roceCur - roceOrig : 0;
   
   // Handlers con debounce
   const handlePrecioChange = (valor: string) => {
@@ -104,35 +143,33 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
     };
   }, []);
   
-  const handleEditClick = (e: React.MouseEvent) => {
+  const handleRevertPrecio = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Toggle modo edición
-    setIsEditing(!isEditing);
+    if (precioCambiado && onRevertField) {
+      onRevertField('precioCompra');
+      setEditingField(null);
+    }
   };
-
-  const handleRevertClick = (e: React.MouseEvent) => {
+  const handleRevertAlquiler = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (tieneCambios && onRevert) {
-      onRevert();
-      setIsEditing(false);
+    if (alquilerCambiado && onRevertField) {
+      onRevertField('alquilerMensual');
+      setEditingField(null);
     }
   };
 
   // Ref para la tarjeta (para detectar clics fuera)
-  const cardRef = useRef<HTMLElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
-  // Cerrar modo edición al hacer clic fuera de la tarjeta
+  // Cerrar modo edición al hacer clic fuera de la tarjeta (modo móvil o edición por campo)
   useEffect(() => {
-    if (!isEditing) return;
+    if (!isEditing && editingField === null) return;
 
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      // No cerrar si el clic es dentro de la tarjeta (inputs, botones, etc.)
-      if (cardRef.current?.contains(target)) {
-        return;
-      }
-      // Cerrar si el clic es fuera de la tarjeta
+      if (cardRef.current?.contains(target)) return;
       setIsEditing(false);
+      setEditingField(null);
     };
 
     // Usar setTimeout para evitar que se cierre inmediatamente al abrir
@@ -144,7 +181,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
       clearTimeout(timeoutId);
       document.removeEventListener('click', handleClickOutside);
     };
-  }, [isEditing]);
+  }, [isEditing, editingField]);
 
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -211,422 +248,401 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
   };
 
   return (
-    <article
+    <Card
       ref={cardRef}
       data-card-id={card.id}
       className={`card-analisis${isActive ? ' is-active' : ''}`}
-      onClick={(e) => {
-        // En móvil, solo activar onClick si no estamos en modo edición
-        // El long press se maneja en handleTouchStart
-        if (!isEditing) {
+      onMouseEnter={() => setIsCardHovered(true)}
+      onMouseLeave={() => setIsCardHovered(false)}
+      onClick={() => {
+        if (editingField !== null || isEditing) {
+          setEditingField(null);
+          setIsEditing(false);
+        } else {
           onClick?.();
         }
       }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      style={{
-        border: '1px solid #ddd',
-        borderRadius: 8,
-        padding: '12px 12px 12px 12px',
-        backgroundColor: isActive ? '#e8f5e9' : '#fff',
-        display: 'flex',
-        flexDirection: 'column',
+      sx={{
         cursor: onClick ? 'pointer' : 'default',
         transition: isDeleting ? 'transform 0.2s, opacity 0.2s' : swipeOffset === 0 ? 'all 0.2s' : 'none',
         transform: `translateX(${swipeOffset}px)`,
         opacity: isDeleting ? 0 : 1,
         position: 'relative',
-        boxShadow: isActive ? '0 2px 8px rgba(0, 0, 0, 0.15)' : 'none',
+        backgroundColor: isActive ? '#e8f5e9' : undefined,
+        boxShadow: isActive ? 2 : 0,
       }}
     >
+      <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
       {/* Desktop: Información horizontal */}
-      <div className="card-info-horizontal card-info-desktop" style={{ position: 'relative' }}>
+      <Box className="card-info-horizontal card-info-desktop" sx={{ position: 'relative', alignItems: 'center', minHeight: 40 }}>
         {/* Botones de acción posicionados absolutamente */}
-        <div style={{ position: 'absolute', top: 0, right: -8, display: 'flex', gap: 4, zIndex: 2 }}>
+        <Box sx={{ position: 'absolute', top: '50%', right: -8, transform: 'translateY(-50%)', display: 'flex', gap: 0, zIndex: 2 }}>
           {onToggleFavorite && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
-              aria-label={card.isFavorite ? 'Quitar de Mi Portfolio' : 'Añadir a Mi Portfolio'}
-              title={card.isFavorite ? 'Quitar de Mi Portfolio' : 'Añadir a Mi Portfolio'}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '4px 8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: card.isFavorite ? '#f9a825' : '#999',
-                fontSize: 18,
-                lineHeight: 1,
-                transition: 'opacity 0.2s',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
-            >
-              {card.isFavorite ? '★' : '☆'}
-            </button>
-          )}
-          {onOpenNotes && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onOpenNotes(); }}
-              aria-label="Notas"
-              title={card.notes ? 'Ver o editar notas' : 'Añadir notas'}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '4px 8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: card.notes ? '#1976d2' : '#999',
-                fontSize: 18,
-                lineHeight: 1,
-                transition: 'opacity 0.2s',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
-            >
-              📝
-            </button>
-          )}
-          {onInputChange && (
-            <>
-              <button
-                className="card-edit-btn"
-                onClick={handleEditClick}
-                aria-label={isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
-                title={isEditing ? 'Cerrar edición' : 'Editar tarjeta'}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '4px 8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: isEditing ? '#1976d2' : '#666',
-                  fontSize: 16,
-                  lineHeight: 1,
-                  transition: 'opacity 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.opacity = '0.7';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.opacity = '1';
+            <Tooltip title={card.isFavorite ? 'Quitar de Mi Portfolio' : 'Añadir a Mi Portfolio'}>
+              <IconButton
+                size="small"
+                onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+                aria-label={card.isFavorite ? 'Quitar de Mi Portfolio' : 'Añadir a Mi Portfolio'}
+                sx={{
+                  color: card.isFavorite ? '#f9a825' : '#c9a227',
+                  p: 0.5,
+                  '&:hover': { color: card.isFavorite ? '#ffb74d' : '#f9a825' },
                 }}
               >
-                ✏️
-              </button>
-              {tieneCambios && (
-                <button
-                  className="card-revert-btn"
-                  onClick={handleRevertClick}
-                  aria-label="Revertir cambios"
-                  title="Revertir cambios"
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '4px 8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#c62828',
-                    fontSize: 16,
-                    lineHeight: 1,
-                    transition: 'opacity 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.opacity = '0.7';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.opacity = '1';
-                  }}
-                >
-                  ↺
-                </button>
+                {card.isFavorite ? <StarIcon fontSize="small" /> : <StarBorderIcon fontSize="small" />}
+              </IconButton>
+            </Tooltip>
+          )}
+          {onOpenNotes && (
+            <Tooltip title={card.notes ? 'Ver o editar notas' : 'Añadir notas'}>
+              <IconButton
+                size="small"
+                onClick={(e) => { e.stopPropagation(); onOpenNotes(); }}
+                aria-label="Notas"
+                sx={{ color: card.notes ? '#1976d2' : 'primary.main', p: 0.5, '&:hover': { color: '#1565c0' } }}
+              >
+                <EditNoteIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          {onDelete && (
+            <Tooltip title="Eliminar tarjeta">
+              <IconButton
+                size="small"
+                onClick={handleDeleteClick}
+                aria-label="Eliminar tarjeta"
+                sx={{ color: '#c62828', p: 0.5, '&:hover': { color: '#b71c1c' } }}
+              >
+                <DeleteOutlineIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
+        <Box sx={{ flex: '1.2 1 0', minWidth: 0, minHeight: 40, display: 'flex', alignItems: 'center' }}>
+          <Typography component="span" variant="body2" sx={{ fontSize: 13, lineHeight: 1.4 }}>
+            {card.habitaciones} hab · {card.metrosCuadrados} m² · {card.banos} {card.banos === 1 ? 'baño' : 'baños'}
+          </Typography>
+        </Box>
+        <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 40, display: 'flex', alignItems: 'center' }}>
+          <Typography component="span" variant="body2" sx={{ fontSize: 14 }}>{card.ciudad || '—'}</Typography>
+        </Box>
+        <Box sx={{ flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 40 }}>
+          {(isEditing || editingField === 'precioCompra') && onInputChange ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 40 }}>
+              <TextField
+                type="number"
+                size="small"
+                variant="outlined"
+                value={precioCompra}
+                onChange={(e) => handlePrecioChange(e.target.value)}
+                onBlur={() => setEditingField(null)}
+                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                onClick={(e) => e.stopPropagation()}
+                inputProps={{ min: 0, step: 1000 }}
+                sx={{
+                  width: '100%',
+                  maxWidth: 120,
+                  '& .MuiInputBase-root': { minHeight: 36 },
+                  '& .MuiInputBase-input': { textAlign: 'right', fontSize: 14 },
+                }}
+              />
+              {precioCambiado && onRevertField && (
+                <Tooltip title="Deshacer precio compra">
+                  <IconButton size="small" onClick={handleRevertPrecio} aria-label="Deshacer precio compra" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
+                    <UndoIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+          ) : (
+            <>
+              <Typography component="span" variant="body2" sx={{ fontSize: 14 }}>{formatEuro(card.precioCompra)}</Typography>
+              {precioCambiado && onRevertField && (
+                <Tooltip title="Deshacer precio compra">
+                  <IconButton size="small" onClick={handleRevertPrecio} aria-label="Deshacer precio compra" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
+                    <UndoIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              {onInputChange && isCardHovered && (
+                <Tooltip title="Editar precio compra">
+                  <IconButton
+                    size="small"
+                    onClick={(e) => { e.stopPropagation(); setEditingField('precioCompra'); }}
+                    aria-label="Editar precio compra"
+                    sx={{ p: 0.25, color: '#666', '&:hover': { color: 'primary.main' } }}
+                  >
+                    <EditIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
               )}
             </>
           )}
-          {onDelete && (
-            <button
-              className="card-delete-btn"
-              onClick={handleDeleteClick}
-              aria-label="Eliminar tarjeta"
-              title="Eliminar tarjeta"
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '4px 8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#c62828',
-                fontSize: 18,
-                lineHeight: 1,
-                transition: 'opacity 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = '0.7';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = '1';
-              }}
-            >
-              ×
-            </button>
-          )}
-        </div>
-        <div style={{ flex: 1.2 }}>
-          <span style={{ fontSize: 13, lineHeight: 1.4 }}>
-            {card.habitaciones} hab · {card.metrosCuadrados} m² · {card.banos} {card.banos === 1 ? 'baño' : 'baños'}
-          </span>
-        </div>
-        <div style={{ flex: 1 }}>
-          <span style={{ fontSize: 14 }}>{card.ciudad || '—'}</span>
-        </div>
-        <div style={{ flex: 1 }}>
-          {isEditing && onInputChange ? (
-            <input
-              type="number"
-              min="0"
-              step="1000"
-              value={precioCompra}
-              onChange={(e) => handlePrecioChange(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                width: '100%',
-                maxWidth: '120px',
-                padding: '2px 6px',
-                fontSize: 14,
-                border: '1px solid #1976d2',
-                borderRadius: 4,
-                textAlign: 'right',
-              }}
-            />
-          ) : (
-            <span style={{ fontSize: 14 }}>{formatEuro(card.precioCompra)}</span>
-          )}
-        </div>
-        <div style={{ flex: 1 }}>
-          {isEditing && onInputChange ? (
-            <input
-              type="number"
-              min="0"
-              step="50"
-              value={alquilerMensual}
-              onChange={(e) => handleAlquilerChange(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                width: '100%',
-                maxWidth: '100px',
-                padding: '2px 6px',
-                fontSize: 14,
-                border: '1px solid #1976d2',
-                borderRadius: 4,
-                textAlign: 'right',
-              }}
-            />
-          ) : (
-            <span style={{ fontSize: 14 }}>{formatEuro(card.alquilerEstimado)}/mes</span>
-          )}
-        </div>
-        <div style={{ flex: 1 }}>
-          <span style={{ fontSize: 14, color: colorSemaforo }}>
-            {card.rentabilidadNetaPct.toFixed(2)} %
-          </span>
-        </div>
-        <div style={{ flex: 1 }}>
-          <span style={{ fontSize: 14, color: colorSemaforo }}>
-            {cashflowFinal !== null ? formatEuro(cashflowFinal) : '—'}
-          </span>
-        </div>
-        <div style={{ flex: 1 }}>
-          <span style={{ fontSize: 14, color: colorSemaforo }}>
-            {roceFinal !== null ? `${roceFinal.toFixed(2)} %` : '—'}
-          </span>
-        </div>
-      </div>
-
-      {/* Mobile: Información vertical compacta */}
-      <div className="card-info-mobile" style={{ position: 'relative' }}>
-        {/* Botones de acción */}
-        <div style={{ position: 'absolute', top: -4, right: -4, display: 'flex', gap: 4, zIndex: 10 }}>
-          {onToggleFavorite && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
-              aria-label={card.isFavorite ? 'Quitar de Mi Portfolio' : 'Añadir a Mi Portfolio'}
-              title={card.isFavorite ? 'Quitar de Mi Portfolio' : 'Añadir a Mi Portfolio'}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '6px 10px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: card.isFavorite ? '#f9a825' : '#999',
-                fontSize: 22,
-                lineHeight: 1,
-                transition: 'opacity 0.2s',
-              }}
-            >
-              {card.isFavorite ? '★' : '☆'}
-            </button>
-          )}
-          {onOpenNotes && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onOpenNotes(); }}
-              aria-label="Notas"
-              title={card.notes ? 'Ver o editar notas' : 'Añadir notas'}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '6px 10px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: card.notes ? '#1976d2' : '#999',
-                fontSize: 22,
-                lineHeight: 1,
-              }}
-            >
-              📝
-            </button>
-          )}
-          {onInputChange && tieneCambios && (
-            <button
-              className="card-revert-btn-mobile"
-              onClick={handleRevertClick}
-              aria-label="Revertir cambios"
-              title="Revertir cambios"
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '4px 8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#c62828',
-                fontSize: 18,
-                lineHeight: 1,
-                transition: 'opacity 0.2s',
-              }}
-            >
-              ↺
-            </button>
-          )}
-        </div>
-        <div style={{ marginBottom: 12, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 0', minWidth: 0 }}>
-            <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Inmueble</strong>
-            <span style={{ fontSize: 14, lineHeight: 1.4 }}>
-              {card.habitaciones} hab · {card.metrosCuadrados} m² · {card.banos} {card.banos === 1 ? 'baño' : 'baños'}
-            </span>
-          </div>
-          <div style={{ flex: '1 1 0', minWidth: 0 }}>
-            <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Ciudad</strong>
-            <span style={{ fontSize: 15, fontWeight: 500 }}>{card.ciudad || '—'}</span>
-          </div>
-        </div>
-        <div style={{ marginBottom: 12, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 0', minWidth: 0 }}>
-            <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Precio compra</strong>
-            {isEditing && onInputChange ? (
-              <input
+        </Box>
+        <Box sx={{ flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 40 }}>
+          {(isEditing || editingField === 'alquilerMensual') && onInputChange ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 40 }}>
+              <TextField
                 type="number"
-                min="0"
-                step="1000"
-                value={precioCompra}
-                onChange={(e) => handlePrecioChange(e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  width: '100%',
-                  padding: '4px 8px',
-                  fontSize: 14,
-                  border: '1px solid #1976d2',
-                  borderRadius: 4,
-                }}
-              />
-            ) : (
-              <span style={{ fontSize: 15 }}>{formatEuro(card.precioCompra)}</span>
-            )}
-          </div>
-          <div style={{ flex: '1 1 0', minWidth: 0 }}>
-            <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Alquiler estimado</strong>
-            {isEditing && onInputChange ? (
-              <input
-                type="number"
-                min="0"
-                step="50"
+                size="small"
+                variant="outlined"
                 value={alquilerMensual}
                 onChange={(e) => handleAlquilerChange(e.target.value)}
+                onBlur={() => setEditingField(null)}
+                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                 onClick={(e) => e.stopPropagation()}
-                style={{
+                inputProps={{ min: 0, step: 50 }}
+                sx={{
                   width: '100%',
-                  padding: '4px 8px',
-                  fontSize: 14,
-                  border: '1px solid #1976d2',
-                  borderRadius: 4,
+                  maxWidth: 100,
+                  '& .MuiInputBase-root': { minHeight: 36 },
+                  '& .MuiInputBase-input': { textAlign: 'right', fontSize: 14 },
                 }}
               />
+              {alquilerCambiado && onRevertField && (
+                <Tooltip title="Deshacer alquiler estimado">
+                  <IconButton size="small" onClick={handleRevertAlquiler} aria-label="Deshacer alquiler estimado" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
+                    <UndoIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+          ) : (
+            <>
+              <Typography component="span" variant="body2" sx={{ fontSize: 14 }}>{formatEuro(card.alquilerEstimado)}/mes</Typography>
+              {alquilerCambiado && onRevertField && (
+                <Tooltip title="Deshacer alquiler estimado">
+                  <IconButton size="small" onClick={handleRevertAlquiler} aria-label="Deshacer alquiler estimado" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
+                    <UndoIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              {onInputChange && isCardHovered && (
+                <Tooltip title="Editar alquiler estimado">
+                  <IconButton
+                    size="small"
+                    onClick={(e) => { e.stopPropagation(); setEditingField('alquilerMensual'); }}
+                    aria-label="Editar alquiler estimado"
+                    sx={{ p: 0.25, color: '#666', '&:hover': { color: 'primary.main' } }}
+                  >
+                    <EditIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </>
+          )}
+        </Box>
+        <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 40, display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Typography component="span" variant="body2" sx={{ fontSize: 14, color: colorSemaforo }}>
+            {card.rentabilidadNetaPct.toFixed(2)} %
+          </Typography>
+          {showDeltas && <DeltaLabel delta={deltaRentabilidad} unit="%" />}
+        </Box>
+        <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 40, display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Typography component="span" variant="body2" sx={{ fontSize: 14, color: colorSemaforo }}>
+            {cashflowFinal !== null ? formatEuro(cashflowFinal) : '—'}
+          </Typography>
+          {showDeltas && <DeltaLabel delta={deltaCashflow} unit="€" />}
+        </Box>
+        <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 40, display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Typography component="span" variant="body2" sx={{ fontSize: 14, color: colorSemaforo }}>
+            {roceFinal !== null ? `${roceFinal.toFixed(2)} %` : '—'}
+          </Typography>
+          {showDeltas && <DeltaLabel delta={deltaRoce} unit="%" />}
+        </Box>
+      </Box>
+
+      {/* Mobile: Información vertical compacta */}
+      <Box className="card-info-mobile" sx={{ position: 'relative' }}>
+        {/* Botones de acción */}
+        <Box sx={{ position: 'absolute', top: '50%', right: -4, transform: 'translateY(-50%)', display: 'flex', gap: 0, zIndex: 10 }}>
+          {onToggleFavorite && (
+            <Tooltip title={card.isFavorite ? 'Quitar de Mi Portfolio' : 'Añadir a Mi Portfolio'}>
+              <IconButton
+                size="small"
+                onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+                aria-label={card.isFavorite ? 'Quitar de Mi Portfolio' : 'Añadir a Mi Portfolio'}
+                sx={{
+                  color: card.isFavorite ? '#f9a825' : '#c9a227',
+                  p: 0.75,
+                  '&:hover': { color: card.isFavorite ? '#ffb74d' : '#f9a825' },
+                }}
+              >
+                {card.isFavorite ? <StarIcon fontSize="small" /> : <StarBorderIcon fontSize="small" />}
+              </IconButton>
+            </Tooltip>
+          )}
+          {onOpenNotes && (
+            <Tooltip title={card.notes ? 'Ver o editar notas' : 'Añadir notas'}>
+              <IconButton
+                size="small"
+                onClick={(e) => { e.stopPropagation(); onOpenNotes(); }}
+                aria-label="Notas"
+                sx={{ color: card.notes ? '#1976d2' : 'primary.main', p: 0.75, '&:hover': { color: '#1565c0' } }}
+              >
+                <EditNoteIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
+        <Box sx={{ mb: 1.5, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
+            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.5, textTransform: 'uppercase' }}>Inmueble</Typography>
+            <Typography variant="body2" sx={{ fontSize: 14, lineHeight: 1.4 }}>
+              {card.habitaciones} hab · {card.metrosCuadrados} m² · {card.banos} {card.banos === 1 ? 'baño' : 'baños'}
+            </Typography>
+          </Box>
+          <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
+            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.5, textTransform: 'uppercase' }}>Ciudad</Typography>
+            <Typography variant="body2" sx={{ fontSize: 15, fontWeight: 500 }}>{card.ciudad || '—'}</Typography>
+          </Box>
+        </Box>
+        <Box sx={{ mb: 1.5, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
+            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.5, textTransform: 'uppercase' }}>Precio compra</Typography>
+            {(isEditing || editingField === 'precioCompra') && onInputChange ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 40 }}>
+                <TextField
+                  type="number"
+                  size="small"
+                  variant="outlined"
+                  value={precioCompra}
+                  onChange={(e) => handlePrecioChange(e.target.value)}
+                  onBlur={() => setEditingField(null)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                  onClick={(e) => e.stopPropagation()}
+                  inputProps={{ min: 0, step: 1000 }}
+                  sx={{ width: '100%', '& .MuiInputBase-root': { minHeight: 36 }, '& .MuiInputBase-input': { fontSize: 14 } }}
+                />
+                {precioCambiado && onRevertField && (
+                  <Tooltip title="Deshacer precio compra">
+                    <IconButton size="small" onClick={handleRevertPrecio} aria-label="Deshacer precio compra" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
+                      <UndoIcon sx={{ fontSize: 14 }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
             ) : (
-              <span style={{ fontSize: 15 }}>{formatEuro(card.alquilerEstimado)}/mes</span>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 40 }}>
+                <Typography variant="body2" sx={{ fontSize: 15 }}>{formatEuro(card.precioCompra)}</Typography>
+                {precioCambiado && onRevertField && (
+                  <Tooltip title="Deshacer precio compra">
+                    <IconButton size="small" onClick={handleRevertPrecio} aria-label="Deshacer precio compra" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
+                      <UndoIcon sx={{ fontSize: 14 }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {onInputChange && (
+                  <Tooltip title="Editar precio compra">
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); setEditingField('precioCompra'); }} aria-label="Editar precio compra" sx={{ p: 0.25, color: '#666', '&:hover': { color: 'primary.main' } }}>
+                      <EditIcon sx={{ fontSize: 14 }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
             )}
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 0', minWidth: 0 }}>
-            <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Rentabilidad neta</strong>
-            <span style={{ fontSize: 15, color: colorSemaforo }}>
-              {card.rentabilidadNetaPct.toFixed(2)} %
-            </span>
-          </div>
-          <div style={{ flex: '1 1 0', minWidth: 0 }}>
-            <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>Cashflow</strong>
-            <span style={{ fontSize: 15, color: colorSemaforo }}>
-              {cashflowFinal !== null ? formatEuro(cashflowFinal) : '—'}
-            </span>
-          </div>
-          <div style={{ flex: '1 1 0', minWidth: 0 }}>
-            <strong style={{ display: 'block', fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase' }}>ROCE</strong>
-            <span style={{ fontSize: 15, color: colorSemaforo }}>
-              {roceFinal !== null ? `${roceFinal.toFixed(2)} %` : '—'}
-            </span>
-          </div>
-        </div>
-      </div>
+          </Box>
+          <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
+            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.5, textTransform: 'uppercase' }}>Alquiler estimado</Typography>
+            {(isEditing || editingField === 'alquilerMensual') && onInputChange ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 40 }}>
+                <TextField
+                  type="number"
+                  size="small"
+                  variant="outlined"
+                  value={alquilerMensual}
+                  onChange={(e) => handleAlquilerChange(e.target.value)}
+                  onBlur={() => setEditingField(null)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                  onClick={(e) => e.stopPropagation()}
+                  inputProps={{ min: 0, step: 50 }}
+                  sx={{ width: '100%', '& .MuiInputBase-root': { minHeight: 36 }, '& .MuiInputBase-input': { fontSize: 14 } }}
+                />
+                {alquilerCambiado && onRevertField && (
+                  <Tooltip title="Deshacer alquiler estimado">
+                    <IconButton size="small" onClick={handleRevertAlquiler} aria-label="Deshacer alquiler estimado" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
+                      <UndoIcon sx={{ fontSize: 14 }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
+            ) : (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 40 }}>
+                <Typography variant="body2" sx={{ fontSize: 15 }}>{formatEuro(card.alquilerEstimado)}/mes</Typography>
+                {alquilerCambiado && onRevertField && (
+                  <Tooltip title="Deshacer alquiler estimado">
+                    <IconButton size="small" onClick={handleRevertAlquiler} aria-label="Deshacer alquiler estimado" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
+                      <UndoIcon sx={{ fontSize: 14 }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {onInputChange && (
+                  <Tooltip title="Editar alquiler estimado">
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); setEditingField('alquilerMensual'); }} aria-label="Editar alquiler estimado" sx={{ p: 0.25, color: '#666', '&:hover': { color: 'primary.main' } }}>
+                      <EditIcon sx={{ fontSize: 14 }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
+            )}
+          </Box>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
+            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.5, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Rentabilidad neta</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+              <Typography variant="body2" sx={{ fontSize: 15, color: colorSemaforo }}>
+                {card.rentabilidadNetaPct.toFixed(2)} %
+              </Typography>
+              {showDeltas && <DeltaLabel delta={deltaRentabilidad} unit="%" />}
+            </Box>
+          </Box>
+          <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
+            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.5, textTransform: 'uppercase' }}>Cashflow</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+              <Typography variant="body2" sx={{ fontSize: 15, color: colorSemaforo }}>
+                {cashflowFinal !== null ? formatEuro(cashflowFinal) : '—'}
+              </Typography>
+              {showDeltas && <DeltaLabel delta={deltaCashflow} unit="€" />}
+            </Box>
+          </Box>
+          <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
+            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.5, textTransform: 'uppercase' }}>ROCE</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+              <Typography variant="body2" sx={{ fontSize: 15, color: colorSemaforo }}>
+                {roceFinal !== null ? `${roceFinal.toFixed(2)} %` : '—'}
+              </Typography>
+              {showDeltas && <DeltaLabel delta={deltaRoce} unit="%" />}
+            </Box>
+          </Box>
+        </Box>
+      </Box>
 
       {/* Información adicional - solo en mobile */}
-      <div className="card-info-extra">
-        <div>
-          <strong>Alquiler estimado:</strong> {formatEuro(card.alquilerEstimado)} / mes
-        </div>
+      <Box className="card-info-extra">
+        <Typography variant="body2">
+          <Typography component="span" variant="body2" fontWeight={600}>Alquiler estimado:</Typography>{' '}
+          {formatEuro(card.alquilerEstimado)} / mes
+        </Typography>
         {card.veredictoRazones.length > 0 && (
           <ul style={{ margin: '4px 0 0 1rem', padding: 0, fontSize: 13 }}>
             {card.veredictoRazones.map((razon, idx) => (
-              <li key={idx}>{razon}</li>
+              <li key={idx}><Typography component="span" variant="body2" sx={{ fontSize: 13 }}>{razon}</Typography></li>
             ))}
           </ul>
         )}
         {card.url && (
-          <div style={{ fontSize: 12, color: '#555', marginTop: 4 }}>
-            <strong>URL:</strong> {card.url}
-          </div>
+          <Typography variant="body2" sx={{ fontSize: 12, color: '#555', mt: 1 }}>
+            <Typography component="span" variant="body2" fontWeight={600} sx={{ fontSize: 12, color: '#555' }}>URL:</Typography>{' '}
+            {card.url}
+          </Typography>
         )}
-      </div>
-    </article>
+      </Box>
+      </CardContent>
+    </Card>
   );
 }
 

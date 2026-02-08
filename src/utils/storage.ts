@@ -6,6 +6,7 @@
 
 import type { AnalisisCard } from '../types/analisis';
 import type { RentabilidadApiResponse } from '../types/api';
+import type { FormularioRentabilidadState } from '../types/formulario';
 
 const STORAGE_KEY = 'rentabilidad-alquiler:cards';
 const STORAGE_VERSION = 1;
@@ -89,8 +90,8 @@ function persistedToCard(persisted: PersistedCard): AnalisisCard {
     habitaciones: persisted.habitaciones,
     metrosCuadrados: persisted.metrosCuadrados,
     banos: persisted.banos,
-    originalInput: persisted.originalInput as unknown,
-    currentInput: persisted.currentInput as unknown,
+    originalInput: persisted.originalInput as FormularioRentabilidadState,
+    currentInput: persisted.currentInput as FormularioRentabilidadState,
     isFavorite: persisted.isFavorite ?? false,
     notes: persisted.notes ?? '',
   };
