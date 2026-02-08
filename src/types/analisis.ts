@@ -19,5 +19,7 @@ export interface AnalisisCard {
   originalInput: FormularioRentabilidadState;
   /** Input actual editable por el usuario */
   currentInput: FormularioRentabilidadState;
+  /** Si el usuario la ha marcado como favorita (mini portfolio) */
+  isFavorite: boolean;
 }
 

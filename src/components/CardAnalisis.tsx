@@ -29,13 +29,14 @@ interface CardAnalisisProps {
   isActive?: boolean;
   onClick?: () => void;
   onDelete?: () => void;
+  onToggleFavorite?: () => void;
   mostrarDetalle?: boolean;
   resultado?: RentabilidadApiResponse;
   onInputChange?: (campo: keyof FormularioRentabilidadState, valor: number | string | boolean) => void;
   onRevert?: () => void;
 }
 
-export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostrarDetalle = false, resultado, onInputChange, onRevert }: CardAnalisisProps) {
+export function CardAnalisis({ card, isActive = false, onClick, onDelete, onToggleFavorite, mostrarDetalle = false, resultado, onInputChange, onRevert }: CardAnalisisProps) {
   // Color único del semáforo basado en el veredicto de la tarjeta
   const colorSemaforo = estadoToColor[card.estado];
   
@@ -242,6 +243,31 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
       <div className="card-info-horizontal card-info-desktop" style={{ position: 'relative' }}>
         {/* Botones de acción posicionados absolutamente */}
         <div style={{ position: 'absolute', top: 0, right: -8, display: 'flex', gap: 4, zIndex: 2 }}>
+          {onToggleFavorite && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+              aria-label={card.isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+              title={card.isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: card.isFavorite ? '#f9a825' : '#999',
+                fontSize: 18,
+                lineHeight: 1,
+                transition: 'opacity 0.2s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+            >
+              {card.isFavorite ? '★' : '☆'}
+            </button>
+          )}
           {onInputChange && (
             <>
               <button
@@ -407,6 +433,29 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, mostra
       <div className="card-info-mobile" style={{ position: 'relative' }}>
         {/* Botones de acción */}
         <div style={{ position: 'absolute', top: -4, right: -4, display: 'flex', gap: 4, zIndex: 10 }}>
+          {onToggleFavorite && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+              aria-label={card.isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+              title={card.isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '6px 10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: card.isFavorite ? '#f9a825' : '#999',
+                fontSize: 22,
+                lineHeight: 1,
+                transition: 'opacity 0.2s',
+              }}
+            >
+              {card.isFavorite ? '★' : '☆'}
+            </button>
+          )}
           {onInputChange && tieneCambios && (
             <button
               className="card-revert-btn-mobile"

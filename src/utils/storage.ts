@@ -38,6 +38,7 @@ interface PersistedCard {
   currentInput: unknown; // FormularioRentabilidadState
   motorOutput: RentabilidadApiResponse;
   createdAt?: string; // Opcional para compatibilidad con versiones anteriores
+  isFavorite?: boolean; // Opcional para compatibilidad con versiones anteriores
 }
 
 /**
@@ -65,6 +66,7 @@ function cardToPersisted(
     currentInput: card.currentInput,
     motorOutput,
     createdAt: createdAt || new Date().toISOString(),
+    isFavorite: card.isFavorite,
   };
 }
 
@@ -87,6 +89,7 @@ function persistedToCard(persisted: PersistedCard): AnalisisCard {
     banos: persisted.banos,
     originalInput: persisted.originalInput as unknown,
     currentInput: persisted.currentInput as unknown,
+    isFavorite: persisted.isFavorite ?? false,
   };
 }
 
