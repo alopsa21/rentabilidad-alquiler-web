@@ -13,6 +13,7 @@ import type { AnalisisCard } from './types/analisis'
 import type { VeredictoHumano } from './utils/veredicto'
 import { mapResultadosToVerdict } from './utils/veredicto'
 import { loadCards, saveCards, clearCards } from './utils/storage'
+import { STORAGE_KEY_HAS_ANALYZED } from './constants/storage'
 import { getFavoriteCards, calculatePortfolioStats, calculatePortfolioScore, getScoreColor } from './utils/portfolioStats'
 import { generateShareableUrl, copyToClipboard, getStateFromUrl, deserializeCards, type ShareableCardData } from './utils/share'
 import { cardsToCSV, downloadCSV } from './utils/csv'
@@ -52,6 +53,8 @@ function App() {
   const [notificacion, setNotificacion] = useState<{ mensaje: string; tipo: 'success' | 'error' } | null>(null)
   const [vistaFiltro, setVistaFiltro] = useState<'all' | 'favorites'>('all')
   const [modalNotasCardId, setModalNotasCardId] = useState<string | null>(null)
+  const [modalLimpiarPanelOpen, setModalLimpiarPanelOpen] = useState(false)
+  const [hasUserAnalyzedBefore, setHasUserAnalyzedBefore] = useState(false)
 
   // Función helper para mostrar notificaciones
   const mostrarNotificacion = (mensaje: string, tipo: 'success' | 'error' = 'success') => {
@@ -63,6 +66,8 @@ function App() {
 
   // Hidratación inicial: cargar tarjetas desde localStorage o URL al montar
   useEffect(() => {
+    let hasAnalyzed = false
+
     // Primero intentar cargar desde URL (tiene prioridad)
     const stateFromUrl = getStateFromUrl()
     if (stateFromUrl) {
@@ -79,15 +84,16 @@ function App() {
         setAnalisis(cards)
         setResultadosPorTarjeta(resultados)
         setCreatedAtPorTarjeta({})
-        
-        // Limpiar URL después de cargar
+        if (cards.length > 0) {
+          hasAnalyzed = true
+          try { localStorage.setItem(STORAGE_KEY_HAS_ANALYZED, '1') } catch { /* ignore */ }
+        }
         window.history.replaceState({}, '', window.location.pathname)
-        
         setIsHydrated(true)
+        setHasUserAnalyzedBefore(hasAnalyzed)
         return
       } catch (error) {
         console.error('Error cargando tarjetas desde URL:', error)
-        // Continuar con localStorage si falla
       }
     }
 
@@ -109,8 +115,15 @@ function App() {
       setAnalisis(cards)
       setResultadosPorTarjeta(resultados)
       setCreatedAtPorTarjeta(createdAt)
+      hasAnalyzed = true
+      try { localStorage.setItem(STORAGE_KEY_HAS_ANALYZED, '1') } catch { /* ignore */ }
+    } else {
+      try {
+        hasAnalyzed = localStorage.getItem(STORAGE_KEY_HAS_ANALYZED) === '1' || localStorage.getItem(STORAGE_KEY_HAS_ANALYZED) === 'true'
+      } catch { /* ignore */ }
     }
     setIsHydrated(true)
+    setHasUserAnalyzedBefore(hasAnalyzed)
   }, [])
 
   // Sincronización automática: guardar en localStorage cuando cambien las tarjetas o resultados
@@ -187,6 +200,8 @@ function App() {
       setAnalisis((prev) => [nuevaTarjeta, ...prev])
       setResultadosPorTarjeta((prev) => ({ ...prev, [nuevaTarjeta.id]: data }))
       setCreatedAtPorTarjeta((prev) => ({ ...prev, [nuevaTarjeta.id]: ahora }))
+      setHasUserAnalyzedBefore(true)
+      try { localStorage.setItem(STORAGE_KEY_HAS_ANALYZED, '1') } catch { /* ignore */ }
       // No establecer tarjetaActivaId ni expandir automáticamente
       // La tarjeta aparecerá sin resaltar hasta que el usuario haga clic
     } catch (err) {
@@ -466,28 +481,32 @@ function App() {
   }
 
   /**
-   * Limpia todas las tarjetas y el localStorage (Nuevo análisis).
+   * Limpia todas las tarjetas y el localStorage (Limpiar panel).
    */
+  const handleConfirmarLimpiarPanel = () => {
+    setAnalisis([])
+    setResultadosPorTarjeta({})
+    setCreatedAtPorTarjeta({})
+    setResultado(null)
+    setVeredictoGlobal(null)
+    setTarjetaActivaId(null)
+    setModalAbierto(false)
+    setTarjetasExpandidas(new Set())
+    clearCards()
+    setResetUrlTrigger((prev) => prev + 1)
+    setModalLimpiarPanelOpen(false)
+  }
+
   const handleNuevoAnalisis = () => {
-    if (window.confirm('¿Quieres borrar todos los análisis actuales?')) {
-      setAnalisis([])
-      setResultadosPorTarjeta({})
-      setCreatedAtPorTarjeta({})
-      setResultado(null)
-      setVeredictoGlobal(null)
-      setTarjetaActivaId(null)
-      setModalAbierto(false)
-      setTarjetasExpandidas(new Set())
-      clearCards()
-      // Resetear URL input
-      setResetUrlTrigger((prev) => prev + 1)
-    }
+    setModalLimpiarPanelOpen(true)
   }
 
   /**
    * Limpia todas las tarjetas y el localStorage (alias para mantener compatibilidad).
    */
-  const handleLimpiarTodo = handleNuevoAnalisis
+  const handleLimpiarTodo = () => {
+    setModalLimpiarPanelOpen(true)
+  }
 
   /**
    * Revierte los cambios de una tarjeta restaurando originalInput.
@@ -571,7 +590,7 @@ function App() {
           {notificacion.mensaje}
         </div>
       )}
-      {analisis.length === 0 ? (
+      {analisis.length === 0 && !hasUserAnalyzedBefore ? (
         <>
           <HeroSearch onAnalizar={handleAnalizar} loading={loading} />
           <main className="app-main">
@@ -591,7 +610,6 @@ function App() {
             {error}
           </p>
         )}
-        {analisis.length > 0 && (
           <div className="app-layout-desktop layout-horizontal">
             {/* Tabs Todas / Mi Portfolio */}
             <div style={{ display: 'flex', gap: 0, padding: '8px 16px 0', borderBottom: '1px solid #e0e0e0', marginBottom: 8 }}>
@@ -770,25 +788,30 @@ function App() {
             <div style={{ padding: '16px', backgroundColor: '#fff', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
               <button
                 type="button"
+                disabled={analisis.length === 0}
                 onClick={handleShareAll}
                 style={{
                   padding: '6px 12px',
                   fontSize: 13,
-                  backgroundColor: '#4caf50',
-                  border: '1px solid #4caf50',
+                  backgroundColor: analisis.length === 0 ? '#ccc' : '#4caf50',
+                  border: `1px solid ${analisis.length === 0 ? '#ccc' : '#4caf50'}`,
                   borderRadius: 4,
-                  cursor: 'pointer',
+                  cursor: analisis.length === 0 ? 'not-allowed' : 'pointer',
                   color: '#fff',
                   transition: 'all 0.2s',
                   fontWeight: 500,
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#45a049';
-                  e.currentTarget.style.borderColor = '#45a049';
+                  if (analisis.length > 0) {
+                    e.currentTarget.style.backgroundColor = '#45a049';
+                    e.currentTarget.style.borderColor = '#45a049';
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#4caf50';
-                  e.currentTarget.style.borderColor = '#4caf50';
+                  if (analisis.length > 0) {
+                    e.currentTarget.style.backgroundColor = '#4caf50';
+                    e.currentTarget.style.borderColor = '#4caf50';
+                  }
                 }}
                 title="Compartir todas las tarjetas (copiar link)"
               >
@@ -796,25 +819,30 @@ function App() {
               </button>
               <button
                 type="button"
+                disabled={analisis.length === 0}
                 onClick={handleExportarCSV}
                 style={{
                   padding: '6px 12px',
                   fontSize: 13,
-                  backgroundColor: '#1976d2',
-                  border: '1px solid #1976d2',
+                  backgroundColor: analisis.length === 0 ? '#ccc' : '#1976d2',
+                  border: `1px solid ${analisis.length === 0 ? '#ccc' : '#1976d2'}`,
                   borderRadius: 4,
-                  cursor: 'pointer',
+                  cursor: analisis.length === 0 ? 'not-allowed' : 'pointer',
                   color: '#fff',
                   transition: 'all 0.2s',
                   fontWeight: 500,
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#1565c0';
-                  e.currentTarget.style.borderColor = '#1565c0';
+                  if (analisis.length > 0) {
+                    e.currentTarget.style.backgroundColor = '#1565c0';
+                    e.currentTarget.style.borderColor = '#1565c0';
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#1976d2';
-                  e.currentTarget.style.borderColor = '#1976d2';
+                  if (analisis.length > 0) {
+                    e.currentTarget.style.backgroundColor = '#1976d2';
+                    e.currentTarget.style.borderColor = '#1976d2';
+                  }
                 }}
                 title="Exportar todas las tarjetas a CSV"
               >
@@ -841,13 +869,12 @@ function App() {
                   e.currentTarget.style.backgroundColor = '#fff';
                   e.currentTarget.style.borderColor = '#ccc';
                 }}
-                title="Empezar un nuevo análisis (borrar todas las tarjetas)"
+                title="Borrar todas las tarjetas y limpiar el panel"
               >
-                Nuevo análisis
+                Limpiar panel
               </button>
             </div>
           </div>
-        )}
         
         {/* Mobile: mostrar modal cuando está abierto */}
         {tarjetaActiva && resultadosPorTarjeta[tarjetaActiva.id] && (
@@ -857,6 +884,83 @@ function App() {
             isOpen={modalAbierto}
             onClose={() => setModalAbierto(false)}
           />
+        )}
+
+        {/* Modal confirmar limpiar panel */}
+        {modalLimpiarPanelOpen && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modal-limpiar-titulo"
+            onClick={() => setModalLimpiarPanelOpen(false)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 1000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 16,
+              boxSizing: 'border-box',
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: '#fff',
+                width: '100%',
+                maxWidth: 400,
+                borderRadius: 12,
+                padding: 24,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+              }}
+            >
+              <h2 id="modal-limpiar-titulo" style={{ margin: '0 0 12px', fontSize: 18, fontWeight: 600, color: '#1a1a1a' }}>
+                Limpiar panel
+              </h2>
+              <p style={{ margin: '0 0 24px', fontSize: 15, color: '#555', lineHeight: 1.5 }}>
+                ¿Quieres borrar todos los análisis actuales?
+              </p>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setModalLimpiarPanelOpen(false)}
+                  style={{
+                    padding: '10px 18px',
+                    fontSize: 14,
+                    border: '1px solid #ccc',
+                    borderRadius: 8,
+                    background: '#fff',
+                    cursor: 'pointer',
+                    color: '#666',
+                    fontWeight: 500,
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmarLimpiarPanel}
+                  style={{
+                    padding: '10px 18px',
+                    fontSize: 14,
+                    border: 'none',
+                    borderRadius: 8,
+                    background: '#c62828',
+                    cursor: 'pointer',
+                    color: '#fff',
+                    fontWeight: 500,
+                  }}
+                >
+                  Limpiar panel
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Modal notas por tarjeta */}

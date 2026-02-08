@@ -248,8 +248,8 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
-              aria-label={card.isFavorite ? 'Quitar de mi Portfolio' : 'Añadir a mi Portfolio'}
-              title={card.isFavorite ? 'Quitar de mi Portfolio' : 'Añadir a mi Portfolio'}
+              aria-label={card.isFavorite ? 'Quitar de Mi Portfolio' : 'Añadir a Mi Portfolio'}
+              title={card.isFavorite ? 'Quitar de Mi Portfolio' : 'Añadir a Mi Portfolio'}
               style={{
                 background: 'none',
                 border: 'none',
@@ -463,8 +463,8 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
-              aria-label={card.isFavorite ? 'Quitar de mi Portfolio' : 'Añadir a mi Portfolio'}
-              title={card.isFavorite ? 'Quitar de mi Portfolio' : 'Añadir a mi Portfolio'}
+              aria-label={card.isFavorite ? 'Quitar de Mi Portfolio' : 'Añadir a Mi Portfolio'}
+              title={card.isFavorite ? 'Quitar de Mi Portfolio' : 'Añadir a Mi Portfolio'}
               style={{
                 background: 'none',
                 border: 'none',

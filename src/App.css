@@ -8,16 +8,14 @@
 }
 
 .app {
-  min-height: 100vh;
   max-width: 100%;
   padding: 0;
   width: 100%;
   box-sizing: border-box;
   overflow-x: visible;
-}
-
-.app {
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 .app-main {
