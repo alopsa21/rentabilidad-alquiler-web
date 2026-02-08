@@ -47,6 +47,7 @@ function App() {
   const [createdAtPorTarjeta, setCreatedAtPorTarjeta] = useState<Record<string, string>>({})
   const [resetUrlTrigger, setResetUrlTrigger] = useState(0)
   const [notificacion, setNotificacion] = useState<{ mensaje: string; tipo: 'success' | 'error' } | null>(null)
+  const [vistaFiltro, setVistaFiltro] = useState<'all' | 'favorites'>('all')
 
   // Función helper para mostrar notificaciones
   const mostrarNotificacion = (mensaje: string, tipo: 'success' | 'error' = 'success') => {
@@ -67,7 +68,7 @@ function App() {
         const resultados: Record<string, RentabilidadApiResponse> = {}
 
         sharedCards.forEach(({ card, motorOutput }) => {
-          cards.push(card)
+          cards.push({ ...card, isFavorite: card.isFavorite ?? false })
           resultados[card.id] = motorOutput
         })
 
@@ -94,7 +95,7 @@ function App() {
       const createdAt: Record<string, string> = {}
 
       loaded.forEach(({ card, motorOutput, createdAt: cardCreatedAt }) => {
-        cards.push(card)
+        cards.push({ ...card, isFavorite: card.isFavorite ?? false })
         resultados[card.id] = motorOutput
         if (cardCreatedAt) {
           createdAt[card.id] = cardCreatedAt
@@ -174,6 +175,7 @@ function App() {
         banos: banosAleatorios,
         originalInput: { ...payload },
         currentInput: { ...payload },
+        isFavorite: false,
       }
 
       const ahora = new Date().toISOString()
@@ -191,6 +193,12 @@ function App() {
 
   const tarjetaActiva = analisis.find((c) => c.id === tarjetaActivaId)
 
+  const handleToggleFavorite = (id: string) => {
+    setAnalisis((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, isFavorite: !c.isFavorite } : c))
+    )
+  }
+
   const handleOrdenar = (campo: string) => {
     setOrdenarPor((prev) => {
       if (prev.campo === campo) {
@@ -202,8 +210,12 @@ function App() {
     })
   }
 
+  // Filtrar por vista (Todas / Favoritos)
+  const analisisParaLista =
+    vistaFiltro === 'favorites' ? analisis.filter((c) => c.isFavorite) : analisis
+
   // Ordenar tarjetas según el criterio seleccionado
-  const analisisOrdenados = [...analisis].sort((a, b) => {
+  const analisisOrdenados = [...analisisParaLista].sort((a, b) => {
     if (!ordenarPor.campo) return 0
 
     let valorA: number | string
@@ -420,7 +432,8 @@ function App() {
    */
   const handleExportarCSV = () => {
     try {
-      const csvContent = cardsToCSV(analisis, resultadosPorTarjeta)
+      // Exportar lo que está visible según el filtro (Todas o Favoritos)
+      const csvContent = cardsToCSV(analisisParaLista, resultadosPorTarjeta)
       downloadCSV(csvContent)
       mostrarNotificacion('CSV exportado correctamente', 'success')
     } catch (error) {
@@ -544,6 +557,41 @@ function App() {
         )}
         {analisis.length > 0 && (
           <div className="app-layout-desktop layout-horizontal">
+            {/* Tabs Todas / Favoritos */}
+            <div style={{ display: 'flex', gap: 0, padding: '8px 16px 0', borderBottom: '1px solid #e0e0e0', marginBottom: 8 }}>
+              <button
+                type="button"
+                onClick={() => setVistaFiltro('all')}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  border: 'none',
+                  borderBottom: vistaFiltro === 'all' ? '2px solid #1976d2' : '2px solid transparent',
+                  background: 'none',
+                  cursor: 'pointer',
+                  color: vistaFiltro === 'all' ? '#1976d2' : '#666',
+                }}
+              >
+                Todas
+              </button>
+              <button
+                type="button"
+                onClick={() => setVistaFiltro('favorites')}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  border: 'none',
+                  borderBottom: vistaFiltro === 'favorites' ? '2px solid #1976d2' : '2px solid transparent',
+                  background: 'none',
+                  cursor: 'pointer',
+                  color: vistaFiltro === 'favorites' ? '#1976d2' : '#666',
+                }}
+              >
+                Favoritos
+              </button>
+            </div>
             {/* Cabecera sticky con títulos de columnas */}
             <div className="card-header-sticky card-header-full-width" style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: '1rem', width: '100%' }}>
               <div style={{ flex: 1, display: 'flex', alignItems: 'center' }} className="card-info-horizontal card-header-row">
@@ -619,6 +667,7 @@ function App() {
                         isActive={mostrarDetalle}
                         onClick={() => handleClickTarjeta(card.id)}
                         onDelete={() => handleEliminarTarjeta(card.id)}
+                        onToggleFavorite={() => handleToggleFavorite(card.id)}
                         mostrarDetalle={mostrarDetalle}
                         resultado={resultadoParaDetalle ?? undefined}
                         onInputChange={(campo, valor) => handleInputChange(card.id, campo, valor)}
