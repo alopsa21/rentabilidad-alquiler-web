@@ -3,6 +3,7 @@ import { HeaderRentabilidad } from './components/HeaderRentabilidad'
 import { CardAnalisis } from './components/CardAnalisis'
 import { DetalleAnalisis } from './components/DetalleAnalisis'
 import { ModalDetalle } from './components/ModalDetalle'
+import { ModalNotas } from './components/ModalNotas'
 import { calcularRentabilidadApi } from './services/api'
 import { COMUNIDADES_AUTONOMAS } from './constants/comunidades'
 import type { RentabilidadApiResponse } from './types/api'
@@ -49,6 +50,7 @@ function App() {
   const [resetUrlTrigger, setResetUrlTrigger] = useState(0)
   const [notificacion, setNotificacion] = useState<{ mensaje: string; tipo: 'success' | 'error' } | null>(null)
   const [vistaFiltro, setVistaFiltro] = useState<'all' | 'favorites'>('all')
+  const [modalNotasCardId, setModalNotasCardId] = useState<string | null>(null)
 
   // Función helper para mostrar notificaciones
   const mostrarNotificacion = (mensaje: string, tipo: 'success' | 'error' = 'success') => {
@@ -69,7 +71,7 @@ function App() {
         const resultados: Record<string, RentabilidadApiResponse> = {}
 
         sharedCards.forEach(({ card, motorOutput }) => {
-          cards.push({ ...card, isFavorite: card.isFavorite ?? false })
+          cards.push({ ...card, isFavorite: card.isFavorite ?? false, notes: card.notes ?? '' })
           resultados[card.id] = motorOutput
         })
 
@@ -96,7 +98,7 @@ function App() {
       const createdAt: Record<string, string> = {}
 
       loaded.forEach(({ card, motorOutput, createdAt: cardCreatedAt }) => {
-        cards.push({ ...card, isFavorite: card.isFavorite ?? false })
+        cards.push({ ...card, isFavorite: card.isFavorite ?? false, notes: card.notes ?? '' })
         resultados[card.id] = motorOutput
         if (cardCreatedAt) {
           createdAt[card.id] = cardCreatedAt
@@ -177,6 +179,7 @@ function App() {
         originalInput: { ...payload },
         currentInput: { ...payload },
         isFavorite: false,
+        notes: '',
       }
 
       const ahora = new Date().toISOString()
@@ -198,6 +201,17 @@ function App() {
     setAnalisis((prev) =>
       prev.map((c) => (c.id === id ? { ...c, isFavorite: !c.isFavorite } : c))
     )
+  }
+
+  const handleOpenNotes = (cardId: string) => {
+    setModalNotasCardId(cardId)
+  }
+
+  const handleSaveNotas = (cardId: string, notes: string) => {
+    setAnalisis((prev) =>
+      prev.map((c) => (c.id === cardId ? { ...c, notes } : c))
+    )
+    setModalNotasCardId(null)
   }
 
   const handleOrdenar = (campo: string) => {
@@ -718,6 +732,7 @@ function App() {
                         onClick={() => handleClickTarjeta(card.id)}
                         onDelete={() => handleEliminarTarjeta(card.id)}
                         onToggleFavorite={() => handleToggleFavorite(card.id)}
+                        onOpenNotes={() => handleOpenNotes(card.id)}
                         mostrarDetalle={mostrarDetalle}
                         resultado={resultadoParaDetalle ?? undefined}
                         onInputChange={(campo, valor) => handleInputChange(card.id, campo, valor)}
@@ -829,6 +844,19 @@ function App() {
             onClose={() => setModalAbierto(false)}
           />
         )}
+
+        {/* Modal notas por tarjeta */}
+        {modalNotasCardId && (() => {
+          const cardNotas = analisis.find((c) => c.id === modalNotasCardId)
+          return cardNotas ? (
+            <ModalNotas
+              isOpen={true}
+              onClose={() => setModalNotasCardId(null)}
+              initialNotes={cardNotas.notes ?? ''}
+              onSave={(notes) => handleSaveNotas(modalNotasCardId, notes)}
+            />
+          ) : null
+        })()}
       </main>
     </div>
   )

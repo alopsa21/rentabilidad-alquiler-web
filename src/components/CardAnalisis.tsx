@@ -30,13 +30,14 @@ interface CardAnalisisProps {
   onClick?: () => void;
   onDelete?: () => void;
   onToggleFavorite?: () => void;
+  onOpenNotes?: () => void;
   mostrarDetalle?: boolean;
   resultado?: RentabilidadApiResponse;
   onInputChange?: (campo: keyof FormularioRentabilidadState, valor: number | string | boolean) => void;
   onRevert?: () => void;
 }
 
-export function CardAnalisis({ card, isActive = false, onClick, onDelete, onToggleFavorite, mostrarDetalle = false, resultado, onInputChange, onRevert }: CardAnalisisProps) {
+export function CardAnalisis({ card, isActive = false, onClick, onDelete, onToggleFavorite, onOpenNotes, mostrarDetalle = false, resultado, onInputChange, onRevert }: CardAnalisisProps) {
   // Color único del semáforo basado en el veredicto de la tarjeta
   const colorSemaforo = estadoToColor[card.estado];
   
@@ -268,6 +269,31 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
               {card.isFavorite ? '★' : '☆'}
             </button>
           )}
+          {onOpenNotes && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onOpenNotes(); }}
+              aria-label="Notas"
+              title={card.notes ? 'Ver o editar notas' : 'Añadir notas'}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: card.notes ? '#1976d2' : '#999',
+                fontSize: 18,
+                lineHeight: 1,
+                transition: 'opacity 0.2s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.7'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+            >
+              📝
+            </button>
+          )}
           {onInputChange && (
             <>
               <button
@@ -454,6 +480,28 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
               }}
             >
               {card.isFavorite ? '★' : '☆'}
+            </button>
+          )}
+          {onOpenNotes && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onOpenNotes(); }}
+              aria-label="Notas"
+              title={card.notes ? 'Ver o editar notas' : 'Añadir notas'}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '6px 10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: card.notes ? '#1976d2' : '#999',
+                fontSize: 22,
+                lineHeight: 1,
+              }}
+            >
+              📝
             </button>
           )}
           {onInputChange && tieneCambios && (

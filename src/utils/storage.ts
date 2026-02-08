@@ -39,6 +39,7 @@ interface PersistedCard {
   motorOutput: RentabilidadApiResponse;
   createdAt?: string; // Opcional para compatibilidad con versiones anteriores
   isFavorite?: boolean; // Opcional para compatibilidad con versiones anteriores
+  notes?: string;
 }
 
 /**
@@ -67,6 +68,7 @@ function cardToPersisted(
     motorOutput,
     createdAt: createdAt || new Date().toISOString(),
     isFavorite: card.isFavorite,
+    notes: card.notes ?? '',
   };
 }
 
@@ -90,6 +92,7 @@ function persistedToCard(persisted: PersistedCard): AnalisisCard {
     originalInput: persisted.originalInput as unknown,
     currentInput: persisted.currentInput as unknown,
     isFavorite: persisted.isFavorite ?? false,
+    notes: persisted.notes ?? '',
   };
 }
 

@@ -21,5 +21,7 @@ export interface AnalisisCard {
   currentInput: FormularioRentabilidadState;
   /** Si el usuario la ha marcado como favorita (mini portfolio) */
   isFavorite: boolean;
+  /** Notas libres del usuario sobre este anuncio */
+  notes?: string;
 }
 
