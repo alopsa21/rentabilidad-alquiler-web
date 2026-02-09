@@ -784,6 +784,7 @@ function App() {
               <Button
                 variant="contained"
                 color="success"
+                size="small"
                 disabled={analisis.length === 0}
                 onClick={handleShareAll}
                 title="Compartir todas las tarjetas (copiar link)"
@@ -800,6 +801,7 @@ function App() {
               </Button>
               <Button
                 variant="contained"
+                size="small"
                 disabled={analisis.length === 0}
                 onClick={handleExportarCSV}
                 title="Exportar todas las tarjetas a CSV"
@@ -812,10 +814,11 @@ function App() {
                   '&:active': { outline: 'none', border: 'none', boxShadow: 'none' },
                 }}
               >
-                Exportar CSV
+                Exportar
               </Button>
               <Button
                 variant="outlined"
+                size="small"
                 onClick={handleNuevoAnalisis}
                 title="Borrar todas las tarjetas y limpiar el panel"
                 disableRipple
@@ -826,7 +829,7 @@ function App() {
                   '&:active': { outline: 'none', boxShadow: 'none' },
                 }}
               >
-                Limpiar panel
+                Limpiar
               </Button>
             </Box>
           </div>

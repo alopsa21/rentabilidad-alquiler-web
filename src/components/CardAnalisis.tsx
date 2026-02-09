@@ -275,9 +275,9 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
         boxShadow: isActive ? 2 : 0,
       }}
     >
-      <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+      <CardContent sx={{ p: 0.75, '&:last-child': { pb: 0.75 } }}>
       {/* Desktop: Información horizontal */}
-      <Box className="card-info-horizontal card-info-desktop" sx={{ position: 'relative', alignItems: 'center', minHeight: 40 }}>
+      <Box className="card-info-horizontal card-info-desktop" sx={{ position: 'relative', alignItems: 'center', minHeight: 32 }}>
         {/* Botones de acción posicionados absolutamente */}
         <Box sx={{ position: 'absolute', top: '50%', right: -8, transform: 'translateY(-50%)', display: 'flex', gap: 0, zIndex: 2 }}>
           {onToggleFavorite && (
@@ -321,17 +321,17 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
             </Tooltip>
           )}
         </Box>
-        <Box sx={{ flex: '1.2 1 0', minWidth: 0, minHeight: 40, display: 'flex', alignItems: 'center' }}>
+        <Box sx={{ flex: '1.2 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', pl: 0.5 }}>
           <Typography component="span" variant="body2" sx={{ fontSize: 13, lineHeight: 1.4 }}>
             {card.habitaciones} hab · {card.metrosCuadrados} m² · {card.banos} {card.banos === 1 ? 'baño' : 'baños'}
           </Typography>
         </Box>
-        <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 40, display: 'flex', alignItems: 'center' }}>
+        <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', pl: 0.5 }}>
           <Typography component="span" variant="body2" sx={{ fontSize: 14 }}>{card.ciudad || '—'}</Typography>
         </Box>
-        <Box sx={{ flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 40 }}>
+        <Box sx={{ flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32, pl: 0.5 }}>
           {(isEditing || editingField === 'precioCompra') && onInputChange ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 40 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32 }}>
               <TextField
                 type="number"
                 size="small"
@@ -345,7 +345,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
                 sx={{
                   width: '100%',
                   maxWidth: 120,
-                  '& .MuiInputBase-root': { minHeight: 36 },
+                  '& .MuiInputBase-root': { minHeight: 28 },
                   '& .MuiInputBase-input': { textAlign: 'right', fontSize: 14 },
                 }}
               />
@@ -382,9 +382,9 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
             </>
           )}
         </Box>
-        <Box sx={{ flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 40 }}>
+        <Box sx={{ flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32, pl: 0.5 }}>
           {(isEditing || editingField === 'alquilerMensual') && onInputChange ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 40 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32 }}>
               <TextField
                 type="number"
                 size="small"
@@ -398,7 +398,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
                 sx={{
                   width: '100%',
                   maxWidth: 100,
-                  '& .MuiInputBase-root': { minHeight: 36 },
+                  '& .MuiInputBase-root': { minHeight: 28 },
                   '& .MuiInputBase-input': { textAlign: 'right', fontSize: 14 },
                 }}
               />
@@ -435,19 +435,19 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
             </>
           )}
         </Box>
-        <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 40, display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+        <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'wrap', pl: 0.5 }}>
           <Typography component="span" variant="body2" sx={{ fontSize: 14, color: colorSemaforo }}>
             {card.rentabilidadNetaPct.toFixed(2)} %
           </Typography>
           {showDeltas && <DeltaLabel delta={deltaRentabilidad} unit="%" />}
         </Box>
-        <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 40, display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+        <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'wrap', pl: 0.5 }}>
           <Typography component="span" variant="body2" sx={{ fontSize: 14, color: colorSemaforo }}>
             {cashflowFinal !== null ? formatEuro(cashflowFinal) : '—'}
           </Typography>
           {showDeltas && <DeltaLabel delta={deltaCashflow} unit="€" />}
         </Box>
-        <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 40, display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+        <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'wrap', pl: 0.5 }}>
           <Typography component="span" variant="body2" sx={{ fontSize: 14, color: colorSemaforo }}>
             {roceFinal !== null ? `${roceFinal.toFixed(2)} %` : '—'}
           </Typography>
@@ -488,23 +488,23 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
             </Tooltip>
           )}
         </Box>
-        <Box sx={{ mb: 1.5, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
-            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.5, textTransform: 'uppercase' }}>Inmueble</Typography>
+        <Box sx={{ mb: 0.75, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ flex: '1 1 0', minWidth: 0, pl: 0.5 }}>
+            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.125, textTransform: 'uppercase' }}>Inmueble</Typography>
             <Typography variant="body2" sx={{ fontSize: 14, lineHeight: 1.4 }}>
               {card.habitaciones} hab · {card.metrosCuadrados} m² · {card.banos} {card.banos === 1 ? 'baño' : 'baños'}
             </Typography>
           </Box>
           <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
-            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.5, textTransform: 'uppercase' }}>Ciudad</Typography>
+            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.125, textTransform: 'uppercase' }}>Ciudad</Typography>
             <Typography variant="body2" sx={{ fontSize: 15, fontWeight: 500 }}>{card.ciudad || '—'}</Typography>
           </Box>
         </Box>
-        <Box sx={{ mb: 1.5, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <Box sx={{ mb: 0.75, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
           <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
-            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.5, textTransform: 'uppercase' }}>Precio compra</Typography>
+            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.125, textTransform: 'uppercase' }}>Precio compra</Typography>
             {(isEditing || editingField === 'precioCompra') && onInputChange ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 40 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32 }}>
                 <TextField
                   type="number"
                   size="small"
@@ -526,7 +526,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
                 )}
               </Box>
             ) : (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 40 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32 }}>
                 <Typography variant="body2" sx={{ fontSize: 15 }}>{formatEuro(card.precioCompra)}</Typography>
                 {precioCambiado && onRevertField && (
                   <Tooltip title="Deshacer precio compra">
@@ -546,9 +546,9 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
             )}
           </Box>
           <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
-            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.5, textTransform: 'uppercase' }}>Alquiler estimado</Typography>
+            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.125, textTransform: 'uppercase' }}>Alquiler estimado</Typography>
             {(isEditing || editingField === 'alquilerMensual') && onInputChange ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 40 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32 }}>
                 <TextField
                   type="number"
                   size="small"
@@ -570,7 +570,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
                 )}
               </Box>
             ) : (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 40 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32 }}>
                 <Typography variant="body2" sx={{ fontSize: 15 }}>{formatEuro(card.alquilerEstimado)}/mes</Typography>
                 {alquilerCambiado && onRevertField && (
                   <Tooltip title="Deshacer alquiler estimado">
@@ -601,7 +601,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
             </Box>
           </Box>
           <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
-            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.5, textTransform: 'uppercase' }}>Cashflow</Typography>
+            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.125, textTransform: 'uppercase' }}>Cashflow</Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
               <Typography variant="body2" sx={{ fontSize: 15, color: colorSemaforo }}>
                 {cashflowFinal !== null ? formatEuro(cashflowFinal) : '—'}
@@ -610,7 +610,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
             </Box>
           </Box>
           <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
-            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.5, textTransform: 'uppercase' }}>ROCE</Typography>
+            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.125, textTransform: 'uppercase' }}>ROCE</Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
               <Typography variant="body2" sx={{ fontSize: 15, color: colorSemaforo }}>
                 {roceFinal !== null ? `${roceFinal.toFixed(2)} %` : '—'}
