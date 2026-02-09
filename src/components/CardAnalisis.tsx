@@ -251,7 +251,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
     <Card
       ref={cardRef}
       data-card-id={card.id}
-      className={`card-analisis${isActive ? ' is-active' : ''}`}
+      className={`card-analisis estado-${card.estado}${isActive ? ' is-active' : ''}`}
       onMouseEnter={() => setIsCardHovered(true)}
       onMouseLeave={() => setIsCardHovered(false)}
       onClick={() => {
@@ -590,7 +590,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
             )}
           </Box>
         </Box>
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <Box className="card-metrics-values" sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
           <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
             <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.5, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Rentabilidad neta</Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>

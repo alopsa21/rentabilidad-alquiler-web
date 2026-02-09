@@ -521,6 +521,28 @@
     color: #9ca3af;
   }
 
+  /* Móvil: etiquetas y texto gris visibles en modo oscuro */
+  .card-analisis .card-info-mobile .MuiTypography-caption {
+    color: #9ca3af !important;
+  }
+
+  .card-analisis .card-info-mobile .MuiTypography-body2 {
+    color: #e4e4e4;
+  }
+
+  /* Móvil: colores del semáforo (rentabilidad, cashflow, ROCE) visibles en modo oscuro */
+  .card-analisis.estado-verde .card-info-mobile .card-metrics-values .MuiTypography-body2 {
+    color: #66bb6a !important;
+  }
+
+  .card-analisis.estado-amarillo .card-info-mobile .card-metrics-values .MuiTypography-body2 {
+    color: #ffb74d !important;
+  }
+
+  .card-analisis.estado-rojo .card-info-mobile .card-metrics-values .MuiTypography-body2 {
+    color: #ef5350 !important;
+  }
+
   .card-delete-btn,
   .card-delete-btn-mobile {
     color: #f87171 !important;
