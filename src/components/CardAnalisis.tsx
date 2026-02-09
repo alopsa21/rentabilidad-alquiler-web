@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, memo } from 'react';
+import { inputsAreEqual } from '../utils/compareInputs';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import IconButton from '@mui/material/IconButton';
@@ -61,7 +62,7 @@ function DeltaLabel({ delta, unit }: { delta: number; unit: '%' | '€' }) {
   );
 }
 
-export function CardAnalisis({ card, isActive = false, onClick, onDelete, onToggleFavorite, onOpenNotes, resultado, resultadoOriginal, onInputChange, onRevertField }: CardAnalisisProps) {
+function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onToggleFavorite, onOpenNotes, resultado, resultadoOriginal, onInputChange, onRevertField }: CardAnalisisProps) {
   // Color único del semáforo basado en el veredicto de la tarjeta
   const colorSemaforo = estadoToColor[card.estado];
   
@@ -94,24 +95,29 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
     setAlquilerMensual(card.currentInput.alquilerMensual.toString());
   }, [card.currentInput.precioCompra, card.currentInput.alquilerMensual]);
 
-  // Verificar si hay cambios pendientes (global y por campo)
-  const tieneCambios = JSON.stringify(card.currentInput) !== JSON.stringify(card.originalInput);
+  // Verificar si hay cambios pendientes (global y por campo) - comparación eficiente sin JSON.stringify
+  const tieneCambios = useMemo(
+    () => !inputsAreEqual(card.currentInput, card.originalInput),
+    [card.currentInput, card.originalInput]
+  );
   const precioCambiado = card.currentInput.precioCompra !== card.originalInput.precioCompra;
   const alquilerCambiado = card.currentInput.alquilerMensual !== card.originalInput.alquilerMensual;
 
-  // Deltas respecto al resultado original (solo cuando hay cambios y tenemos ambos resultados)
-  const showDeltas = tieneCambios && resultado && resultadoOriginal;
-  const deltaRentabilidad = showDeltas
-    ? normalizePct(Number(resultado.rentabilidadNeta)) - normalizePct(Number(resultadoOriginal.rentabilidadNeta))
-    : 0;
-  const deltaCashflow = showDeltas
-    ? Number(resultado.cashflowFinal) - Number(resultadoOriginal.cashflowFinal)
-    : 0;
-  const roceCur = showDeltas ? normalizePct(Number(resultado.roceFinal)) : 0;
-  const roceOrig = showDeltas ? normalizePct(Number(resultadoOriginal.roceFinal)) : 0;
-  const deltaRoce = showDeltas ? roceCur - roceOrig : 0;
+  // Deltas respecto al resultado original (solo cuando hay cambios y tenemos ambos resultados) - memoizado
+  const { showDeltas, deltaRentabilidad, deltaCashflow, deltaRoce } = useMemo(() => {
+    const showDeltas = tieneCambios && resultado && resultadoOriginal;
+    if (!showDeltas) {
+      return { showDeltas: false, deltaRentabilidad: 0, deltaCashflow: 0, deltaRoce: 0 };
+    }
+    const deltaRentabilidad = normalizePct(Number(resultado.rentabilidadNeta)) - normalizePct(Number(resultadoOriginal.rentabilidadNeta));
+    const deltaCashflow = Number(resultado.cashflowFinal) - Number(resultadoOriginal.cashflowFinal);
+    const roceCur = normalizePct(Number(resultado.roceFinal));
+    const roceOrig = normalizePct(Number(resultadoOriginal.roceFinal));
+    const deltaRoce = roceCur - roceOrig;
+    return { showDeltas: true, deltaRentabilidad, deltaCashflow, deltaRoce };
+  }, [tieneCambios, resultado, resultadoOriginal]);
   
-  // Handlers con debounce
+  // Handlers con debounce - AUMENTADO a 1000ms para reducir llamadas a la API
   const handlePrecioChange = (valor: string) => {
     setPrecioCompra(valor);
     const numValor = parseFloat(valor);
@@ -119,7 +125,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
       if (precioTimeoutRef.current) clearTimeout(precioTimeoutRef.current);
       precioTimeoutRef.current = setTimeout(() => {
         onInputChange?.('precioCompra', numValor);
-      }, 300);
+      }, 1000); // Aumentado de 300ms a 1000ms
     }
   };
   
@@ -130,7 +136,7 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
       if (alquilerTimeoutRef.current) clearTimeout(alquilerTimeoutRef.current);
       alquilerTimeoutRef.current = setTimeout(() => {
         onInputChange?.('alquilerMensual', numValor);
-      }, 300);
+      }, 1000); // Aumentado de 300ms a 1000ms
     }
   };
   
@@ -646,3 +652,5 @@ export function CardAnalisis({ card, isActive = false, onClick, onDelete, onTogg
   );
 }
 
+// Memoizar el componente para evitar re-renders innecesarios
+export const CardAnalisis = memo(CardAnalisisComponent);

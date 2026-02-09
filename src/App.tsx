@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react'
 import { HeroSearch } from './components/HeroSearch'
 import { CompactSearchHeader } from './components/CompactSearchHeader'
 import { CardAnalisis } from './components/CardAnalisis'
-import { DetalleAnalisis } from './components/DetalleAnalisis'
+// Lazy load de componentes pesados para mejorar rendimiento inicial
+const DetalleAnalisis = lazy(() => import('./components/DetalleAnalisis').then(m => ({ default: m.DetalleAnalisis })))
 import { ModalDetalle } from './components/ModalDetalle'
 import { ModalNotas } from './components/ModalNotas'
 import { calcularRentabilidadApi } from './services/api'
@@ -16,6 +17,7 @@ import { loadCards, saveCards, clearCards } from './utils/storage'
 import { STORAGE_KEY_HAS_ANALYZED } from './constants/storage'
 import { getFavoriteCards, calculatePortfolioStats, calculatePortfolioScore, getScoreColor } from './utils/portfolioStats'
 import { generateShareableUrl, copyToClipboard, getStateFromUrl, deserializeCards, type ShareableCardData } from './utils/share'
+import { inputsAreEqual } from './utils/compareInputs'
 import { cardsToCSV, downloadCSV } from './utils/csv'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
@@ -60,6 +62,19 @@ function App() {
   const [modalNotasCardId, setModalNotasCardId] = useState<string | null>(null)
   const [modalLimpiarPanelOpen, setModalLimpiarPanelOpen] = useState(false)
   const [hasUserAnalyzedBefore, setHasUserAnalyzedBefore] = useState(false)
+
+  // OPTIMIZACIÓN CRÍTICA: usar refs para evitar recrear callbacks
+  const analisisRef = useRef(analisis)
+  const resultadosPorTarjetaRef = useRef(resultadosPorTarjeta)
+  
+  // Mantener refs actualizados
+  useEffect(() => {
+    analisisRef.current = analisis
+  }, [analisis])
+  
+  useEffect(() => {
+    resultadosPorTarjetaRef.current = resultadosPorTarjeta
+  }, [resultadosPorTarjeta])
 
   // Función helper para mostrar notificaciones
   const mostrarNotificacion = (mensaje: string, tipo: 'success' | 'error' = 'success') => {
@@ -136,7 +151,8 @@ function App() {
     setHasUserAnalyzedBefore(hasAnalyzed)
   }, [])
 
-  // Sincronización automática: guardar en localStorage cuando cambien las tarjetas o resultados
+  // Sincronización automática con DEBOUNCE: guardar en localStorage cuando cambien las tarjetas o resultados
+  // OPTIMIZACIÓN CRÍTICA: debounce para evitar escrituras constantes que bloquean el hilo principal
   useEffect(() => {
     // Solo sincronizar después de la hidratación inicial para evitar guardar datos vacíos
     if (!isHydrated || analisis.length === 0) {
@@ -145,9 +161,16 @@ function App() {
 
     // Guardar solo si hay tarjetas y resultados correspondientes
     const todasTienenResultados = analisis.every((card) => resultadosPorTarjeta[card.id])
-    if (todasTienenResultados) {
-      saveCards(analisis, resultadosPorTarjeta, createdAtPorTarjeta)
+    if (!todasTienenResultados) {
+      return
     }
+
+    // Debounce de 500ms para evitar escrituras constantes en localStorage (bloqueante)
+    const timeoutId = setTimeout(() => {
+      saveCards(analisis, resultadosPorTarjeta, createdAtPorTarjeta)
+    }, 500)
+
+    return () => clearTimeout(timeoutId)
   }, [analisis, resultadosPorTarjeta, createdAtPorTarjeta, isHydrated])
 
   const handleAnalizar = async (_url: string) => {
@@ -223,15 +246,15 @@ function App() {
 
   const tarjetaActiva = analisis.find((c) => c.id === tarjetaActivaId)
 
-  const handleToggleFavorite = (id: string) => {
+  const handleToggleFavorite = useCallback((id: string) => {
     setAnalisis((prev) =>
       prev.map((c) => (c.id === id ? { ...c, isFavorite: !c.isFavorite } : c))
     )
-  }
+  }, [])
 
-  const handleOpenNotes = (cardId: string) => {
+  const handleOpenNotes = useCallback((cardId: string) => {
     setModalNotasCardId(cardId)
-  }
+  }, [])
 
   const handleSaveNotas = (cardId: string, notes: string) => {
     setAnalisis((prev) =>
@@ -251,19 +274,31 @@ function App() {
     })
   }
 
-  // Filtrar por vista (Todas / Mi Portfolio)
-  const analisisParaLista =
-    vistaFiltro === 'favorites' ? analisis.filter((c) => c.isFavorite) : analisis
+  // Filtrar por vista (Todas / Mi Portfolio) - memoizado
+  const analisisParaLista = useMemo(
+    () => vistaFiltro === 'favorites' ? analisis.filter((c) => c.isFavorite) : analisis,
+    [analisis, vistaFiltro]
+  )
 
-  const favoriteCards = getFavoriteCards(analisis)
-  const portfolioStats = calculatePortfolioStats(favoriteCards, resultadosPorTarjeta)
-  const portfolioScore = calculatePortfolioScore(favoriteCards, resultadosPorTarjeta)
+  const favoriteCards = useMemo(() => getFavoriteCards(analisis), [analisis])
+  const portfolioStats = useMemo(
+    () => calculatePortfolioStats(favoriteCards, resultadosPorTarjeta),
+    [favoriteCards, resultadosPorTarjeta]
+  )
+  const portfolioScore = useMemo(
+    () => calculatePortfolioScore(favoriteCards, resultadosPorTarjeta),
+    [favoriteCards, resultadosPorTarjeta]
+  )
   const scoreColorKey = getScoreColor(portfolioScore)
   const scoreColorMap = { verde: '#2e7d32', amarillo: '#f9a825', rojo: '#c62828' } as const
   const scoreColor = scoreColorMap[scoreColorKey]
 
-  // Ordenar tarjetas según el criterio seleccionado
-  const analisisOrdenados = [...analisisParaLista].sort((a, b) => {
+  // Ordenar tarjetas según el criterio seleccionado - memoizado y optimizado
+  const analisisOrdenados = useMemo(() => {
+    if (!ordenarPor.campo) return analisisParaLista;
+    // Crear copia solo si realmente necesitamos ordenar
+    const copia = [...analisisParaLista];
+    return copia.sort((a, b) => {
     if (!ordenarPor.campo) return 0
 
     let valorA: number | string
@@ -312,9 +347,10 @@ function App() {
 
     const comparacion = valorA > valorB ? 1 : valorA < valorB ? -1 : 0
     return ordenarPor.direccion === 'asc' ? comparacion : -comparacion
-  })
+    });
+  }, [analisisParaLista, ordenarPor, resultadosPorTarjeta])
 
-  const handleClickTarjeta = (id: string) => {
+  const handleClickTarjeta = useCallback((id: string) => {
     const isMobile = window.innerWidth <= 768
     setTarjetaActivaId(id)
     
@@ -333,9 +369,9 @@ function App() {
         return nuevo
       })
     }
-  }
+  }, [])
 
-  const handleEliminarTarjeta = (id: string) => {
+  const handleEliminarTarjeta = useCallback((id: string) => {
     setAnalisis((prev) => {
       const nuevasTarjetas = prev.filter((c) => c.id !== id)
       
@@ -371,18 +407,19 @@ function App() {
       
       return nuevasTarjetas
     })
-  }
+  }, [tarjetaActivaId])
 
   /**
    * Maneja el cambio de un campo editable en una tarjeta.
    * Actualiza currentInput y recalcula automáticamente.
    * En el primer cambio guarda el resultado actual como "original" para mostrar deltas.
    */
-  const handleInputChange = (tarjetaId: string, campo: keyof FormularioRentabilidadState, valor: number | string | boolean) => {
-    const tarjeta = analisis.find((c) => c.id === tarjetaId);
-    const hadNoChanges = tarjeta && JSON.stringify(tarjeta.currentInput) === JSON.stringify(tarjeta.originalInput);
-    if (hadNoChanges && resultadosPorTarjeta[tarjetaId]) {
-      setResultadoOriginalPorTarjeta((prev) => ({ ...prev, [tarjetaId]: resultadosPorTarjeta[tarjetaId] }));
+  const handleInputChange = useCallback((tarjetaId: string, campo: keyof FormularioRentabilidadState, valor: number | string | boolean) => {
+    const tarjeta = analisisRef.current.find((c) => c.id === tarjetaId);
+    // Comparación eficiente sin JSON.stringify
+    const hadNoChanges = tarjeta && inputsAreEqual(tarjeta.currentInput, tarjeta.originalInput);
+    if (hadNoChanges && resultadosPorTarjetaRef.current[tarjetaId]) {
+      setResultadoOriginalPorTarjeta((prev) => ({ ...prev, [tarjetaId]: resultadosPorTarjetaRef.current[tarjetaId] }));
     }
     setAnalisis((prev) => {
       const tarjetaActualizada = prev.find((c) => c.id === tarjetaId);
@@ -393,9 +430,10 @@ function App() {
         [campo]: valor,
       };
 
-      setTimeout(() => {
+      // Usar queueMicrotask en lugar de setTimeout(0) para mejor rendimiento
+      queueMicrotask(() => {
         recalcularTarjetaConInput(tarjetaId, nuevoCurrentInput);
-      }, 0);
+      });
 
       return prev.map((c) =>
         c.id === tarjetaId
@@ -406,7 +444,7 @@ function App() {
           : c
       );
     });
-  }
+  }, []) // OPTIMIZACIÓN: sin dependencias porque usamos refs
 
   /**
    * Recalcula las métricas de una tarjeta usando un input específico.
@@ -512,7 +550,7 @@ function App() {
   /**
    * Revierte un solo campo (precio compra o alquiler) al valor original.
    */
-  const handleRevertField = (tarjetaId: string, campo: 'precioCompra' | 'alquilerMensual') => {
+  const handleRevertField = useCallback((tarjetaId: string, campo: 'precioCompra' | 'alquilerMensual') => {
     setAnalisis((prev) => {
       const tarjeta = prev.find((c) => c.id === tarjetaId);
       if (!tarjeta) return prev;
@@ -522,7 +560,7 @@ function App() {
         [campo]: tarjeta.originalInput[campo],
       };
 
-      const quedaSinCambios = JSON.stringify(nuevoCurrentInput) === JSON.stringify(tarjeta.originalInput);
+      const quedaSinCambios = inputsAreEqual(nuevoCurrentInput, tarjeta.originalInput);
       if (quedaSinCambios) {
         setResultadoOriginalPorTarjeta((p) => {
           const next = { ...p };
@@ -539,7 +577,7 @@ function App() {
           : c
       );
     });
-  }
+  }, []) // OPTIMIZACIÓN: sin dependencias, todo dentro de setState
 
   /**
    * Comparte todas las tarjetas mediante link (copia al portapapeles)
@@ -554,7 +592,7 @@ function App() {
       const shareableData: ShareableCardData[] = analisis
         .filter((card) => resultadosPorTarjeta[card.id])
         .map((card) => {
-          const hasChanges = JSON.stringify(card.currentInput) !== JSON.stringify(card.originalInput);
+          const hasChanges = !inputsAreEqual(card.currentInput, card.originalInput);
           const original = hasChanges ? resultadoOriginalPorTarjeta[card.id] : undefined;
           return {
             card,
@@ -768,11 +806,13 @@ function App() {
                     {/* Detalle debajo de la tarjeta: toggle al hacer clic */}
                     {mostrarDetalle && resultadoParaDetalle && (
                       <div className="card-detalle-expandido">
-                        <DetalleAnalisis
-                          card={card}
-                          resultado={resultadoParaDetalle}
-                          isHorizontalLayout={true}
-                        />
+                        <Suspense fallback={<div style={{ padding: '20px', textAlign: 'center' }}>Cargando...</div>}>
+                          <DetalleAnalisis
+                            card={card}
+                            resultado={resultadoParaDetalle}
+                            isHorizontalLayout={true}
+                          />
+                        </Suspense>
                       </div>
                     )}
                   </div>

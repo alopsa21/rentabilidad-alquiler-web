@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useState, memo } from 'react';
 import IconButton from '@mui/material/IconButton';
 import Chip from '@mui/material/Chip';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -182,7 +182,7 @@ function InfoIcon({ onClick }: { onClick: () => void }) {
   );
 }
 
-export function DetalleAnalisis({ card, resultado, isHorizontalLayout = false }: DetalleAnalisisProps) {
+function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false }: DetalleAnalisisProps) {
   const [definicionAbierta, setDefinicionAbierta] = useState<string | null>(null);
   const [desgloseAbierto, setDesgloseAbierto] = useState<string | null>(null);
 
@@ -421,3 +421,6 @@ export function DetalleAnalisis({ card, resultado, isHorizontalLayout = false }:
     </aside>
   );
 }
+
+// Memoizar componente pesado para evitar re-renders innecesarios
+export const DetalleAnalisis = memo(DetalleAnalisisComponent);

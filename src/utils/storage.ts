@@ -159,7 +159,21 @@ export function saveCards(
       cards: persistedCards,
     };
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    // OPTIMIZACIÓN CRÍTICA: usar requestIdleCallback para no bloquear el hilo principal
+    const saveOperation = () => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch (innerErr) {
+        console.error('Error escribiendo en localStorage:', innerErr);
+      }
+    };
+
+    // Ejecutar en tiempos muertos del navegador si está disponible
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(saveOperation, { timeout: 2000 });
+    } else {
+      setTimeout(saveOperation, 0);
+    }
   } catch (err) {
     console.error('Error al guardar tarjetas en localStorage:', err);
     // No lanzar error para no interrumpir la UX
