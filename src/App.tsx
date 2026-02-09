@@ -6,6 +6,7 @@ import { CardAnalisis } from './components/CardAnalisis'
 const DetalleAnalisis = lazy(() => import('./components/DetalleAnalisis').then(m => ({ default: m.DetalleAnalisis })))
 import { ModalDetalle } from './components/ModalDetalle'
 import { ModalNotas } from './components/ModalNotas'
+import { ModalCompartirSelectivo } from './components/ModalCompartirSelectivo'
 import { calcularRentabilidadApi } from './services/api'
 import { COMUNIDADES_AUTONOMAS } from './constants/comunidades'
 import type { RentabilidadApiResponse } from './types/api'
@@ -61,6 +62,7 @@ function App() {
   const [vistaFiltro, setVistaFiltro] = useState<'all' | 'favorites'>('all')
   const [modalNotasCardId, setModalNotasCardId] = useState<string | null>(null)
   const [modalLimpiarPanelOpen, setModalLimpiarPanelOpen] = useState(false)
+  const [modalCompartirSelectivoOpen, setModalCompartirSelectivoOpen] = useState(false)
   const [hasUserAnalyzedBefore, setHasUserAnalyzedBefore] = useState(false)
 
   // OPTIMIZACIÓN CRÍTICA: usar refs para evitar recrear callbacks
@@ -104,6 +106,14 @@ function App() {
           if (motorOutputOriginal) resultadosOriginal[card.id] = motorOutputOriginal
         })
 
+        // CRÍTICO: Limpiar localStorage antes de cargar desde URL
+        // para evitar mezclar tarjetas compartidas con tarjetas antiguas
+        try {
+          clearCards()
+        } catch (error) {
+          console.error('Error clearing localStorage:', error)
+        }
+        
         setAnalisis(cards)
         setResultadosPorTarjeta(resultados)
         setResultadoOriginalPorTarjeta(resultadosOriginal)
@@ -580,26 +590,40 @@ function App() {
   }, []) // OPTIMIZACIÓN: sin dependencias, todo dentro de setState
 
   /**
-   * Comparte todas las tarjetas mediante link (copia al portapapeles)
+   * Abre el modal para seleccionar tarjetas a compartir
    */
-  const handleShareAll = async () => {
+  const handleShareAll = () => {
     if (analisis.length === 0) {
       mostrarNotificacion('No hay tarjetas para compartir', 'error')
       return
     }
+    setModalCompartirSelectivoOpen(true)
+  }
+
+  /**
+   * Comparte las tarjetas seleccionadas mediante link (copia al portapapeles)
+   */
+  const handleShareSelected = async (cardIds: string[]) => {
+    if (cardIds.length === 0) {
+      mostrarNotificacion('Selecciona al menos una tarjeta para compartir', 'error')
+      return
+    }
 
     try {
-      const shareableData: ShareableCardData[] = analisis
-        .filter((card) => resultadosPorTarjeta[card.id])
-        .map((card) => {
-          const hasChanges = !inputsAreEqual(card.currentInput, card.originalInput);
-          const original = hasChanges ? resultadoOriginalPorTarjeta[card.id] : undefined;
+      const shareableData: ShareableCardData[] = cardIds
+        .map((cardId) => {
+          const card = analisis.find((c) => c.id === cardId)
+          if (!card || !resultadosPorTarjeta[cardId]) return null
+          
+          const hasChanges = !inputsAreEqual(card.currentInput, card.originalInput)
+          const original = hasChanges ? resultadoOriginalPorTarjeta[cardId] : undefined
           return {
             card,
-            motorOutput: resultadosPorTarjeta[card.id],
+            motorOutput: resultadosPorTarjeta[cardId],
             ...(original && { motorOutputOriginal: original }),
-          };
+          }
         })
+        .filter((item): item is ShareableCardData => item !== null)
 
       if (shareableData.length === 0) {
         mostrarNotificacion('No hay tarjetas completas para compartir', 'error')
@@ -608,7 +632,7 @@ function App() {
 
       const url = generateShareableUrl(shareableData)
       await copyToClipboard(url)
-      mostrarNotificacion('Link copiado al portapapeles', 'success')
+      mostrarNotificacion(`Link copiado al portapapeles (${shareableData.length} tarjeta${shareableData.length > 1 ? 's' : ''})`, 'success')
     } catch (error) {
       console.error('Error compartiendo link:', error)
       mostrarNotificacion('No se pudo copiar el link', 'error')
@@ -969,6 +993,15 @@ function App() {
             />
           ) : null
         })()}
+
+        {/* Modal compartir selectivo */}
+        <ModalCompartirSelectivo
+          isOpen={modalCompartirSelectivoOpen}
+          onClose={() => setModalCompartirSelectivoOpen(false)}
+          cards={analisisParaLista}
+          resultadosPorTarjeta={resultadosPorTarjeta}
+          onShare={handleShareSelected}
+        />
       </main>
         </>
       )}
