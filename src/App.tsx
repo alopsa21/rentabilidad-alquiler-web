@@ -810,7 +810,14 @@ function App() {
             </div>
             {/* Panel de tarjetas: ancho completo */}
             <section aria-label="Panel de tarjetas" className="app-panel-tarjetas app-panel-tarjetas-horizontal">
-              {analisisOrdenados.map((card) => {
+              {analisisOrdenados.length === 0 && vistaFiltro === 'all' ? (
+                <Box sx={{ py: 6, textAlign: 'center' }}>
+                  <Typography variant="body1" sx={{ fontSize: 15, color: 'text.secondary' }}>
+                    Aún no has analizado ningún piso.
+                  </Typography>
+                </Box>
+              ) : (
+                analisisOrdenados.map((card) => {
                 const mostrarDetalle = tarjetasExpandidas.has(card.id)
                 const resultadoParaDetalle = resultadosPorTarjeta[card.id] || null
                 return (
@@ -841,7 +848,8 @@ function App() {
                     )}
                   </div>
                 )
-              })}
+              })
+              )}
             </section>
             {/* Botones de acción debajo de las tarjetas */}
             <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
