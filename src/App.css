@@ -457,6 +457,49 @@
     color: #e4e4e4;
   }
 
+  /* Texto "Aún no has analizado ningún piso" visible en modo oscuro */
+  .app-panel-tarjetas .MuiTypography-body1 {
+    color: #b0b0b0 !important;
+  }
+
+  /* Hero Search - textos visibles en modo oscuro */
+  .hero-search {
+    color: #e4e4e4;
+  }
+
+  .hero-search .MuiTypography-h1 {
+    color: #e4e4e4 !important;
+  }
+
+  .hero-search .MuiTypography-body1 {
+    color: #b0b0b0 !important;
+  }
+
+  .hero-search .MuiTypography-body2 {
+    color: #888 !important;
+  }
+
+  .hero-search .MuiTextField-root .MuiOutlinedInput-root {
+    background-color: #3d3d3d !important;
+    color: #e4e4e4 !important;
+  }
+
+  .hero-search .MuiTextField-root .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline {
+    border-color: #555 !important;
+  }
+
+  .hero-search .MuiTextField-root .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+    border-color: #666 !important;
+  }
+
+  .hero-search .MuiTextField-root .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+    border-color: #1976d2 !important;
+  }
+
+  .hero-search .MuiTextField-root .MuiInputBase-input::placeholder {
+    color: #999 !important;
+  }
+
   .app-error {
     background-color: #3d2020;
     color: #f5b7b7;
@@ -543,9 +586,84 @@
     color: #ef5350 !important;
   }
 
+  /* Desktop y móvil: colores del semáforo (rentabilidad, cashflow, ROCE) visibles en modo oscuro */
+  .card-analisis.estado-verde .semaforo-value {
+    color: #66bb6a !important;
+  }
+
+  .card-analisis.estado-amarillo .semaforo-value {
+    color: #ffb74d !important;
+  }
+
+  .card-analisis.estado-rojo .semaforo-value {
+    color: #ef5350 !important;
+  }
+
   .card-delete-btn,
   .card-delete-btn-mobile {
     color: #f87171 !important;
+  }
+
+  /* Tabs Todas / Mi Portfolio */
+  .MuiButton-text {
+    color: #b0b0b0 !important;
+  }
+
+  .MuiButton-text[aria-pressed="true"],
+  .MuiButton-text:not([aria-pressed]) {
+    color: #b0b0b0 !important;
+  }
+
+  /* CompactSearchHeader */
+  .compact-search-header {
+    background-color: #2d2d2d !important;
+    border-bottom-color: #444 !important;
+  }
+
+  .compact-search-header .MuiTypography-h6 {
+    color: #e4e4e4 !important;
+  }
+
+  .compact-search-header .MuiTextField-root .MuiOutlinedInput-root {
+    background-color: #3d3d3d !important;
+  }
+
+  .compact-search-header .MuiTextField-root .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline {
+    border-color: #555 !important;
+  }
+
+  .compact-search-header .MuiTextField-root .MuiOutlinedInput-input {
+    color: #e4e4e4 !important;
+  }
+
+  .compact-search-header .MuiTextField-root .MuiOutlinedInput-input::placeholder {
+    color: #999 !important;
+  }
+
+  /* Panel de stats del portfolio */
+  [aria-label="Resumen del portfolio"] {
+    background-color: #2d2d2d !important;
+  }
+
+  [aria-label="Resumen del portfolio"] strong {
+    color: #e4e4e4 !important;
+  }
+
+  [aria-label="Resumen del portfolio"] span {
+    color: #b0b0b0 !important;
+  }
+
+  /* Modal compartir selectivo */
+  .MuiBox-root[style*="background-color: rgba(0, 0, 0, 0.5)"] + .MuiBox-root,
+  .MuiBox-root[style*="position: fixed"][style*="top: 0"] .MuiBox-root[style*="background-color: background.paper"] {
+    background-color: #2d2d2d !important;
+    color: #e4e4e4 !important;
+  }
+
+  /* Modal limpiar panel */
+  div[role="dialog"][aria-labelledby="modal-limpiar-titulo"] > div[style*="background-color: #fff"] {
+    background-color: #2d2d2d !important;
+    color: #e4e4e4 !important;
   }
 
   .card-detalle-expandido {
@@ -611,6 +729,166 @@
   .detalle-popover-btn {
     background-color: #3d3d3d !important;
     border-color: #555 !important;
+    color: #e4e4e4 !important;
+  }
+
+  /* Spinner en botones - asegurar visibilidad */
+  .MuiButton-root .MuiCircularProgress-root {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  .MuiButton-root:disabled .MuiCircularProgress-root {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  /* Tabs Todas / Mi Portfolio - texto visible cuando no está seleccionado */
+  .tabs-portfolio .tab-inactive {
+    color: #b0b0b0 !important;
+  }
+
+  .tabs-portfolio .tab-active {
+    color: #42a5f5 !important; /* Color más claro y visible para tab activo */
+  }
+
+  .tabs-portfolio {
+    border-bottom-color: #444 !important;
+  }
+
+  /* CompactSearchHeader */
+  .compact-search-header {
+    background-color: #2d2d2d !important;
+    border-bottom-color: #444 !important;
+  }
+
+  .compact-search-header .MuiTypography-h6 {
+    color: #e4e4e4 !important;
+  }
+
+  .compact-search-header .MuiTextField-root .MuiOutlinedInput-root {
+    background-color: #3d3d3d !important;
+  }
+
+  .compact-search-header .MuiTextField-root .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline {
+    border-color: #555 !important;
+  }
+
+  .compact-search-header .MuiTextField-root .MuiOutlinedInput-input {
+    color: #e4e4e4 !important;
+  }
+
+  .compact-search-header .MuiTextField-root .MuiOutlinedInput-input::placeholder {
+    color: #999 !important;
+  }
+
+  /* Panel de stats del portfolio */
+  .portfolio-stats {
+    background-color: #2d2d2d !important;
+  }
+
+  .portfolio-stats strong {
+    color: #e4e4e4 !important;
+  }
+
+  .portfolio-stats span {
+    color: #b0b0b0 !important;
+  }
+
+  .portfolio-stats .MuiTypography-caption {
+    color: #b0b0b0 !important;
+  }
+
+  /* Mantener colores específicos de iconos y números en modo oscuro */
+  /* Los iconos y números mantienen sus colores del modo claro */
+  .portfolio-stats .MuiSvgIcon-root[style*="#1976d2"],
+  .portfolio-stats .MuiSvgIcon-root[style*="#2e7d32"],
+  .portfolio-stats .MuiSvgIcon-root[style*="#f9a825"],
+  .portfolio-stats .MuiSvgIcon-root[style*="#c62828"] {
+    color: inherit !important;
+  }
+
+  .portfolio-stats .MuiTypography-body2[style*="#1976d2"],
+  .portfolio-stats .MuiTypography-body2[style*="#2e7d32"],
+  .portfolio-stats .MuiTypography-body2[style*="#f9a825"],
+  .portfolio-stats .MuiTypography-body2[style*="#c62828"] {
+    color: inherit !important;
+  }
+
+  .portfolio-stats .MuiSvgIcon-root {
+    color: #e4e4e4 !important;
+  }
+
+  /* TextField en modo oscuro - dentro de tarjetas */
+  .MuiTextField-root .MuiOutlinedInput-root {
+    background-color: #2d2d2d !important;
+  }
+
+  .MuiTextField-root .MuiOutlinedInput-input {
+    color: #e4e4e4 !important;
+  }
+
+  .MuiTextField-root .MuiOutlinedInput-notchedOutline {
+    border-color: #555 !important;
+  }
+
+  .MuiTextField-root .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+    border-color: #777 !important;
+  }
+
+  .MuiTextField-root .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+    border-color: #1976d2 !important;
+  }
+
+  /* Modal compartir selectivo */
+  .modal-compartir-content {
+    background-color: #2d2d2d !important;
+    color: #e4e4e4 !important;
+  }
+
+  /* Todos los Typography dentro del modal compartir */
+  .modal-compartir-content .MuiTypography-root {
+    color: #b0b0b0 !important;
+  }
+
+  /* Título del modal - más claro */
+  .modal-compartir-content .MuiTypography-h6 {
+    color: #e4e4e4 !important;
+  }
+
+  /* Texto con fontWeight 500 (ciudad) - más claro */
+  .modal-compartir-content .MuiTypography-body2[style*="font-weight: 500"],
+  .modal-compartir-content .MuiTypography-body2[style*="fontWeight: 500"],
+  .modal-compartir-content .MuiTypography-body2[style*="font-weight:500"],
+  .modal-compartir-content .MuiTypography-body2[style*="fontWeight:500"] {
+    color: #e4e4e4 !important;
+  }
+
+  /* Modal limpiar panel */
+  .modal-limpiar-content {
+    background-color: #2d2d2d !important;
+    color: #e4e4e4 !important;
+  }
+
+  .modal-limpiar-content .MuiTypography-root {
+    color: #e4e4e4 !important;
+  }
+
+  /* Footer */
+  .app-footer {
+    background-color: #2d2d2d !important;
+    border-top-color: #444 !important;
+  }
+
+  .app-footer a {
+    color: #90caf9 !important;
+  }
+
+  .app-footer a:hover {
+    color: #64b5f6 !important;
+  }
+
+  .app-footer .MuiTypography-root {
     color: #e4e4e4 !important;
   }
 }

@@ -43,6 +43,7 @@ interface CardAnalisisProps {
   resultadoOriginal?: RentabilidadApiResponse;
   onInputChange?: (campo: keyof FormularioRentabilidadState, valor: number | string | boolean) => void;
   onRevertField?: (campo: 'precioCompra' | 'alquilerMensual') => void;
+  isInFavoritesView?: boolean;
 }
 
 function normalizePct(raw: number): number {
@@ -62,7 +63,7 @@ function DeltaLabel({ delta, unit }: { delta: number; unit: '%' | '€' }) {
   );
 }
 
-function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onToggleFavorite, onOpenNotes, resultado, resultadoOriginal, onInputChange, onRevertField }: CardAnalisisProps) {
+function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onToggleFavorite, onOpenNotes, resultado, resultadoOriginal, onInputChange, onRevertField, isInFavoritesView = false }: CardAnalisisProps) {
   // Color único del semáforo basado en el veredicto de la tarjeta
   const colorSemaforo = estadoToColor[card.estado];
   
@@ -210,6 +211,9 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
       longPressTimer.current = null;
     }
     
+    // No permitir swipe para eliminar si estamos en la vista de favoritos
+    if (isInFavoritesView) return;
+    
     if (touchStartX.current === null || touchStartY.current === null) return;
 
     const deltaX = e.touches[0].clientX - touchStartX.current;
@@ -227,6 +231,14 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
+    }
+    
+    // No permitir eliminar si estamos en la vista de favoritos
+    if (isInFavoritesView) {
+      setSwipeOffset(0);
+      touchStartX.current = null;
+      touchStartY.current = null;
+      return;
     }
     
     if (swipeOffset < -50 && onDelete) {
@@ -314,7 +326,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
               </IconButton>
             </Tooltip>
           )}
-          {onDelete && (
+          {onDelete && !isInFavoritesView && (
             <Tooltip title="Eliminar tarjeta">
               <IconButton
                 size="small"
@@ -442,19 +454,19 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
           )}
         </Box>
         <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'wrap', pl: 0.5 }}>
-          <Typography component="span" variant="body2" sx={{ fontSize: 14, color: colorSemaforo }}>
+          <Typography component="span" variant="body2" className="semaforo-value" sx={{ fontSize: 14, color: colorSemaforo }}>
             {card.rentabilidadNetaPct.toFixed(2)} %
           </Typography>
           {showDeltas && <DeltaLabel delta={deltaRentabilidad} unit="%" />}
         </Box>
         <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'wrap', pl: 0.5 }}>
-          <Typography component="span" variant="body2" sx={{ fontSize: 14, color: colorSemaforo }}>
+          <Typography component="span" variant="body2" className="semaforo-value" sx={{ fontSize: 14, color: colorSemaforo }}>
             {cashflowFinal !== null ? formatEuro(cashflowFinal) : '—'}
           </Typography>
           {showDeltas && <DeltaLabel delta={deltaCashflow} unit="€" />}
         </Box>
         <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'wrap', pl: 0.5 }}>
-          <Typography component="span" variant="body2" sx={{ fontSize: 14, color: colorSemaforo }}>
+          <Typography component="span" variant="body2" className="semaforo-value" sx={{ fontSize: 14, color: colorSemaforo }}>
             {roceFinal !== null ? `${roceFinal.toFixed(2)} %` : '—'}
           </Typography>
           {showDeltas && <DeltaLabel delta={deltaRoce} unit="%" />}
@@ -462,9 +474,9 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
       </Box>
 
       {/* Mobile: Información vertical compacta */}
-      <Box className="card-info-mobile" sx={{ position: 'relative' }}>
-        {/* Botones de acción */}
-        <Box sx={{ position: 'absolute', top: '50%', right: -4, transform: 'translateY(-50%)', display: 'flex', gap: 0, zIndex: 10 }}>
+      <Box className="card-info-mobile" sx={{ position: 'relative', pt: 1 }}>
+        {/* Botones de acción - esquina superior derecha */}
+        <Box sx={{ position: 'absolute', top: 8, right: 20, display: 'flex', gap: 1, zIndex: 10 }}>
           {onToggleFavorite && (
             <Tooltip title={card.isFavorite ? 'Quitar de Mi Portfolio' : 'Añadir a Mi Portfolio'}>
               <IconButton
@@ -473,7 +485,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                 aria-label={card.isFavorite ? 'Quitar de Mi Portfolio' : 'Añadir a Mi Portfolio'}
                 sx={{
                   color: card.isFavorite ? '#f9a825' : '#c9a227',
-                  p: 0.75,
+                  p: 0.5,
                   '&:hover': { color: card.isFavorite ? '#ffb74d' : '#f9a825' },
                 }}
               >
@@ -487,30 +499,33 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                 size="small"
                 onClick={(e) => { e.stopPropagation(); onOpenNotes(); }}
                 aria-label="Notas"
-                sx={{ color: card.notes ? '#1976d2' : 'primary.main', p: 0.75, '&:hover': { color: '#1565c0' } }}
+                sx={{ color: card.notes ? '#1976d2' : 'primary.main', p: 0.5, '&:hover': { color: '#1565c0' } }}
               >
                 <EditNoteIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           )}
         </Box>
-        <Box sx={{ mb: 0.75, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          <Box sx={{ flex: '1 1 0', minWidth: 0, pl: 0.5 }}>
-            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.125, textTransform: 'uppercase' }}>Inmueble</Typography>
-            <Typography variant="body2" sx={{ fontSize: 14, lineHeight: 1.4 }}>
-              {card.habitaciones} hab · {card.metrosCuadrados} m² · {card.banos} {card.banos === 1 ? 'baño' : 'baños'}
-            </Typography>
-          </Box>
-          <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
-            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.125, textTransform: 'uppercase' }}>Ciudad</Typography>
-            <Typography variant="body2" sx={{ fontSize: 15, fontWeight: 500 }}>{card.ciudad || '—'}</Typography>
-          </Box>
+        
+        {/* Ciudad - primera fila, con espacio para los iconos */}
+        <Box sx={{ mb: 1.5, pr: 8 }}>
+          <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.25, textTransform: 'uppercase' }}>Ciudad</Typography>
+          <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 600 }}>{card.ciudad || '—'}</Typography>
         </Box>
-        <Box sx={{ mb: 0.75, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
-            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.125, textTransform: 'uppercase' }}>Precio compra</Typography>
+        
+        {/* Inmueble - segunda fila */}
+        <Box sx={{ mb: 1.5 }}>
+          <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.25, textTransform: 'uppercase' }}>Inmueble</Typography>
+          <Typography variant="body2" sx={{ fontSize: 14, lineHeight: 1.4 }}>
+            {card.habitaciones} hab · {card.metrosCuadrados} m² · {card.banos} {card.banos === 1 ? 'baño' : 'baños'}
+          </Typography>
+        </Box>
+        {/* Precio compra y Alquiler - tercera fila */}
+        <Box sx={{ mb: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Box>
+            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.25, textTransform: 'uppercase' }}>Precio compra</Typography>
             {(isEditing || editingField === 'precioCompra') && onInputChange ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <TextField
                   type="number"
                   size="small"
@@ -521,7 +536,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                   onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                   onClick={(e) => e.stopPropagation()}
                   inputProps={{ min: 0, step: 1000 }}
-                  sx={{ width: '100%', '& .MuiInputBase-root': { minHeight: 36 }, '& .MuiInputBase-input': { fontSize: 14 } }}
+                  sx={{ flex: 1, '& .MuiInputBase-root': { minHeight: 36 }, '& .MuiInputBase-input': { fontSize: 14 } }}
                 />
                 {precioCambiado && onRevertField && (
                   <Tooltip title="Deshacer precio compra">
@@ -532,8 +547,8 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                 )}
               </Box>
             ) : (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32 }}>
-                <Typography variant="body2" sx={{ fontSize: 15 }}>{formatEuro(card.precioCompra)}</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 500 }}>{formatEuro(card.precioCompra)}</Typography>
                 {precioCambiado && onRevertField && (
                   <Tooltip title="Deshacer precio compra">
                     <IconButton size="small" onClick={handleRevertPrecio} aria-label="Deshacer precio compra" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
@@ -551,10 +566,10 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
               </Box>
             )}
           </Box>
-          <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
-            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.125, textTransform: 'uppercase' }}>Alquiler estimado</Typography>
+          <Box>
+            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.25, textTransform: 'uppercase' }}>Alquiler estimado</Typography>
             {(isEditing || editingField === 'alquilerMensual') && onInputChange ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <TextField
                   type="number"
                   size="small"
@@ -565,7 +580,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                   onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                   onClick={(e) => e.stopPropagation()}
                   inputProps={{ min: 0, step: 50 }}
-                  sx={{ width: '100%', '& .MuiInputBase-root': { minHeight: 36 }, '& .MuiInputBase-input': { fontSize: 14 } }}
+                  sx={{ flex: 1, '& .MuiInputBase-root': { minHeight: 36 }, '& .MuiInputBase-input': { fontSize: 14 } }}
                 />
                 {alquilerCambiado && onRevertField && (
                   <Tooltip title="Deshacer alquiler estimado">
@@ -576,8 +591,8 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                 )}
               </Box>
             ) : (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32 }}>
-                <Typography variant="body2" sx={{ fontSize: 15 }}>{formatEuro(card.alquilerEstimado)}/mes</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 500 }}>{formatEuro(card.alquilerEstimado)}/mes</Typography>
                 {alquilerCambiado && onRevertField && (
                   <Tooltip title="Deshacer alquiler estimado">
                     <IconButton size="small" onClick={handleRevertAlquiler} aria-label="Deshacer alquiler estimado" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
@@ -596,29 +611,30 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
             )}
           </Box>
         </Box>
-        <Box className="card-metrics-values" sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        {/* Métricas - cuarta fila */}
+        <Box className="card-metrics-values" sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
           <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
-            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.5, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Rentabilidad neta</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
-              <Typography variant="body2" sx={{ fontSize: 15, color: colorSemaforo }}>
+            <Typography variant="caption" sx={{ fontSize: 11, color: '#666', mb: 0.25, textTransform: 'uppercase', height: 28, lineHeight: '14px', display: 'flex', alignItems: 'flex-start' }}>Rentabilidad neta</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', minHeight: 24 }}>
+              <Typography variant="body2" className="semaforo-value" sx={{ fontSize: 16, fontWeight: 600, color: colorSemaforo, lineHeight: 1.2 }}>
                 {card.rentabilidadNetaPct.toFixed(2)} %
               </Typography>
               {showDeltas && <DeltaLabel delta={deltaRentabilidad} unit="%" />}
             </Box>
           </Box>
           <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
-            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.125, textTransform: 'uppercase' }}>Cashflow</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
-              <Typography variant="body2" sx={{ fontSize: 15, color: colorSemaforo }}>
+            <Typography variant="caption" sx={{ fontSize: 11, color: '#666', mb: 0.25, textTransform: 'uppercase', height: 28, lineHeight: '14px', display: 'flex', alignItems: 'flex-start' }}>Cashflow</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', minHeight: 24 }}>
+              <Typography variant="body2" className="semaforo-value" sx={{ fontSize: 16, fontWeight: 600, color: colorSemaforo, lineHeight: 1.2 }}>
                 {cashflowFinal !== null ? formatEuro(cashflowFinal) : '—'}
               </Typography>
               {showDeltas && <DeltaLabel delta={deltaCashflow} unit="€" />}
             </Box>
           </Box>
           <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
-            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.125, textTransform: 'uppercase' }}>ROCE</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
-              <Typography variant="body2" sx={{ fontSize: 15, color: colorSemaforo }}>
+            <Typography variant="caption" sx={{ fontSize: 11, color: '#666', mb: 0.25, textTransform: 'uppercase', height: 28, lineHeight: '14px', display: 'flex', alignItems: 'flex-start' }}>ROCE</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', minHeight: 24 }}>
+              <Typography variant="body2" className="semaforo-value" sx={{ fontSize: 16, fontWeight: 600, color: colorSemaforo, lineHeight: 1.2 }}>
                 {roceFinal !== null ? `${roceFinal.toFixed(2)} %` : '—'}
               </Typography>
               {showDeltas && <DeltaLabel delta={deltaRoce} unit="%" />}

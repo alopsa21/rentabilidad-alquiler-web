@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react'
+import { useLocation } from 'react-router-dom'
 import { HeroSearch } from './components/HeroSearch'
 import { CompactSearchHeader } from './components/CompactSearchHeader'
 import { CardAnalisis } from './components/CardAnalisis'
@@ -23,6 +24,10 @@ import { cardsToCSV, downloadCSV } from './utils/csv'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
+import HomeIcon from '@mui/icons-material/Home'
+import TrendingUpIcon from '@mui/icons-material/TrendingUp'
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents'
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import './App.css'
 
 /** Payload por defecto para mantener la API conectada hasta que la URL se use para obtener datos */
@@ -43,6 +48,7 @@ const DEFAULT_PAYLOAD: FormularioRentabilidadState = {
 }
 
 function App() {
+  const location = useLocation()
   const [, setResultado] = useState<RentabilidadApiResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -56,6 +62,8 @@ function App() {
   const [ordenarPor, setOrdenarPor] = useState<{ campo: string | null; direccion: 'asc' | 'desc' }>({ campo: null, direccion: 'asc' })
   const [tarjetasExpandidas, setTarjetasExpandidas] = useState<Set<string>>(new Set())
   const [isHydrated, setIsHydrated] = useState(false)
+  // Evitar renderizar hasta confirmar que estamos en la ruta correcta
+  const isCorrectRoute = location.pathname === '/'
   const [createdAtPorTarjeta, setCreatedAtPorTarjeta] = useState<Record<string, string>>({})
   const [, setResetUrlTrigger] = useState(0)
   const [notificacion, setNotificacion] = useState<{ mensaje: string; tipo: 'success' | 'error' } | null>(null)
@@ -88,6 +96,11 @@ function App() {
 
   // Hidratación inicial: cargar tarjetas desde localStorage o URL al montar
   useEffect(() => {
+    // Solo ejecutar si estamos en la ruta principal
+    if (location.pathname !== '/') {
+      return
+    }
+    
     let hasAnalyzed = false
 
     // Primero intentar cargar desde URL (tiene prioridad)
@@ -159,7 +172,7 @@ function App() {
     }
     setIsHydrated(true)
     setHasUserAnalyzedBefore(hasAnalyzed)
-  }, [])
+  }, [location.pathname])
 
   // Sincronización automática con DEBOUNCE: guardar en localStorage cuando cambien las tarjetas o resultados
   // OPTIMIZACIÓN CRÍTICA: debounce para evitar escrituras constantes que bloquean el hilo principal
@@ -302,6 +315,25 @@ function App() {
   const scoreColorKey = getScoreColor(portfolioScore)
   const scoreColorMap = { verde: '#2e7d32', amarillo: '#f9a825', rojo: '#c62828' } as const
   const scoreColor = scoreColorMap[scoreColorKey]
+  
+  // Determinar color del semáforo para ROE medio usando los mismos umbrales del veredicto
+  // Verde: ROCE >= 10%, Amarillo: ROCE >= 7%, Rojo: ROCE < 7%
+  const getROEColor = (roe: number | null): string => {
+    if (roe === null) return scoreColorMap.amarillo
+    if (roe >= 10) return scoreColorMap.verde
+    if (roe >= 7) return scoreColorMap.amarillo
+    return scoreColorMap.rojo
+  }
+  const roeColor = getROEColor(portfolioStats.avgROE)
+  
+  // Determinar color del semáforo para Cashflow anual total
+  // Verde: cashflow >= 5000€, Amarillo: cashflow >= 0€ pero < 5000€, Rojo: cashflow < 0€
+  const getCashflowColor = (cashflow: number): string => {
+    if (cashflow >= 5000) return scoreColorMap.verde
+    if (cashflow >= 0) return scoreColorMap.amarillo
+    return scoreColorMap.rojo
+  }
+  const cashflowColor = getCashflowColor(portfolioStats.totalCashflow)
 
   // Ordenar tarjetas según el criterio seleccionado - memoizado y optimizado
   const analisisOrdenados = useMemo(() => {
@@ -640,6 +672,12 @@ function App() {
   }
 
 
+  // Solo renderizar si estamos en la ruta principal
+  // Verificar directamente sin estado para evitar cualquier delay
+  if (!isCorrectRoute) {
+    return null
+  }
+
   return (
     <div className="app">
       {/* Notificación toast */}
@@ -666,7 +704,7 @@ function App() {
           {notificacion.mensaje}
         </div>
       )}
-      {analisis.length === 0 && !hasUserAnalyzedBefore ? (
+      {analisis.length === 0 && !hasUserAnalyzedBefore && isHydrated ? (
         <>
           <HeroSearch onAnalizar={handleAnalizar} loading={loading} />
           <main className="app-main">
@@ -688,11 +726,12 @@ function App() {
         )}
           <div className="app-layout-desktop layout-horizontal">
             {/* Tabs Todas / Mi Portfolio */}
-            <Box sx={{ display: 'flex', gap: 0, pt: 1, px: 2, borderBottom: '1px solid #e0e0e0', mb: 1 }}>
+            <Box className="tabs-portfolio" sx={{ display: 'flex', gap: 0, pt: 1, px: 2, borderBottom: '1px solid #e0e0e0', mb: 1 }}>
               <Button
                 variant="text"
                 onClick={() => setVistaFiltro('all')}
                 disableRipple
+                className={vistaFiltro === 'all' ? 'tab-active' : 'tab-inactive'}
                 sx={{
                   color: vistaFiltro === 'all' ? 'primary.main' : 'text.secondary',
                   borderRadius: 0,
@@ -709,6 +748,7 @@ function App() {
                 variant="text"
                 onClick={() => setVistaFiltro('favorites')}
                 disableRipple
+                className={vistaFiltro === 'favorites' ? 'tab-active' : 'tab-inactive'}
                 sx={{
                   color: vistaFiltro === 'favorites' ? 'primary.main' : 'text.secondary',
                   borderRadius: 0,
@@ -724,45 +764,70 @@ function App() {
             </Box>
             {/* Stats del portfolio (solo en vista Mi Portfolio) */}
             {vistaFiltro === 'favorites' && (
-              <div
-                style={{
-                  padding: '12px 16px',
+              <Box
+                className="portfolio-stats"
+                sx={{
+                  padding: { xs: '12px 16px', md: '16px' },
                   marginBottom: 8,
-                  backgroundColor: '#f5f5f5',
-                  borderRadius: 8,
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: '16px 24px',
-                  alignItems: 'center',
+                  borderRadius: { xs: 0, md: 2 },
                 }}
                 aria-label="Resumen del portfolio"
               >
-                <strong style={{ fontSize: 15, color: '#333', marginRight: 8 }}>
-                  📊 Mi portfolio
-                </strong>
-                <span style={{ fontSize: 14, color: '#555' }}>
-                  Propiedades: {portfolioStats.count}
-                </span>
-                <span style={{ fontSize: 14, color: '#555' }}>
-                  ROE medio:{' '}
-                  {portfolioStats.avgROE !== null
-                    ? `${portfolioStats.avgROE.toFixed(2)} %`
-                    : '—'}
-                </span>
-                <span style={{ fontSize: 14, color: '#555' }}>
-                  Cashflow anual total:{' '}
-                  {portfolioStats.totalCashflow >= 0 ? '+' : ''}
-                  {new Intl.NumberFormat('es-ES', {
-                    style: 'currency',
-                    currency: 'EUR',
-                    maximumFractionDigits: 0,
-                    minimumFractionDigits: 0,
-                  }).format(portfolioStats.totalCashflow)}
-                </span>
-                <span style={{ fontSize: 14, color: scoreColor, fontWeight: 600 }}>
-                  🏆 Score: {portfolioScore} / 100
-                </span>
-              </div>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: { xs: 1.5, md: 2 } }}>
+                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, gap: { xs: 0.5, md: 1 } }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <HomeIcon sx={{ fontSize: 16, color: '#1976d2' }} />
+                      <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                        Propiedades:
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 600, color: '#1976d2' }}>
+                      {portfolioStats.count}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, gap: { xs: 0.5, md: 1 } }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <TrendingUpIcon sx={{ fontSize: 16, color: roeColor }} />
+                      <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                        ROE medio:
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 600, color: roeColor }}>
+                      {portfolioStats.avgROE !== null
+                        ? `${portfolioStats.avgROE.toFixed(2)} %`
+                        : '—'}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, gap: { xs: 0.5, md: 1 } }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <EmojiEventsIcon sx={{ fontSize: 16, color: '#f9a825' }} />
+                      <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                        Score:
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 600, color: scoreColor, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      {portfolioScore} / 100
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, gap: { xs: 0.5, md: 1 } }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <AttachMoneyIcon sx={{ fontSize: 16, color: cashflowColor }} />
+                      <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                        Cashflow anual total:
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 600, color: cashflowColor }}>
+                      {portfolioStats.totalCashflow >= 0 ? '+' : ''}
+                      {new Intl.NumberFormat('es-ES', {
+                        style: 'currency',
+                        currency: 'EUR',
+                        maximumFractionDigits: 0,
+                        minimumFractionDigits: 0,
+                      }).format(portfolioStats.totalCashflow)}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
             )}
             {/* Cabecera sticky con títulos de columnas */}
             <div className="card-header-sticky card-header-full-width" style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: '1rem', width: '100%' }}>
@@ -833,6 +898,7 @@ function App() {
                         resultadoOriginal={resultadoOriginalPorTarjeta[card.id]}
                         onInputChange={(campo, valor) => handleInputChange(card.id, campo, valor)}
                         onRevertField={(campo) => handleRevertField(card.id, campo)}
+                        isInFavoritesView={vistaFiltro === 'favorites'}
                       />
                     {/* Detalle debajo de la tarjeta: toggle al hacer clic */}
                     {mostrarDetalle && resultadoParaDetalle && (
@@ -859,7 +925,7 @@ function App() {
                 size="small"
                 disabled={analisis.length === 0}
                 onClick={handleShareAll}
-                title="Compartir todas las tarjetas (copiar link)"
+                title="Compartir tarjetas via link"
                 disableRipple
                 sx={{
                   outline: 'none',
@@ -888,21 +954,24 @@ function App() {
               >
                 Exportar
               </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={handleNuevoAnalisis}
-                title="Borrar todas las tarjetas y limpiar el panel"
-                disableRipple
-                sx={{
-                  outline: 'none',
-                  '&:focus': { outline: 'none', boxShadow: 'none' },
-                  '&:focus-visible': { outline: 'none', boxShadow: 'none' },
-                  '&:active': { outline: 'none', boxShadow: 'none' },
-                }}
-              >
-                Limpiar
-              </Button>
+              {vistaFiltro !== 'favorites' && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleNuevoAnalisis}
+                  disabled={analisis.length === 0}
+                  title="Borrar todas las tarjetas y limpiar el panel"
+                  disableRipple
+                  sx={{
+                    outline: 'none',
+                    '&:focus': { outline: 'none', boxShadow: 'none' },
+                    '&:focus-visible': { outline: 'none', boxShadow: 'none' },
+                    '&:active': { outline: 'none', boxShadow: 'none' },
+                  }}
+                >
+                  Limpiar
+                </Button>
+              )}
             </Box>
           </div>
         
@@ -922,6 +991,7 @@ function App() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="modal-limpiar-titulo"
+            className="modal-limpiar-overlay"
             onClick={() => setModalLimpiarPanelOpen(false)}
             style={{
               position: 'fixed',
@@ -939,6 +1009,7 @@ function App() {
             }}
           >
             <div
+              className="modal-limpiar-content"
               onClick={(e) => e.stopPropagation()}
               style={{
                 backgroundColor: '#fff',
@@ -949,10 +1020,10 @@ function App() {
                 boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
               }}
             >
-              <Typography id="modal-limpiar-titulo" variant="h6" component="h2" sx={{ mb: 1.5 }}>
+              <Typography id="modal-limpiar-titulo" variant="h6" component="h2" sx={{ mb: 1.5, color: 'text.primary' }}>
                 Limpiar panel
               </Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              <Typography variant="body1" sx={{ mb: 3, color: 'text.primary' }}>
                 ¿Quieres borrar todos los análisis actuales?
               </Typography>
               <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'flex-end' }}>

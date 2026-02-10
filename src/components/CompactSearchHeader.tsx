@@ -50,8 +50,6 @@ export function CompactSearchHeader({ onAnalizar, loading = false }: CompactSear
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        backgroundColor: '#fff',
-        borderBottom: '1px solid #eee',
         padding: '12px 16px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
       }}
@@ -90,14 +88,26 @@ export function CompactSearchHeader({ onAnalizar, loading = false }: CompactSear
             sx={{
               whiteSpace: 'nowrap',
               minHeight: 40,
+              minWidth: 100,
               outline: 'none',
               border: 'none',
+              backgroundColor: loading ? '#1976d2' : '#1976d2',
+              color: '#fff',
+              '&:disabled': {
+                backgroundColor: loading ? '#1976d2' : '#999',
+                color: '#fff',
+                opacity: loading ? 1 : 0.6,
+                cursor: 'not-allowed',
+              },
+              '&:hover:not(:disabled)': {
+                backgroundColor: '#1565c0',
+              },
               '&:focus': { outline: 'none', border: 'none', boxShadow: 'none' },
               '&:focus-visible': { outline: 'none', border: 'none', boxShadow: 'none' },
               '&:active': { outline: 'none', border: 'none', boxShadow: 'none' },
             }}
           >
-            {loading ? 'Analizando...' : 'Analizar'}
+            Analizar
           </Button>
         </form>
       </Box>

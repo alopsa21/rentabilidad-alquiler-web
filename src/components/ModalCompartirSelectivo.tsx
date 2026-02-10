@@ -101,6 +101,7 @@ export function ModalCompartirSelectivo({
 
   return (
     <Box
+      className="modal-compartir-overlay"
       onClick={onClose}
       sx={{
         position: 'fixed',
@@ -117,6 +118,7 @@ export function ModalCompartirSelectivo({
       }}
     >
       <Box
+        className="modal-compartir-content"
         onClick={(e) => e.stopPropagation()}
         sx={{
           backgroundColor: 'background.paper',
@@ -132,10 +134,10 @@ export function ModalCompartirSelectivo({
       >
         {/* Header */}
         <Box sx={{ px: 2, pt: 2, pb: 1, flexShrink: 0 }}>
-          <Typography variant="h6" component="h3">
+          <Typography variant="h6" component="h3" sx={{ color: 'text.primary' }}>
             Seleccionar tarjetas para compartir
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          <Typography variant="body2" sx={{ mt: 0.5, color: 'text.secondary' }}>
             {selectedIds.size} de {cardsConResultado.length} tarjetas seleccionadas
           </Typography>
         </Box>
@@ -190,7 +192,7 @@ export function ModalCompartirSelectivo({
                     <Typography variant="body2" fontWeight={500}>
                       {card.ciudad || '—'}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                       {card.habitaciones} hab · {card.metrosCuadrados} m²
                     </Typography>
                     <Chip
@@ -201,10 +203,10 @@ export function ModalCompartirSelectivo({
                     />
                   </Box>
                   <Box sx={{ display: 'flex', gap: 2 }}>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                       Precio: {formatEuro(card.precioCompra)}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                       Alquiler: {formatEuro(card.alquilerEstimado)}/mes
                     </Typography>
                     <Typography

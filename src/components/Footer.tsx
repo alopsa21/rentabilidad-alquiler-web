@@ -5,6 +5,7 @@ import Box from '@mui/material/Box';
 export function Footer() {
   return (
     <footer
+      className="app-footer"
       style={{
         marginTop: 'auto',
         padding: '24px 16px',

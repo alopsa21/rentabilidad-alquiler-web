@@ -27,6 +27,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="legal/disclaimer" element={<LegalDisclaimer />} />
           <Route path="contacto" element={<Contacto />} />
         </Route>
+        {/* Ruta catch-all para evitar que App se renderice en otras rutas */}
+        <Route path="*" element={null} />
       </Routes>
     </BrowserRouter>
     </ThemeProvider>
