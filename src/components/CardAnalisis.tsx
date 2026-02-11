@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { inputsAreEqual } from '../utils/compareInputs';
-import { NOMBRE_COMUNIDAD_POR_CODIGO } from '../constants/comunidades';
+import { NOMBRE_COMUNIDAD_POR_CODIGO, CODIGOS_COMUNIDADES } from '../constants/comunidades';
+import { getCiudadesPorCodauto } from '../services/territorio';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import IconButton from '@mui/material/IconButton';
@@ -8,6 +9,7 @@ import Tooltip from '@mui/material/Tooltip';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
+import Autocomplete from '@mui/material/Autocomplete';
 import StarIcon from '@mui/icons-material/Star';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import EditNoteIcon from '@mui/icons-material/StickyNote2Outlined';
@@ -44,6 +46,9 @@ interface CardAnalisisProps {
   resultadoOriginal?: RentabilidadApiResponse;
   onInputChange?: (campo: keyof FormularioRentabilidadState, valor: number | string | boolean) => void;
   onRevertField?: (campo: 'precioCompra' | 'alquilerMensual') => void;
+  onRevertInmueble?: (campo: 'habitaciones' | 'metrosCuadrados' | 'banos') => void;
+  onCiudadChange?: (ciudad: string) => void;
+  onInmuebleChange?: (campo: 'habitaciones' | 'metrosCuadrados' | 'banos', valor: number) => void;
   isInFavoritesView?: boolean;
 }
 
@@ -64,9 +69,22 @@ function DeltaLabel({ delta, unit }: { delta: number; unit: '%' | '€' }) {
   );
 }
 
-function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onToggleFavorite, onOpenNotes, resultado, resultadoOriginal, onInputChange, onRevertField, isInFavoritesView = false }: CardAnalisisProps) {
+function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onToggleFavorite, onOpenNotes, resultado, resultadoOriginal, onInputChange, onRevertField, onRevertInmueble, onCiudadChange, onInmuebleChange, isInFavoritesView = false }: CardAnalisisProps) {
   // Color único del semáforo basado en el veredicto de la tarjeta
   const colorSemaforo = estadoToColor[card.estado];
+  
+  // Helper para determinar si un campo está faltante
+  const campoFalta = (campo: keyof NonNullable<AnalisisCard['camposFaltantes']>) => {
+    return card.camposFaltantes?.[campo] === true;
+  };
+  
+  // Estilos para campos faltantes
+  const estiloCampoFaltante = {
+    border: '2px solid #f44336',
+    backgroundColor: '#fff9c4',
+    borderRadius: '4px',
+    padding: '2px 4px',
+  };
   
   // Extraer métricas para mostrar
   const cashflowFinal = resultado ? Number(resultado.cashflowFinal) : null;
@@ -78,14 +96,71 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isCardHovered, setIsCardHovered] = useState(false);
-  const [editingField, setEditingField] = useState<'precioCompra' | 'alquilerMensual' | null>(null);
+  const [editingField, setEditingField] = useState<'precioCompra' | 'alquilerMensual' | 'codigoComunidadAutonoma' | 'ciudad' | 'inmueble' | null>(null);
+  const [habitacionesInput, setHabitacionesInput] = useState(card.habitaciones > 0 ? card.habitaciones.toString() : '');
+  const [metrosCuadradosInput, setMetrosCuadradosInput] = useState(card.metrosCuadrados > 0 ? card.metrosCuadrados.toString() : '');
+  const [banosInput, setBanosInput] = useState(card.banos > 0 ? card.banos.toString() : '');
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Estados locales para inputs editables (con debounce)
-  const [precioCompra, setPrecioCompra] = useState(card.currentInput.precioCompra.toString());
-  const [alquilerMensual, setAlquilerMensual] = useState(card.currentInput.alquilerMensual.toString());
+  // Si el campo falta y el valor es 0, mostrar vacío en lugar de "0"
+  const [precioCompra, setPrecioCompra] = useState(
+    card.currentInput.precioCompra > 0 || !card.camposFaltantes?.precioCompra 
+      ? card.currentInput.precioCompra.toString() 
+      : ''
+  );
+  const [alquilerMensual, setAlquilerMensual] = useState(
+    card.currentInput.alquilerMensual > 0 || !card.camposFaltantes?.alquilerMensual 
+      ? card.currentInput.alquilerMensual.toString() 
+      : ''
+  );
+  const [codigoComunidadAutonoma, setCodigoComunidadAutonoma] = useState(card.currentInput.codigoComunidadAutonoma);
+  const [ciudad, setCiudad] = useState(card.ciudad || '');
+  
+  const [ciudadesDisponibles, setCiudadesDisponibles] = useState<string[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!(codigoComunidadAutonoma >= 1 && codigoComunidadAutonoma <= 19)) {
+        setCiudadesDisponibles([]);
+        return;
+      }
+      try {
+        const ciudades = await getCiudadesPorCodauto(codigoComunidadAutonoma);
+        if (!cancelled) setCiudadesDisponibles(ciudades);
+      } catch {
+        if (!cancelled) setCiudadesDisponibles([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [codigoComunidadAutonoma]);
+
+  // Opciones para el Autocomplete de Comunidad autónoma
+  const opcionesComunidades = useMemo(() => {
+    return CODIGOS_COMUNIDADES.map((codigo) => ({
+      codigo,
+      nombre: NOMBRE_COMUNIDAD_POR_CODIGO[codigo],
+    }));
+  }, []);
+  
+  // Valor seleccionado para Comunidad autónoma (para Autocomplete)
+  const valorComunidadSeleccionada = useMemo(() => {
+    if (codigoComunidadAutonoma >= 1 && codigoComunidadAutonoma <= 19) {
+      return opcionesComunidades.find((c) => c.codigo === codigoComunidadAutonoma) || null;
+    }
+    return null;
+  }, [codigoComunidadAutonoma, opcionesComunidades]);
+
+  // Si la ciudad actual no está en la lista, añadirla para evitar warning de MUI
+  const opcionesCiudad = useMemo(() => {
+    if (!ciudad) return ciudadesDisponibles;
+    if (ciudadesDisponibles.includes(ciudad)) return ciudadesDisponibles;
+    return [ciudad, ...ciudadesDisponibles];
+  }, [ciudad, ciudadesDisponibles]);
   
   // Refs para debounce
   const precioTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -93,9 +168,26 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
   
   // Sincronizar estados locales cuando cambia currentInput externamente (ej. revert)
   useEffect(() => {
-    setPrecioCompra(card.currentInput.precioCompra.toString());
-    setAlquilerMensual(card.currentInput.alquilerMensual.toString());
-  }, [card.currentInput.precioCompra, card.currentInput.alquilerMensual]);
+    // Si el campo falta y el valor es 0, mostrar vacío
+    setPrecioCompra(
+      card.currentInput.precioCompra > 0 || !card.camposFaltantes?.precioCompra 
+        ? card.currentInput.precioCompra.toString() 
+        : ''
+    );
+    setAlquilerMensual(
+      card.currentInput.alquilerMensual > 0 || !card.camposFaltantes?.alquilerMensual 
+        ? card.currentInput.alquilerMensual.toString() 
+        : ''
+    );
+    setCodigoComunidadAutonoma(card.currentInput.codigoComunidadAutonoma);
+    setCiudad(card.ciudad || '');
+    // Actualizar campos del inmueble solo si no estamos editando
+    if (editingField !== 'inmueble') {
+      setHabitacionesInput(card.habitaciones > 0 ? card.habitaciones.toString() : '');
+      setMetrosCuadradosInput(card.metrosCuadrados > 0 ? card.metrosCuadrados.toString() : '');
+      setBanosInput(card.banos > 0 ? card.banos.toString() : '');
+    }
+  }, [card.currentInput.precioCompra, card.currentInput.alquilerMensual, card.currentInput.codigoComunidadAutonoma, card.ciudad, card.habitaciones, card.metrosCuadrados, card.banos, card.camposFaltantes, editingField]);
 
   // Verificar si hay cambios pendientes (global y por campo) - comparación eficiente sin JSON.stringify
   const tieneCambios = useMemo(
@@ -104,6 +196,9 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
   );
   const precioCambiado = card.currentInput.precioCompra !== card.originalInput.precioCompra;
   const alquilerCambiado = card.currentInput.alquilerMensual !== card.originalInput.alquilerMensual;
+  const habitacionesCambiado = card.habitaciones !== card.originalHabitaciones;
+  const metrosCuadradosCambiado = card.metrosCuadrados !== card.originalMetrosCuadrados;
+  const banosCambiado = card.banos !== card.originalBanos;
 
   // Deltas respecto al resultado original (solo cuando hay cambios y tenemos ambos resultados) - memoizado
   const { showDeltas, deltaRentabilidad, deltaCashflow, deltaRoce } = useMemo(() => {
@@ -142,6 +237,50 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
     }
   };
   
+  const handleComunidadChange = (codigo: number) => {
+    if (codigo === 0) {
+      setCodigoComunidadAutonoma(0);
+      onInputChange?.('codigoComunidadAutonoma', 0);
+      setCiudad('');
+      onCiudadChange?.('');
+      return;
+    }
+    setCodigoComunidadAutonoma(codigo);
+    onInputChange?.('codigoComunidadAutonoma', codigo);
+    // Evitar estado "inconsistente" (ciudad no pertenece a la nueva comunidad) mientras cargan ciudades
+    setCiudad('');
+    onCiudadChange?.('');
+  };
+  
+  const handleCiudadChange = (nuevaCiudad: string) => {
+    setCiudad(nuevaCiudad);
+    onCiudadChange?.(nuevaCiudad);
+  };
+  
+  const handleInmuebleFieldBlur = (campo: 'habitaciones' | 'metrosCuadrados' | 'banos', valor: string) => {
+    // Si el campo está vacío, guardar como 0
+    const numValor = valor === '' ? 0 : parseInt(valor, 10);
+    if (!isNaN(numValor) && numValor >= 0) {
+      // Llamar al handler para actualizar la tarjeta
+      onInmuebleChange?.(campo, numValor);
+      // Actualizar el estado local inmediatamente para reflejar el cambio
+      if (campo === 'habitaciones') {
+        setHabitacionesInput(numValor > 0 ? numValor.toString() : '');
+      } else if (campo === 'metrosCuadrados') {
+        setMetrosCuadradosInput(numValor > 0 ? numValor.toString() : '');
+      } else if (campo === 'banos') {
+        setBanosInput(numValor > 0 ? numValor.toString() : '');
+      }
+      // Cerrar modo edición solo si todos los campos del inmueble están completos
+      const habitacionesOk = campo === 'habitaciones' ? numValor > 0 : (card.habitaciones > 0 || !campoFalta('habitaciones'));
+      const metrosOk = campo === 'metrosCuadrados' ? numValor > 0 : (card.metrosCuadrados > 0 || !campoFalta('metrosCuadrados'));
+      const banosOk = campo === 'banos' ? numValor > 0 : (card.banos > 0 || !campoFalta('banos'));
+      if (habitacionesOk && metrosOk && banosOk) {
+        setEditingField(null);
+      }
+    }
+  };
+  
   // Cleanup de timeouts al desmontar
   useEffect(() => {
     return () => {
@@ -165,6 +304,14 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
       setEditingField(null);
     }
   };
+  
+  const handleRevertInmueble = (campo: 'habitaciones' | 'metrosCuadrados' | 'banos') => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onRevertInmueble) {
+      onRevertInmueble(campo);
+      setEditingField(null);
+    }
+  };
 
   // Ref para la tarjeta (para detectar clics fuera)
   const cardRef = useRef<HTMLDivElement>(null);
@@ -175,7 +322,14 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
 
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (cardRef.current?.contains(target)) return;
+      // Si el click ocurre dentro de un menú/popover de MUI (renderizado en Portal),
+      // NO considerarlo como "click fuera" de la tarjeta.
+      if (target?.closest?.('.MuiMenu-paper') || target?.closest?.('.MuiPopover-root') || target?.closest?.('.MuiModal-root')) {
+        return;
+      }
+      if (cardRef.current?.contains(target)) {
+        return;
+      }
       setIsEditing(false);
       setEditingField(null);
     };
@@ -341,19 +495,294 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
           )}
         </Box>
         <Box sx={{ flex: '1.2 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', pl: 0.5 }}>
-          <Typography component="span" variant="body2" sx={{ fontSize: 13, lineHeight: 1.4 }}>
-            {card.habitaciones} hab · {card.metrosCuadrados} m² · {card.banos} {card.banos === 1 ? 'baño' : 'baños'}
-          </Typography>
+          {editingField === 'inmueble' && onInmuebleChange ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+              <TextField
+                type="number"
+                size="small"
+                variant="outlined"
+                placeholder="hab"
+                value={habitacionesInput}
+                onChange={(e) => setHabitacionesInput(e.target.value)}
+                onBlur={() => {
+                  handleInmuebleFieldBlur('habitaciones', habitacionesInput);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleInmuebleFieldBlur('habitaciones', habitacionesInput);
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
+                inputProps={{ min: 0, step: 1 }}
+                error={campoFalta('habitaciones')}
+                sx={{
+                  width: 60,
+                  '& .MuiInputBase-root': { minHeight: 28 },
+                  '& .MuiInputBase-input': { fontSize: 13, textAlign: 'center', padding: '4px 8px' },
+                  ...(campoFalta('habitaciones') ? {
+                    '& .MuiOutlinedInput-root': {
+                      borderColor: '#f44336',
+                      backgroundColor: '#fff9c4',
+                    }
+                  } : {})
+                }}
+              />
+              <Typography component="span" sx={{ fontSize: 13, color: '#666' }}>·</Typography>
+              <TextField
+                type="number"
+                size="small"
+                variant="outlined"
+                placeholder="m²"
+                value={metrosCuadradosInput}
+                onChange={(e) => setMetrosCuadradosInput(e.target.value)}
+                onBlur={() => {
+                  handleInmuebleFieldBlur('metrosCuadrados', metrosCuadradosInput);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleInmuebleFieldBlur('metrosCuadrados', metrosCuadradosInput);
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
+                inputProps={{ min: 0, step: 1 }}
+                error={campoFalta('metrosCuadrados')}
+                sx={{
+                  width: 70,
+                  '& .MuiInputBase-root': { minHeight: 28 },
+                  '& .MuiInputBase-input': { fontSize: 13, textAlign: 'center', padding: '4px 8px' },
+                  ...(campoFalta('metrosCuadrados') ? {
+                    '& .MuiOutlinedInput-root': {
+                      borderColor: '#f44336',
+                      backgroundColor: '#fff9c4',
+                    }
+                  } : {})
+                }}
+              />
+              {metrosCuadradosCambiado && onRevertInmueble && (
+                <Tooltip title="Deshacer metros cuadrados">
+                  <IconButton size="small" onClick={handleRevertInmueble('metrosCuadrados')} aria-label="Deshacer metros cuadrados" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
+                    <UndoIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              <Typography component="span" sx={{ fontSize: 13, color: '#666' }}>·</Typography>
+              <TextField
+                type="number"
+                size="small"
+                variant="outlined"
+                placeholder="baños"
+                value={banosInput}
+                onChange={(e) => setBanosInput(e.target.value)}
+                onBlur={() => {
+                  handleInmuebleFieldBlur('banos', banosInput);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleInmuebleFieldBlur('banos', banosInput);
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
+                inputProps={{ min: 0, step: 1 }}
+                error={campoFalta('banos')}
+                sx={{
+                  width: 70,
+                  '& .MuiInputBase-root': { minHeight: 28 },
+                  '& .MuiInputBase-input': { fontSize: 13, textAlign: 'center', padding: '4px 8px' },
+                  ...(campoFalta('banos') ? {
+                    '& .MuiOutlinedInput-root': {
+                      borderColor: '#f44336',
+                      backgroundColor: '#fff9c4',
+                    }
+                  } : {})
+                }}
+              />
+              {banosCambiado && onRevertInmueble && (
+                <Tooltip title="Deshacer baños">
+                  <IconButton size="small" onClick={handleRevertInmueble('banos')} aria-label="Deshacer baños" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
+                    <UndoIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexWrap: 'nowrap', minWidth: 0 }}>
+              <Typography 
+                component="span" 
+                variant="body2" 
+                onClick={(e) => {
+                  if ((campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos')) && onInmuebleChange) {
+                    e.stopPropagation();
+                    setEditingField('inmueble');
+                  }
+                }}
+                sx={{ 
+                  fontSize: 13, 
+                  lineHeight: 1.4,
+                  flexShrink: 1,
+                  minWidth: 0,
+                  ...(campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos') 
+                    ? { ...estiloCampoFaltante, cursor: 'pointer', '&:hover': { opacity: 0.8 } } 
+                    : {})
+                }}
+              >
+                {card.habitaciones || campoFalta('habitaciones') ? `${card.habitaciones || '?'} hab` : ''} 
+                {card.habitaciones || campoFalta('habitaciones') ? ' · ' : ''}
+                {card.metrosCuadrados || campoFalta('metrosCuadrados') ? `${card.metrosCuadrados || '?'} m²` : ''}
+                {card.metrosCuadrados || campoFalta('metrosCuadrados') ? ' · ' : ''}
+                {card.banos || campoFalta('banos') ? `${card.banos || '?'} ${card.banos === 1 ? 'baño' : 'baños'}` : ''}
+                {(!card.habitaciones && !campoFalta('habitaciones')) && (!card.metrosCuadrados && !campoFalta('metrosCuadrados')) && (!card.banos && !campoFalta('banos')) && '—'}
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0, flexShrink: 0 }}>
+                {habitacionesCambiado && onRevertInmueble && (
+                  <Tooltip title="Deshacer habitaciones">
+                    <IconButton size="small" onClick={handleRevertInmueble('habitaciones')} aria-label="Deshacer habitaciones" sx={{ p: 0.15, minWidth: 20, width: 20, height: 20, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
+                      <UndoIcon sx={{ fontSize: 12 }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {metrosCuadradosCambiado && onRevertInmueble && (
+                  <Tooltip title="Deshacer metros cuadrados">
+                    <IconButton size="small" onClick={handleRevertInmueble('metrosCuadrados')} aria-label="Deshacer metros cuadrados" sx={{ p: 0.15, minWidth: 20, width: 20, height: 20, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
+                      <UndoIcon sx={{ fontSize: 12 }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {banosCambiado && onRevertInmueble && (
+                  <Tooltip title="Deshacer baños">
+                    <IconButton size="small" onClick={handleRevertInmueble('banos')} aria-label="Deshacer baños" sx={{ p: 0.15, minWidth: 20, width: 20, height: 20, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
+                      <UndoIcon sx={{ fontSize: 12 }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {onInmuebleChange && (isCardHovered || campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos')) && (
+                  <Tooltip title={(campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos')) ? 'Completar datos del inmueble' : 'Editar datos del inmueble'}>
+                    <IconButton
+                      size="small"
+                      onClick={(e) => { e.stopPropagation(); setEditingField('inmueble'); }}
+                      aria-label="Editar datos del inmueble"
+                      sx={{ p: 0.15, minWidth: 20, width: 20, height: 20, color: (campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos')) ? '#f44336' : '#666', '&:hover': { color: 'primary.main' } }}
+                    >
+                      <EditIcon sx={{ fontSize: 12 }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
+            </Box>
+          )}
+        </Box>
+        <Box sx={{ flex: '1.4 1 0', minWidth: 240, minHeight: 32, display: 'flex', alignItems: 'center', pl: 0.5 }}>
+          {onInputChange ? (
+            <Autocomplete
+              size="small"
+              options={opcionesComunidades}
+              getOptionLabel={(option) => option.nombre}
+              value={valorComunidadSeleccionada}
+              onChange={(_, nuevaComunidad) => {
+                if (nuevaComunidad) {
+                  handleComunidadChange(nuevaComunidad.codigo);
+                } else {
+                  handleComunidadChange(0);
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Selecciona comunidad"
+                  error={campoFalta('codigoComunidadAutonoma')}
+                  sx={{
+                    fontSize: 14,
+                    ...(campoFalta('codigoComunidadAutonoma')
+                      ? {
+                          '& .MuiOutlinedInput-notchedOutline': { borderColor: '#f44336 !important' },
+                          '& .MuiInputBase-root': { backgroundColor: '#fff9c4' },
+                        }
+                      : {}),
+                  }}
+                />
+              )}
+              sx={{
+                width: '100%',
+                '& .MuiInputBase-root': { minHeight: 28 },
+              }}
+              ListboxProps={{
+                sx: {
+                  maxHeight: 300,
+                },
+              }}
+            />
+          ) : (
+            <Typography
+              component="span"
+              variant="body2"
+              sx={{
+                fontSize: 14,
+                ...(campoFalta('codigoComunidadAutonoma') ? estiloCampoFaltante : {}),
+              }}
+            >
+              {card.currentInput.codigoComunidadAutonoma
+                ? NOMBRE_COMUNIDAD_POR_CODIGO[card.currentInput.codigoComunidadAutonoma]
+                : campoFalta('codigoComunidadAutonoma')
+                  ? '⚠️ Falta'
+                  : '—'}
+            </Typography>
+          )}
         </Box>
         <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', pl: 0.5 }}>
-          <Typography component="span" variant="body2" sx={{ fontSize: 14 }}>
-            {card.ciudad || '—'}
-            {card.currentInput.codigoComunidadAutonoma && (
-              <Typography component="span" variant="caption" sx={{ fontSize: 12, color: '#666', ml: 0.5 }}>
-                ({NOMBRE_COMUNIDAD_POR_CODIGO[card.currentInput.codigoComunidadAutonoma]})
-              </Typography>
-            )}
-          </Typography>
+          {onCiudadChange ? (
+            <Autocomplete
+              size="small"
+              options={opcionesCiudad}
+              value={ciudad || null}
+              onChange={(_, nuevaCiudad) => {
+                handleCiudadChange(nuevaCiudad || '');
+              }}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              disabled={!(codigoComunidadAutonoma >= 1 && codigoComunidadAutonoma <= 19)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Selecciona ciudad"
+                  error={campoFalta('ciudad')}
+                  sx={{
+                    fontSize: 14,
+                    ...(campoFalta('ciudad')
+                      ? {
+                          '& .MuiOutlinedInput-notchedOutline': { borderColor: '#f44336 !important' },
+                          '& .MuiInputBase-root': { backgroundColor: '#fff9c4' },
+                        }
+                      : {}),
+                  }}
+                />
+              )}
+              sx={{
+                minWidth: 180,
+                width: '100%',
+                '& .MuiInputBase-root': { minHeight: 28 },
+              }}
+              ListboxProps={{
+                sx: {
+                  maxHeight: 300,
+                },
+              }}
+            />
+          ) : (
+            <Typography
+              component="span"
+              variant="body2"
+              sx={{
+                fontSize: 14,
+                ...(campoFalta('ciudad') ? estiloCampoFaltante : {}),
+              }}
+            >
+              {card.ciudad || (campoFalta('ciudad') ? '⚠️ Falta' : '—')}
+            </Typography>
+          )}
         </Box>
         <Box sx={{ flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32, pl: 0.5 }}>
           {(isEditing || editingField === 'precioCompra') && onInputChange ? (
@@ -368,11 +797,18 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                 onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                 onClick={(e) => e.stopPropagation()}
                 inputProps={{ min: 0, step: 1000 }}
+                error={campoFalta('precioCompra')}
                 sx={{
                   width: '100%',
                   maxWidth: 120,
                   '& .MuiInputBase-root': { minHeight: 28 },
                   '& .MuiInputBase-input': { textAlign: 'right', fontSize: 14 },
+                  ...(campoFalta('precioCompra') ? {
+                    '& .MuiOutlinedInput-root': {
+                      borderColor: '#f44336',
+                      backgroundColor: '#fff9c4',
+                    }
+                  } : {})
                 }}
               />
               {precioCambiado && onRevertField && (
@@ -385,7 +821,22 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
             </Box>
           ) : (
             <>
-              <Typography component="span" variant="body2" sx={{ fontSize: 14 }}>{formatEuro(card.precioCompra)}</Typography>
+              <Typography 
+                component="span" 
+                variant="body2" 
+                onClick={(e) => {
+                  if (campoFalta('precioCompra') && onInputChange) {
+                    e.stopPropagation();
+                    setEditingField('precioCompra');
+                  }
+                }}
+                sx={{ 
+                  fontSize: 14,
+                  ...(campoFalta('precioCompra') ? { ...estiloCampoFaltante, cursor: 'pointer', '&:hover': { opacity: 0.8 } } : {})
+                }}
+              >
+                {card.precioCompra > 0 ? formatEuro(card.precioCompra) : (campoFalta('precioCompra') ? '⚠️ Falta' : formatEuro(card.precioCompra))}
+              </Typography>
               {precioCambiado && onRevertField && (
                 <Tooltip title="Deshacer precio compra">
                   <IconButton size="small" onClick={handleRevertPrecio} aria-label="Deshacer precio compra" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
@@ -393,13 +844,13 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                   </IconButton>
                 </Tooltip>
               )}
-              {onInputChange && isCardHovered && (
-                <Tooltip title="Editar precio compra">
+              {onInputChange && (isCardHovered || campoFalta('precioCompra')) && (
+                <Tooltip title={campoFalta('precioCompra') ? 'Completar precio compra' : 'Editar precio compra'}>
                   <IconButton
                     size="small"
                     onClick={(e) => { e.stopPropagation(); setEditingField('precioCompra'); }}
                     aria-label="Editar precio compra"
-                    sx={{ p: 0.25, color: '#666', '&:hover': { color: 'primary.main' } }}
+                    sx={{ p: 0.25, color: campoFalta('precioCompra') ? '#f44336' : '#666', '&:hover': { color: 'primary.main' } }}
                   >
                     <EditIcon sx={{ fontSize: 14 }} />
                   </IconButton>
@@ -421,11 +872,18 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                 onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                 onClick={(e) => e.stopPropagation()}
                 inputProps={{ min: 0, step: 50 }}
+                error={campoFalta('alquilerMensual')}
                 sx={{
                   width: '100%',
                   maxWidth: 100,
                   '& .MuiInputBase-root': { minHeight: 28 },
                   '& .MuiInputBase-input': { textAlign: 'right', fontSize: 14 },
+                  ...(campoFalta('alquilerMensual') ? {
+                    '& .MuiOutlinedInput-root': {
+                      borderColor: '#f44336',
+                      backgroundColor: '#fff9c4',
+                    }
+                  } : {})
                 }}
               />
               {alquilerCambiado && onRevertField && (
@@ -438,7 +896,22 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
             </Box>
           ) : (
             <>
-              <Typography component="span" variant="body2" sx={{ fontSize: 14 }}>{formatEuro(card.alquilerEstimado)}/mes</Typography>
+              <Typography 
+                component="span" 
+                variant="body2" 
+                onClick={(e) => {
+                  if (campoFalta('alquilerMensual') && onInputChange) {
+                    e.stopPropagation();
+                    setEditingField('alquilerMensual');
+                  }
+                }}
+                sx={{ 
+                  fontSize: 14,
+                  ...(campoFalta('alquilerMensual') ? { ...estiloCampoFaltante, cursor: 'pointer', '&:hover': { opacity: 0.8 } } : {})
+                }}
+              >
+                {card.alquilerEstimado > 0 ? formatEuro(card.alquilerEstimado) : (campoFalta('alquilerMensual') ? '⚠️ Falta' : formatEuro(card.alquilerEstimado))}/mes
+              </Typography>
               {alquilerCambiado && onRevertField && (
                 <Tooltip title="Deshacer alquiler estimado">
                   <IconButton size="small" onClick={handleRevertAlquiler} aria-label="Deshacer alquiler estimado" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
@@ -446,13 +919,13 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                   </IconButton>
                 </Tooltip>
               )}
-              {onInputChange && isCardHovered && (
-                <Tooltip title="Editar alquiler estimado">
+              {onInputChange && (isCardHovered || campoFalta('alquilerMensual')) && (
+                <Tooltip title={campoFalta('alquilerMensual') ? 'Completar alquiler estimado' : 'Editar alquiler estimado'}>
                   <IconButton
                     size="small"
                     onClick={(e) => { e.stopPropagation(); setEditingField('alquilerMensual'); }}
                     aria-label="Editar alquiler estimado"
-                    sx={{ p: 0.25, color: '#666', '&:hover': { color: 'primary.main' } }}
+                    sx={{ p: 0.25, color: campoFalta('alquilerMensual') ? '#f44336' : '#666', '&:hover': { color: 'primary.main' } }}
                   >
                     <EditIcon sx={{ fontSize: 14 }} />
                   </IconButton>
@@ -515,25 +988,300 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
           )}
         </Box>
         
-        {/* Ciudad - primera fila, con espacio para los iconos */}
+        {/* Comunidad autónoma - primera fila, con espacio para los iconos */}
+        <Box sx={{ mb: 1.5, pr: 8 }}>
+          <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.25, textTransform: 'uppercase' }}>Comunidad autónoma</Typography>
+          {onInputChange ? (
+            <Autocomplete
+              size="small"
+              fullWidth
+              options={opcionesComunidades}
+              getOptionLabel={(option) => option.nombre}
+              value={valorComunidadSeleccionada}
+              onChange={(_, nuevaComunidad) => {
+                if (nuevaComunidad) {
+                  handleComunidadChange(nuevaComunidad.codigo);
+                } else {
+                  handleComunidadChange(0);
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Selecciona comunidad"
+                  error={campoFalta('codigoComunidadAutonoma')}
+                  sx={{
+                    fontSize: 16,
+                    ...(campoFalta('codigoComunidadAutonoma')
+                      ? {
+                          '& .MuiOutlinedInput-notchedOutline': { borderColor: '#f44336 !important' },
+                          '& .MuiInputBase-root': { backgroundColor: '#fff9c4' },
+                        }
+                      : {}),
+                  }}
+                />
+              )}
+              ListboxProps={{
+                sx: {
+                  maxHeight: 300,
+                },
+              }}
+            />
+          ) : (
+            <Typography
+              variant="body2"
+              sx={{
+                fontSize: 16,
+                fontWeight: 600,
+                ...(campoFalta('codigoComunidadAutonoma') ? estiloCampoFaltante : {}),
+              }}
+            >
+              {card.currentInput.codigoComunidadAutonoma
+                ? NOMBRE_COMUNIDAD_POR_CODIGO[card.currentInput.codigoComunidadAutonoma]
+                : campoFalta('codigoComunidadAutonoma')
+                  ? '⚠️ Falta'
+                  : '—'}
+            </Typography>
+          )}
+        </Box>
+        
+        {/* Ciudad - segunda fila */}
         <Box sx={{ mb: 1.5, pr: 8 }}>
           <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.25, textTransform: 'uppercase' }}>Ciudad</Typography>
-          <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 600 }}>
-            {card.ciudad || '—'}
-          </Typography>
-          {card.currentInput.codigoComunidadAutonoma && (
-            <Typography variant="caption" sx={{ display: 'block', fontSize: 12, color: '#666', mt: 0.25 }}>
-              {NOMBRE_COMUNIDAD_POR_CODIGO[card.currentInput.codigoComunidadAutonoma]}
+          {onCiudadChange ? (
+            <Autocomplete
+              size="small"
+              fullWidth
+              options={opcionesCiudad}
+              value={ciudad || null}
+              onChange={(_, nuevaCiudad) => {
+                handleCiudadChange(nuevaCiudad || '');
+              }}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              disabled={!(codigoComunidadAutonoma >= 1 && codigoComunidadAutonoma <= 19)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Selecciona ciudad"
+                  error={campoFalta('ciudad')}
+                  sx={{
+                    fontSize: 16,
+                    ...(campoFalta('ciudad')
+                      ? {
+                          '& .MuiOutlinedInput-notchedOutline': { borderColor: '#f44336 !important' },
+                          '& .MuiInputBase-root': { backgroundColor: '#fff9c4' },
+                        }
+                      : {}),
+                  }}
+                />
+              )}
+              ListboxProps={{
+                sx: {
+                  maxHeight: 300,
+                },
+              }}
+            />
+          ) : (
+            <Typography
+              variant="body2"
+              sx={{
+                fontSize: 16,
+                fontWeight: 600,
+                ...(campoFalta('ciudad') ? estiloCampoFaltante : {}),
+              }}
+            >
+              {card.ciudad || (campoFalta('ciudad') ? '⚠️ Falta' : '—')}
             </Typography>
           )}
         </Box>
         
         {/* Inmueble - segunda fila */}
         <Box sx={{ mb: 1.5 }}>
-          <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.25, textTransform: 'uppercase' }}>Inmueble</Typography>
-          <Typography variant="body2" sx={{ fontSize: 14, lineHeight: 1.4 }}>
-            {card.habitaciones} hab · {card.metrosCuadrados} m² · {card.banos} {card.banos === 1 ? 'baño' : 'baños'}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.25 }}>
+            <Typography variant="caption" sx={{ fontSize: 11, color: '#666', textTransform: 'uppercase' }}>Inmueble</Typography>
+            {onInmuebleChange && (isCardHovered || campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos')) && (
+              <Tooltip title={(campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos')) ? 'Completar datos del inmueble' : 'Editar datos del inmueble'}>
+                <IconButton
+                  size="small"
+                  onClick={(e) => { e.stopPropagation(); setEditingField('inmueble'); }}
+                  aria-label="Editar datos del inmueble"
+                  sx={{ p: 0.25, color: (campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos')) ? '#f44336' : '#666', '&:hover': { color: 'primary.main' } }}
+                >
+                  <EditIcon sx={{ fontSize: 14 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Box>
+          {editingField === 'inmueble' && onInmuebleChange ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+              <TextField
+                type="number"
+                size="small"
+                variant="outlined"
+                placeholder="hab"
+                value={habitacionesInput}
+                onChange={(e) => setHabitacionesInput(e.target.value)}
+                onBlur={() => {
+                  handleInmuebleFieldBlur('habitaciones', habitacionesInput);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleInmuebleFieldBlur('habitaciones', habitacionesInput);
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
+                inputProps={{ min: 0, step: 1 }}
+                error={campoFalta('habitaciones')}
+                sx={{
+                  width: 80,
+                  '& .MuiInputBase-root': { minHeight: 36 },
+                  '& .MuiInputBase-input': { fontSize: 14, textAlign: 'center' },
+                  ...(campoFalta('habitaciones') ? {
+                    '& .MuiOutlinedInput-root': {
+                      borderColor: '#f44336',
+                      backgroundColor: '#fff9c4',
+                    }
+                  } : {})
+                }}
+              />
+              {habitacionesCambiado && onRevertInmueble && (
+                <Tooltip title="Deshacer habitaciones">
+                  <IconButton size="small" onClick={handleRevertInmueble('habitaciones')} aria-label="Deshacer habitaciones" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
+                    <UndoIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              <Typography component="span" sx={{ fontSize: 14, color: '#666' }}>·</Typography>
+              <TextField
+                type="number"
+                size="small"
+                variant="outlined"
+                placeholder="m²"
+                value={metrosCuadradosInput}
+                onChange={(e) => setMetrosCuadradosInput(e.target.value)}
+                onBlur={() => {
+                  handleInmuebleFieldBlur('metrosCuadrados', metrosCuadradosInput);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleInmuebleFieldBlur('metrosCuadrados', metrosCuadradosInput);
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
+                inputProps={{ min: 0, step: 1 }}
+                error={campoFalta('metrosCuadrados')}
+                sx={{
+                  width: 90,
+                  '& .MuiInputBase-root': { minHeight: 36 },
+                  '& .MuiInputBase-input': { fontSize: 14, textAlign: 'center' },
+                  ...(campoFalta('metrosCuadrados') ? {
+                    '& .MuiOutlinedInput-root': {
+                      borderColor: '#f44336',
+                      backgroundColor: '#fff9c4',
+                    }
+                  } : {})
+                }}
+              />
+              {metrosCuadradosCambiado && onRevertInmueble && (
+                <Tooltip title="Deshacer metros cuadrados">
+                  <IconButton size="small" onClick={handleRevertInmueble('metrosCuadrados')} aria-label="Deshacer metros cuadrados" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
+                    <UndoIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              <Typography component="span" sx={{ fontSize: 14, color: '#666' }}>·</Typography>
+              <TextField
+                type="number"
+                size="small"
+                variant="outlined"
+                placeholder="baños"
+                value={banosInput}
+                onChange={(e) => setBanosInput(e.target.value)}
+                onBlur={() => {
+                  handleInmuebleFieldBlur('banos', banosInput);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleInmuebleFieldBlur('banos', banosInput);
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
+                inputProps={{ min: 0, step: 1 }}
+                error={campoFalta('banos')}
+                sx={{
+                  width: 90,
+                  '& .MuiInputBase-root': { minHeight: 36 },
+                  '& .MuiInputBase-input': { fontSize: 14, textAlign: 'center' },
+                  ...(campoFalta('banos') ? {
+                    '& .MuiOutlinedInput-root': {
+                      borderColor: '#f44336',
+                      backgroundColor: '#fff9c4',
+                    }
+                  } : {})
+                }}
+              />
+              {banosCambiado && onRevertInmueble && (
+                <Tooltip title="Deshacer baños">
+                  <IconButton size="small" onClick={handleRevertInmueble('banos')} aria-label="Deshacer baños" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
+                    <UndoIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+              <Typography 
+              variant="body2" 
+              onClick={(e) => {
+                if ((campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos')) && onInmuebleChange) {
+                  e.stopPropagation();
+                  setEditingField('inmueble');
+                }
+              }}
+              sx={{ 
+                fontSize: 14, 
+                lineHeight: 1.4,
+                ...(campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos') 
+                  ? { ...estiloCampoFaltante, cursor: 'pointer', '&:hover': { opacity: 0.8 } } 
+                  : {})
+              }}
+            >
+              {card.habitaciones || campoFalta('habitaciones') ? `${card.habitaciones || '?'} hab` : ''} 
+              {card.habitaciones || campoFalta('habitaciones') ? ' · ' : ''}
+              {card.metrosCuadrados || campoFalta('metrosCuadrados') ? `${card.metrosCuadrados || '?'} m²` : ''}
+              {card.metrosCuadrados || campoFalta('metrosCuadrados') ? ' · ' : ''}
+              {card.banos || campoFalta('banos') ? `${card.banos || '?'} ${card.banos === 1 ? 'baño' : 'baños'}` : ''}
+                {(!card.habitaciones && !campoFalta('habitaciones')) && (!card.metrosCuadrados && !campoFalta('metrosCuadrados')) && (!card.banos && !campoFalta('banos')) && '—'}
+              </Typography>
+              {habitacionesCambiado && onRevertInmueble && (
+                <Tooltip title="Deshacer habitaciones">
+                  <IconButton size="small" onClick={handleRevertInmueble('habitaciones')} aria-label="Deshacer habitaciones" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
+                    <UndoIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              {metrosCuadradosCambiado && onRevertInmueble && (
+                <Tooltip title="Deshacer metros cuadrados">
+                  <IconButton size="small" onClick={handleRevertInmueble('metrosCuadrados')} aria-label="Deshacer metros cuadrados" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
+                    <UndoIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              {banosCambiado && onRevertInmueble && (
+                <Tooltip title="Deshacer baños">
+                  <IconButton size="small" onClick={handleRevertInmueble('banos')} aria-label="Deshacer baños" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
+                    <UndoIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+          )}
         </Box>
         {/* Precio compra y Alquiler - tercera fila */}
         <Box sx={{ mb: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -551,7 +1299,18 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                   onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                   onClick={(e) => e.stopPropagation()}
                   inputProps={{ min: 0, step: 1000 }}
-                  sx={{ flex: 1, '& .MuiInputBase-root': { minHeight: 36 }, '& .MuiInputBase-input': { fontSize: 14 } }}
+                  error={campoFalta('precioCompra')}
+                  sx={{ 
+                    flex: 1, 
+                    '& .MuiInputBase-root': { minHeight: 36 }, 
+                    '& .MuiInputBase-input': { fontSize: 14 },
+                    ...(campoFalta('precioCompra') ? {
+                      '& .MuiOutlinedInput-root': {
+                        borderColor: '#f44336',
+                        backgroundColor: '#fff9c4',
+                      }
+                    } : {})
+                  }}
                 />
                 {precioCambiado && onRevertField && (
                   <Tooltip title="Deshacer precio compra">
@@ -563,7 +1322,22 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
               </Box>
             ) : (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 500 }}>{formatEuro(card.precioCompra)}</Typography>
+                <Typography 
+                  variant="body2" 
+                  onClick={(e) => {
+                    if (campoFalta('precioCompra') && onInputChange) {
+                      e.stopPropagation();
+                      setEditingField('precioCompra');
+                    }
+                  }}
+                  sx={{ 
+                    fontSize: 16, 
+                    fontWeight: 500,
+                    ...(campoFalta('precioCompra') ? { ...estiloCampoFaltante, cursor: 'pointer', '&:hover': { opacity: 0.8 } } : {})
+                  }}
+                >
+                  {card.precioCompra > 0 ? formatEuro(card.precioCompra) : (campoFalta('precioCompra') ? '⚠️ Falta' : formatEuro(card.precioCompra))}
+                </Typography>
                 {precioCambiado && onRevertField && (
                   <Tooltip title="Deshacer precio compra">
                     <IconButton size="small" onClick={handleRevertPrecio} aria-label="Deshacer precio compra" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
@@ -572,8 +1346,13 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                   </Tooltip>
                 )}
                 {onInputChange && (
-                  <Tooltip title="Editar precio compra">
-                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); setEditingField('precioCompra'); }} aria-label="Editar precio compra" sx={{ p: 0.25, color: '#666', '&:hover': { color: 'primary.main' } }}>
+                  <Tooltip title={campoFalta('precioCompra') ? 'Completar precio compra' : 'Editar precio compra'}>
+                    <IconButton 
+                      size="small" 
+                      onClick={(e) => { e.stopPropagation(); setEditingField('precioCompra'); }} 
+                      aria-label="Editar precio compra" 
+                      sx={{ p: 0.25, color: campoFalta('precioCompra') ? '#f44336' : '#666', '&:hover': { color: 'primary.main' } }}
+                    >
                       <EditIcon sx={{ fontSize: 14 }} />
                     </IconButton>
                   </Tooltip>
@@ -595,7 +1374,18 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                   onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                   onClick={(e) => e.stopPropagation()}
                   inputProps={{ min: 0, step: 50 }}
-                  sx={{ flex: 1, '& .MuiInputBase-root': { minHeight: 36 }, '& .MuiInputBase-input': { fontSize: 14 } }}
+                  error={campoFalta('alquilerMensual')}
+                  sx={{ 
+                    flex: 1, 
+                    '& .MuiInputBase-root': { minHeight: 36 }, 
+                    '& .MuiInputBase-input': { fontSize: 14 },
+                    ...(campoFalta('alquilerMensual') ? {
+                      '& .MuiOutlinedInput-root': {
+                        borderColor: '#f44336',
+                        backgroundColor: '#fff9c4',
+                      }
+                    } : {})
+                  }}
                 />
                 {alquilerCambiado && onRevertField && (
                   <Tooltip title="Deshacer alquiler estimado">
@@ -607,7 +1397,22 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
               </Box>
             ) : (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 500 }}>{formatEuro(card.alquilerEstimado)}/mes</Typography>
+                <Typography 
+                  variant="body2" 
+                  onClick={(e) => {
+                    if (campoFalta('alquilerMensual') && onInputChange) {
+                      e.stopPropagation();
+                      setEditingField('alquilerMensual');
+                    }
+                  }}
+                  sx={{ 
+                    fontSize: 16, 
+                    fontWeight: 500,
+                    ...(campoFalta('alquilerMensual') ? { ...estiloCampoFaltante, cursor: 'pointer', '&:hover': { opacity: 0.8 } } : {})
+                  }}
+                >
+                  {card.alquilerEstimado > 0 ? formatEuro(card.alquilerEstimado) : (campoFalta('alquilerMensual') ? '⚠️ Falta' : formatEuro(card.alquilerEstimado))}/mes
+                </Typography>
                 {alquilerCambiado && onRevertField && (
                   <Tooltip title="Deshacer alquiler estimado">
                     <IconButton size="small" onClick={handleRevertAlquiler} aria-label="Deshacer alquiler estimado" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
@@ -616,8 +1421,13 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                   </Tooltip>
                 )}
                 {onInputChange && (
-                  <Tooltip title="Editar alquiler estimado">
-                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); setEditingField('alquilerMensual'); }} aria-label="Editar alquiler estimado" sx={{ p: 0.25, color: '#666', '&:hover': { color: 'primary.main' } }}>
+                  <Tooltip title={campoFalta('alquilerMensual') ? 'Completar alquiler estimado' : 'Editar alquiler estimado'}>
+                    <IconButton 
+                      size="small" 
+                      onClick={(e) => { e.stopPropagation(); setEditingField('alquilerMensual'); }} 
+                      aria-label="Editar alquiler estimado" 
+                      sx={{ p: 0.25, color: campoFalta('alquilerMensual') ? '#f44336' : '#666', '&:hover': { color: 'primary.main' } }}
+                    >
                       <EditIcon sx={{ fontSize: 14 }} />
                     </IconButton>
                   </Tooltip>

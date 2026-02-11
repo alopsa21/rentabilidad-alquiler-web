@@ -35,6 +35,9 @@ interface PersistedCard {
   habitaciones: number;
   metrosCuadrados: number;
   banos: number;
+  originalHabitaciones?: number; // Opcional para compatibilidad con versiones anteriores
+  originalMetrosCuadrados?: number; // Opcional para compatibilidad con versiones anteriores
+  originalBanos?: number; // Opcional para compatibilidad con versiones anteriores
   originalInput: unknown; // FormularioRentabilidadState
   currentInput: unknown; // FormularioRentabilidadState
   motorOutput: RentabilidadApiResponse;
@@ -64,6 +67,9 @@ function cardToPersisted(
     habitaciones: card.habitaciones,
     metrosCuadrados: card.metrosCuadrados,
     banos: card.banos,
+    originalHabitaciones: card.originalHabitaciones,
+    originalMetrosCuadrados: card.originalMetrosCuadrados,
+    originalBanos: card.originalBanos,
     originalInput: card.originalInput,
     currentInput: card.currentInput,
     motorOutput,
@@ -90,6 +96,9 @@ function persistedToCard(persisted: PersistedCard): AnalisisCard {
     habitaciones: persisted.habitaciones,
     metrosCuadrados: persisted.metrosCuadrados,
     banos: persisted.banos,
+    originalHabitaciones: persisted.originalHabitaciones ?? persisted.habitaciones,
+    originalMetrosCuadrados: persisted.originalMetrosCuadrados ?? persisted.metrosCuadrados,
+    originalBanos: persisted.originalBanos ?? persisted.banos,
     originalInput: persisted.originalInput as FormularioRentabilidadState,
     currentInput: persisted.currentInput as FormularioRentabilidadState,
     isFavorite: persisted.isFavorite ?? false,

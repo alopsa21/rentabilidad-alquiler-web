@@ -8,8 +8,9 @@ const DetalleAnalisis = lazy(() => import('./components/DetalleAnalisis').then(m
 import { ModalDetalle } from './components/ModalDetalle'
 import { ModalNotas } from './components/ModalNotas'
 import { ModalCompartirSelectivo } from './components/ModalCompartirSelectivo'
+import { ModalCompletarCampos } from './components/ModalCompletarCampos'
 import { calcularRentabilidadApi, autofillFromUrlApi } from './services/api'
-import { CODIGOS_COMUNIDADES, NOMBRE_COMUNIDAD_POR_CODIGO } from './constants/comunidades'
+import { NOMBRE_COMUNIDAD_POR_CODIGO } from './constants/comunidades'
 import type { RentabilidadApiResponse } from './types/api'
 import type { FormularioRentabilidadState } from './types/formulario'
 import type { AnalisisCard } from './types/analisis'
@@ -72,6 +73,20 @@ function App() {
   const [modalLimpiarPanelOpen, setModalLimpiarPanelOpen] = useState(false)
   const [modalCompartirSelectivoOpen, setModalCompartirSelectivoOpen] = useState(false)
   const [hasUserAnalyzedBefore, setHasUserAnalyzedBefore] = useState(false)
+  const [modalCompletarCamposOpen, setModalCompletarCamposOpen] = useState(false)
+  const [datosPendientes, setDatosPendientes] = useState<{
+    url: string;
+    autofillData: any;
+    camposFaltantes: {
+      habitaciones?: boolean;
+      metrosCuadrados?: boolean;
+      banos?: boolean;
+      codigoComunidadAutonoma?: boolean;
+      ciudad?: boolean;
+      precioCompra?: boolean;
+      alquilerMensual?: boolean;
+    };
+  } | null>(null)
 
   // OPTIMIZACIÓN CRÍTICA: usar refs para evitar recrear callbacks
   const analisisRef = useRef(analisis)
@@ -204,80 +219,169 @@ function App() {
     try {
       const autofillData = await autofillFromUrlApi(_url)
       
-      // Usar datos extraídos o valores por defecto/aleatorios
-      const precioCompra = autofillData.buyPrice ?? Math.floor(Math.random() * (400000 - 100000 + 1)) + 100000
-      const metrosCuadrados = autofillData.sqm ?? (Math.floor(Math.random() * ((200 - 60) / 10 + 1)) * 10) + 60
-      const habitaciones = autofillData.rooms ?? Math.floor(Math.random() * (4 - 1 + 1)) + 1
-      const banos = autofillData.banos ?? Math.floor(Math.random() * (3 - 1 + 1)) + 1
-      
-      // Código de comunidad: primero de autofill (desde ciudad), luego aleatorio
-      let codigoComunidadAutonoma = autofillData.codigoComunidadAutonoma
-      if (codigoComunidadAutonoma == null || codigoComunidadAutonoma < 1 || codigoComunidadAutonoma > 19) {
-        codigoComunidadAutonoma = CODIGOS_COMUNIDADES[Math.floor(Math.random() * CODIGOS_COMUNIDADES.length)]
+      // Detectar campos faltantes (obligatorios)
+      const camposFaltantes = {
+        habitaciones: autofillData.rooms == null,
+        metrosCuadrados: autofillData.sqm == null,
+        banos: autofillData.banos == null,
+        codigoComunidadAutonoma: autofillData.codigoComunidadAutonoma == null || autofillData.codigoComunidadAutonoma < 1 || autofillData.codigoComunidadAutonoma > 19,
+        ciudad: !autofillData.ciudad,
+        precioCompra: autofillData.buyPrice == null,
+        alquilerMensual: true, // Siempre falta porque aún no lo calculamos desde el autofill
       }
       
-      // Ciudad: usar la extraída o inferir desde comunidad
-      let ciudad = autofillData.ciudad
-      if (!ciudad) {
-        const { obtenerCiudadAleatoria } = await import('./utils/ciudades')
-        const nombreComunidad = NOMBRE_COMUNIDAD_POR_CODIGO[codigoComunidadAutonoma]
-        ciudad = obtenerCiudadAleatoria(nombreComunidad)
-      }
-      
-      // Alquiler mensual: por ahora siempre aleatorio (en el futuro se calculará)
-      const alquilerAleatorio = Math.floor(Math.random() * (1000 - 500 + 1)) + 500
-      
-      const payload = {
-        ...DEFAULT_PAYLOAD,
-        alquilerMensual: alquilerAleatorio,
-        precioCompra: precioCompra,
-        codigoComunidadAutonoma,
-      }
-      const data = await calcularRentabilidadApi(payload)
-      setResultado(data)
-
-      const veredicto = mapResultadosToVerdict(data)
-      setVeredictoGlobal(veredicto)
-
-      // Construir tarjeta acumulativa
-      const rentNetaRaw = Number(data.rentabilidadNeta)
-      const rentNetaPct =
-        !Number.isNaN(rentNetaRaw) && rentNetaRaw > -1 && rentNetaRaw < 1
-          ? rentNetaRaw * 100
-          : rentNetaRaw
-
-      const nuevaTarjeta: AnalisisCard = {
-        id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
-        url: _url,
-        ciudad: ciudad,
-        precioCompra: payload.precioCompra,
-        alquilerEstimado: alquilerAleatorio,
-        rentabilidadNetaPct: rentNetaPct,
-        estado: veredicto.estado,
-        veredictoTitulo: veredicto.titulo,
-        veredictoRazones: veredicto.razones,
-        habitaciones: habitaciones,
-        metrosCuadrados: metrosCuadrados,
-        banos: banos,
-        originalInput: { ...payload },
-        currentInput: { ...payload },
-        isFavorite: false,
-        notes: '',
-      }
-
-      const ahora = new Date().toISOString()
-      setAnalisis((prev) => [nuevaTarjeta, ...prev])
-      setResultadosPorTarjeta((prev) => ({ ...prev, [nuevaTarjeta.id]: data }))
-      setCreatedAtPorTarjeta((prev) => ({ ...prev, [nuevaTarjeta.id]: ahora }))
-      setHasUserAnalyzedBefore(true)
-      try { localStorage.setItem(STORAGE_KEY_HAS_ANALYZED, '1') } catch { /* ignore */ }
-      // No establecer tarjetaActivaId ni expandir automáticamente
-      // La tarjeta aparecerá sin resaltar hasta que el usuario haga clic
+      // Crear la tarjeta siempre, incluso si faltan campos (se resaltarán en la tarjeta)
+      await crearTarjetaConDatos(_url, autofillData, camposFaltantes)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al analizar')
     } finally {
       setLoading(false)
     }
+  }
+  
+  const handleCompletarCampos = async (datos: {
+    habitaciones: number;
+    metrosCuadrados: number;
+    banos: number;
+    codigoComunidadAutonoma: number;
+    ciudad: string;
+    precioCompra: number;
+    alquilerMensual: number;
+  }) => {
+    if (!datosPendientes) return;
+    
+    setLoading(true);
+    try {
+      // Crear objeto autofillData con los datos completados
+      const autofillDataCompleto = {
+        ...datosPendientes.autofillData,
+        rooms: datos.habitaciones,
+        sqm: datos.metrosCuadrados,
+        banos: datos.banos,
+        codigoComunidadAutonoma: datos.codigoComunidadAutonoma,
+        ciudad: datos.ciudad,
+        buyPrice: datos.precioCompra,
+        alquilerMensual: datos.alquilerMensual,
+      };
+      
+      await crearTarjetaConDatos(datosPendientes.url, autofillDataCompleto, datosPendientes.camposFaltantes);
+      setDatosPendientes(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al crear tarjeta');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const crearTarjetaConDatos = async (
+    _url: string,
+    autofillData: any,
+    camposFaltantes: any
+  ) => {
+    // Usar datos extraídos o valores vacíos (0 o '') si faltan
+    const precioCompra = autofillData.buyPrice ?? 0
+    const metrosCuadrados = autofillData.sqm ?? 0
+    const habitaciones = autofillData.rooms ?? 0
+    const banos = autofillData.banos ?? 0
+    const codigoComunidadAutonoma = autofillData.codigoComunidadAutonoma ?? 0
+    const ciudad = autofillData.ciudad ?? ''
+    const alquilerMensual = autofillData.alquilerMensual ?? 0
+    
+    // Verificar si faltan campos obligatorios
+    const faltanCamposObligatorios = 
+      camposFaltantes.habitaciones ||
+      camposFaltantes.metrosCuadrados ||
+      camposFaltantes.banos ||
+      camposFaltantes.codigoComunidadAutonoma ||
+      camposFaltantes.ciudad ||
+      camposFaltantes.precioCompra ||
+      camposFaltantes.alquilerMensual
+    
+    // Input de la tarjeta: guardar valores vacíos (0 o '') cuando faltan campos
+    const inputReal: FormularioRentabilidadState = {
+      ...DEFAULT_PAYLOAD,
+      alquilerMensual: alquilerMensual, // 0 si falta
+      precioCompra: precioCompra, // 0 si falta
+      codigoComunidadAutonoma: codigoComunidadAutonoma, // 0 si falta
+    }
+    
+    let data: RentabilidadApiResponse | null = null
+    let veredicto: VeredictoHumano | null = null
+    let rentNetaPct = 0
+    let estado: 'verde' | 'amarillo' | 'rojo' = 'amarillo'
+    let veredictoTitulo = 'Completa los datos faltantes'
+    let veredictoRazones: string[] = []
+    
+    // Solo calcular rentabilidad si NO faltan campos obligatorios
+    if (!faltanCamposObligatorios) {
+      data = await calcularRentabilidadApi(inputReal)
+      setResultado(data)
+
+      veredicto = mapResultadosToVerdict(data)
+      setVeredictoGlobal(veredicto)
+
+      // Construir tarjeta acumulativa
+      const rentNetaRaw = Number(data.rentabilidadNeta)
+      rentNetaPct =
+        !Number.isNaN(rentNetaRaw) && rentNetaRaw > -1 && rentNetaRaw < 1
+          ? rentNetaRaw * 100
+          : rentNetaRaw
+      
+      estado = veredicto.estado
+      veredictoTitulo = veredicto.titulo
+      veredictoRazones = veredicto.razones
+    } else {
+      // Si faltan campos, crear mensaje informativo
+      const camposFaltantesLista: string[] = []
+      if (camposFaltantes.habitaciones || camposFaltantes.metrosCuadrados || camposFaltantes.banos) {
+        camposFaltantesLista.push('Datos del inmueble')
+      }
+      if (camposFaltantes.codigoComunidadAutonoma) camposFaltantesLista.push('Comunidad autónoma')
+      if (camposFaltantes.ciudad) camposFaltantesLista.push('Ciudad')
+      if (camposFaltantes.precioCompra) camposFaltantesLista.push('Precio compra')
+      if (camposFaltantes.alquilerMensual) camposFaltantesLista.push('Alquiler estimado')
+      
+      veredictoRazones = [`Completa los siguientes campos: ${camposFaltantesLista.join(', ')}`]
+    }
+
+    const nuevaTarjeta: AnalisisCard = {
+      id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+      url: _url,
+      ciudad: ciudad,
+      precioCompra: precioCompra,
+      alquilerEstimado: alquilerMensual,
+      rentabilidadNetaPct: rentNetaPct,
+      estado: estado,
+      veredictoTitulo: veredictoTitulo,
+      veredictoRazones: veredictoRazones,
+      habitaciones: habitaciones,
+      metrosCuadrados: metrosCuadrados,
+      banos: banos,
+      originalHabitaciones: habitaciones,
+      originalMetrosCuadrados: metrosCuadrados,
+      originalBanos: banos,
+      originalInput: { ...inputReal },
+      currentInput: inputReal,
+      isFavorite: false,
+      notes: '',
+      camposFaltantes: Object.keys(camposFaltantes).some(k => camposFaltantes[k as keyof typeof camposFaltantes]) ? camposFaltantes : undefined,
+    }
+
+    const ahora = new Date().toISOString()
+    setAnalisis((prev) => {
+      const nuevasTarjetas = [nuevaTarjeta, ...prev]
+      // Log temporal para debug
+      console.log('📊 Nueva tarjeta creada:', nuevaTarjeta)
+      console.log('📋 Campos faltantes:', nuevaTarjeta.camposFaltantes)
+      console.log('📦 Todas las tarjetas:', nuevasTarjetas)
+      return nuevasTarjetas
+    })
+    if (data) {
+      setResultadosPorTarjeta((prev) => ({ ...prev, [nuevaTarjeta.id]: data }))
+    }
+    setCreatedAtPorTarjeta((prev) => ({ ...prev, [nuevaTarjeta.id]: ahora }))
+    setHasUserAnalyzedBefore(true)
+    try { localStorage.setItem(STORAGE_KEY_HAS_ANALYZED, '1') } catch { /* ignore */ }
   }
 
   const tarjetaActiva = analisis.find((c) => c.id === tarjetaActivaId)
@@ -490,16 +594,149 @@ function App() {
         recalcularTarjetaConInput(tarjetaId, nuevoCurrentInput);
       });
 
-      return prev.map((c) =>
-        c.id === tarjetaId
-          ? {
+      return prev.map((c) => {
+        if (c.id !== tarjetaId) return c;
+        
+        // Actualizar camposFaltantes: si se completa un campo que faltaba, marcarlo como completado
+        const camposFaltantesActualizados = c.camposFaltantes ? { ...c.camposFaltantes } : undefined;
+        
+        // Mapear campos del formulario a camposFaltantes
+        if (camposFaltantesActualizados) {
+          if (campo === 'precioCompra' && typeof valor === 'number' && valor > 0) {
+            camposFaltantesActualizados.precioCompra = false;
+          }
+          if (campo === 'alquilerMensual' && typeof valor === 'number' && valor > 0) {
+            camposFaltantesActualizados.alquilerMensual = false;
+          }
+          if (campo === 'codigoComunidadAutonoma' && typeof valor === 'number' && valor >= 1 && valor <= 19) {
+            camposFaltantesActualizados.codigoComunidadAutonoma = false;
+          }
+          
+          // Verificar si todos los campos están completos después de esta actualización
+          const todosCompletos = 
+            nuevoCurrentInput.precioCompra > 0 &&
+            nuevoCurrentInput.codigoComunidadAutonoma >= 1 &&
+            nuevoCurrentInput.codigoComunidadAutonoma <= 19 &&
+            nuevoCurrentInput.alquilerMensual > 0 &&
+            c.ciudad &&
+            c.habitaciones > 0 &&
+            c.metrosCuadrados > 0 &&
+            c.banos > 0;
+          
+          // Si todos están completos, limpiar camposFaltantes
+          if (todosCompletos) {
+            return {
               ...c,
               currentInput: nuevoCurrentInput,
-            }
-          : c
-      );
+              camposFaltantes: undefined,
+            };
+          }
+        }
+        
+        return {
+          ...c,
+          currentInput: nuevoCurrentInput,
+          camposFaltantes: camposFaltantesActualizados,
+        };
+      });
     });
   }, []) // OPTIMIZACIÓN: sin dependencias porque usamos refs
+
+  /**
+   * Maneja el cambio de ciudad en una tarjeta.
+   */
+  const handleCiudadChange = useCallback((tarjetaId: string, ciudad: string) => {
+    setAnalisis((prev) => {
+      return prev.map((c) => {
+        if (c.id !== tarjetaId) return c;
+        
+        const camposFaltantesActualizados = c.camposFaltantes ? { ...c.camposFaltantes } : undefined;
+        if (camposFaltantesActualizados && ciudad) {
+          camposFaltantesActualizados.ciudad = false;
+        }
+        
+        // Verificar si todos los campos están completos después de esta actualización
+        const todosCompletos = 
+          c.currentInput.precioCompra > 0 &&
+          c.currentInput.codigoComunidadAutonoma >= 1 &&
+          c.currentInput.codigoComunidadAutonoma <= 19 &&
+          c.currentInput.alquilerMensual > 0 &&
+          ciudad &&
+          c.habitaciones > 0 &&
+          c.metrosCuadrados > 0 &&
+          c.banos > 0;
+        
+        // Si todos están completos, limpiar camposFaltantes y recalcular
+        if (todosCompletos) {
+          // Recalcular en el siguiente tick para evitar problemas de sincronización
+          setTimeout(() => {
+            const tarjetaActualizada = analisisRef.current.find((t) => t.id === tarjetaId);
+            if (tarjetaActualizada) {
+              recalcularTarjetaConInput(tarjetaId, tarjetaActualizada.currentInput);
+            }
+          }, 0);
+          
+          return {
+            ...c,
+            ciudad,
+            camposFaltantes: undefined,
+          };
+        }
+        
+        return {
+          ...c,
+          ciudad,
+          camposFaltantes: camposFaltantesActualizados,
+        };
+      });
+    });
+  }, []);
+
+  const handleInmuebleChange = useCallback((tarjetaId: string, campo: 'habitaciones' | 'metrosCuadrados' | 'banos', valor: number) => {
+    setAnalisis((prev) => {
+      return prev.map((c) => {
+        if (c.id !== tarjetaId) return c;
+        
+        const camposFaltantesActualizados = c.camposFaltantes ? { ...c.camposFaltantes } : undefined;
+        if (camposFaltantesActualizados && valor > 0) {
+          camposFaltantesActualizados[campo] = false;
+        }
+        
+        // Verificar si todos los campos están completos después de esta actualización
+        const todosCompletos = 
+          c.currentInput.precioCompra > 0 &&
+          c.currentInput.codigoComunidadAutonoma >= 1 &&
+          c.currentInput.codigoComunidadAutonoma <= 19 &&
+          c.currentInput.alquilerMensual > 0 &&
+          c.ciudad &&
+          (campo === 'habitaciones' ? valor : c.habitaciones) > 0 &&
+          (campo === 'metrosCuadrados' ? valor : c.metrosCuadrados) > 0 &&
+          (campo === 'banos' ? valor : c.banos) > 0;
+        
+        // Si todos están completos, recalcular
+        if (todosCompletos) {
+          setTimeout(() => {
+            const tarjetaActualizada = analisisRef.current.find((t) => t.id === tarjetaId);
+            if (tarjetaActualizada) {
+              recalcularTarjetaConInput(tarjetaId, tarjetaActualizada.currentInput);
+            }
+          }, 0);
+          
+          return {
+            ...c,
+            [campo]: valor,
+            camposFaltantes: undefined,
+          };
+        }
+        
+        return {
+          ...c,
+          [campo]: valor,
+          camposFaltantes: camposFaltantesActualizados,
+        };
+      });
+    });
+  }, []);
 
   /**
    * Recalcula las métricas de una tarjeta usando un input específico.
@@ -507,6 +744,54 @@ function App() {
    */
   const recalcularTarjetaConInput = async (tarjetaId: string, input: FormularioRentabilidadState) => {
     try {
+      // Verificar si todos los campos obligatorios están completos
+      const tarjetaActual = analisisRef.current.find((c) => c.id === tarjetaId);
+      if (!tarjetaActual) return;
+      
+      const camposFaltantes = tarjetaActual.camposFaltantes;
+      const faltanCamposObligatorios = camposFaltantes && (
+        camposFaltantes.habitaciones ||
+        camposFaltantes.metrosCuadrados ||
+        camposFaltantes.banos ||
+        camposFaltantes.codigoComunidadAutonoma ||
+        camposFaltantes.ciudad ||
+        camposFaltantes.precioCompra ||
+        camposFaltantes.alquilerMensual
+      );
+      
+      // Verificar también directamente desde el input y la tarjeta
+      const faltanCamposEnInput = 
+        input.precioCompra <= 0 ||
+        input.codigoComunidadAutonoma < 1 ||
+        input.codigoComunidadAutonoma > 19 ||
+        input.alquilerMensual <= 0 ||
+        !tarjetaActual.ciudad ||
+        tarjetaActual.habitaciones <= 0 ||
+        tarjetaActual.metrosCuadrados <= 0 ||
+        tarjetaActual.banos <= 0;
+      
+      // Si faltan campos obligatorios, NO calcular rentabilidad
+      if (faltanCamposObligatorios || faltanCamposEnInput) {
+        // Actualizar solo los valores del input, sin calcular rentabilidad
+        setAnalisis((prev) => {
+          return prev.map((c) =>
+            c.id === tarjetaId
+              ? {
+                  ...c,
+                  precioCompra: input.precioCompra,
+                  alquilerEstimado: input.alquilerMensual,
+                  rentabilidadNetaPct: 0,
+                  estado: 'amarillo' as const,
+                  veredictoTitulo: 'Completa los datos faltantes',
+                  veredictoRazones: ['Completa todos los campos obligatorios para calcular la rentabilidad'],
+                }
+              : c
+          );
+        });
+        return;
+      }
+      
+      // Todos los campos están completos, calcular rentabilidad
       const nuevoResultado = await calcularRentabilidadApi(input);
       const nuevoVeredicto = mapResultadosToVerdict(nuevoResultado);
 
@@ -521,9 +806,8 @@ function App() {
           : rentNetaRaw;
 
       // Resolver nueva ciudad si cambió la comunidad (fuera del setState para poder usar await)
-      const tarjetaActual = analisis.find((c) => c.id === tarjetaId);
       let nuevaCiudad: string | null = null;
-      if (tarjetaActual && tarjetaActual.currentInput.codigoComunidadAutonoma !== input.codigoComunidadAutonoma) {
+      if (tarjetaActual.currentInput.codigoComunidadAutonoma !== input.codigoComunidadAutonoma) {
         const { obtenerCiudadAleatoria } = await import('./utils/ciudades');
         const nombreComunidad = NOMBRE_COMUNIDAD_POR_CODIGO[input.codigoComunidadAutonoma];
         nuevaCiudad = nombreComunidad ? obtenerCiudadAleatoria(nombreComunidad) : null;
@@ -544,6 +828,8 @@ function App() {
                 estado: nuevoVeredicto.estado,
                 veredictoTitulo: nuevoVeredicto.titulo,
                 veredictoRazones: nuevoVeredicto.razones,
+                // Limpiar camposFaltantes si todos están completos
+                camposFaltantes: undefined,
               }
             : c
         );
@@ -634,6 +920,49 @@ function App() {
       );
     });
   }, []) // OPTIMIZACIÓN: sin dependencias, todo dentro de setState
+
+  /**
+   * Revierte un campo del inmueble (habitaciones, metrosCuadrados o banos) al valor original.
+   */
+  const handleRevertInmueble = useCallback((tarjetaId: string, campo: 'habitaciones' | 'metrosCuadrados' | 'banos') => {
+    setAnalisis((prev) => {
+      return prev.map((c) => {
+        if (c.id !== tarjetaId) return c;
+        
+        const valorOriginal = campo === 'habitaciones' 
+          ? c.originalHabitaciones 
+          : campo === 'metrosCuadrados' 
+          ? c.originalMetrosCuadrados 
+          : c.originalBanos;
+        
+        // Verificar si todos los campos están completos después del revert
+        const todosCompletos = 
+          c.currentInput.precioCompra > 0 &&
+          c.currentInput.codigoComunidadAutonoma >= 1 &&
+          c.currentInput.codigoComunidadAutonoma <= 19 &&
+          c.currentInput.alquilerMensual > 0 &&
+          c.ciudad &&
+          (campo === 'habitaciones' ? valorOriginal : c.habitaciones) > 0 &&
+          (campo === 'metrosCuadrados' ? valorOriginal : c.metrosCuadrados) > 0 &&
+          (campo === 'banos' ? valorOriginal : c.banos) > 0;
+        
+        // Si todos están completos, recalcular
+        if (todosCompletos) {
+          setTimeout(() => {
+            const tarjetaActualizada = analisisRef.current.find((t) => t.id === tarjetaId);
+            if (tarjetaActualizada) {
+              recalcularTarjetaConInput(tarjetaId, tarjetaActualizada.currentInput);
+            }
+          }, 0);
+        }
+        
+        return {
+          ...c,
+          [campo]: valorOriginal,
+        };
+      });
+    });
+  }, []);
 
   /**
    * Abre el modal para seleccionar tarjetas a compartir
@@ -849,6 +1178,9 @@ function App() {
                 <div style={{ flex: '1.2 1 0', minWidth: 0, display: 'flex', alignItems: 'center' }}>
                   <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Inmueble</strong>
                 </div>
+                <div style={{ flex: '1.4 1 0', minWidth: 240, display: 'flex', alignItems: 'center' }}>
+                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Comunidad autónoma</strong>
+                </div>
                 <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('ciudad')}>
                   <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Ciudad</strong>
                   {ordenarPor.campo === 'ciudad' && (
@@ -912,6 +1244,9 @@ function App() {
                         resultadoOriginal={resultadoOriginalPorTarjeta[card.id]}
                         onInputChange={(campo, valor) => handleInputChange(card.id, campo, valor)}
                         onRevertField={(campo) => handleRevertField(card.id, campo)}
+                        onRevertInmueble={(campo) => handleRevertInmueble(card.id, campo)}
+                        onCiudadChange={(ciudad) => handleCiudadChange(card.id, ciudad)}
+                        onInmuebleChange={(campo, valor) => handleInmuebleChange(card.id, campo, valor)}
                         isInFavoritesView={vistaFiltro === 'favorites'}
                       />
                     {/* Detalle debajo de la tarjeta: toggle al hacer clic */}
@@ -1095,6 +1430,19 @@ function App() {
           resultadosPorTarjeta={resultadosPorTarjeta}
           onShare={handleShareSelected}
         />
+        {datosPendientes && (
+          <ModalCompletarCampos
+            open={modalCompletarCamposOpen}
+            onClose={() => {
+              setModalCompletarCamposOpen(false);
+              setDatosPendientes(null);
+            }}
+            url={datosPendientes.url}
+            autofillData={datosPendientes.autofillData}
+            camposFaltantes={datosPendientes.camposFaltantes}
+            onCompletar={handleCompletarCampos}
+          />
+        )}
       </main>
         </>
       )}

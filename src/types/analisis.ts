@@ -15,6 +15,10 @@ export interface AnalisisCard {
   habitaciones: number;
   metrosCuadrados: number;
   banos: number;
+  /** Valores originales del inmueble del análisis inicial (scraping/LLM) */
+  originalHabitaciones: number;
+  originalMetrosCuadrados: number;
+  originalBanos: number;
   /** Input original del análisis inicial (scraping/LLM) */
   originalInput: FormularioRentabilidadState;
   /** Input actual editable por el usuario */
@@ -23,5 +27,15 @@ export interface AnalisisCard {
   isFavorite: boolean;
   /** Notas libres del usuario sobre este anuncio */
   notes?: string;
+  /** Campos que faltan y deben ser completados por el usuario */
+  camposFaltantes?: {
+    habitaciones?: boolean;
+    metrosCuadrados?: boolean;
+    banos?: boolean;
+    codigoComunidadAutonoma?: boolean;
+    ciudad?: boolean;
+    precioCompra?: boolean;
+    alquilerMensual?: boolean;
+  };
 }
 

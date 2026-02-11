@@ -2,7 +2,7 @@ import type { FormularioRentabilidadState } from '../types/formulario';
 import type { RentabilidadApiResponse, RentabilidadApiError } from '../types/api';
 import type { IdealistaAutofill } from '../types/autofill';
 
-const getApiUrl = (): string => {
+export const getApiUrl = (): string => {
   const url = import.meta.env.VITE_API_URL;
   if (typeof url === 'string' && url.length > 0) {
     return url.replace(/\/$/, '');
