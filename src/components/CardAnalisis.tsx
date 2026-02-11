@@ -10,6 +10,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Autocomplete from '@mui/material/Autocomplete';
+import { useMediaQuery } from '@mui/material';
 import StarIcon from '@mui/icons-material/Star';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import EditNoteIcon from '@mui/icons-material/StickyNote2Outlined';
@@ -70,6 +71,9 @@ function DeltaLabel({ delta, unit }: { delta: number; unit: '%' | '€' }) {
 }
 
 function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onToggleFavorite, onOpenNotes, resultado, resultadoOriginal, onInputChange, onRevertField, onRevertInmueble, onCiudadChange, onInmuebleChange, isInFavoritesView = false }: CardAnalisisProps) {
+  // Detectar modo oscuro
+  const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
+  
   // Color único del semáforo basado en el veredicto de la tarjeta
   const colorSemaforo = estadoToColor[card.estado];
   
@@ -78,13 +82,14 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
     return card.camposFaltantes?.[campo] === true;
   };
   
-  // Estilos para campos faltantes
-  const estiloCampoFaltante = {
+  // Estilos para campos faltantes (adaptado para modo claro y oscuro)
+  const estiloCampoFaltante = useMemo(() => ({
     border: '2px solid #f44336',
-    backgroundColor: '#fff9c4',
+    backgroundColor: prefersDarkMode ? '#8b6914' : '#fff9c4', // Amarillo oscuro en modo oscuro, claro en modo claro
+    color: prefersDarkMode ? '#fff' : '#000', // Texto blanco en modo oscuro, negro en modo claro
     borderRadius: '4px',
     padding: '2px 4px',
-  };
+  }), [prefersDarkMode]);
   
   // Extraer métricas para mostrar
   const cashflowFinal = resultado ? Number(resultado.cashflowFinal) : null;
@@ -427,7 +432,18 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
       className={`card-analisis estado-${card.estado}${isActive ? ' is-active' : ''}`}
       onMouseEnter={() => setIsCardHovered(true)}
       onMouseLeave={() => setIsCardHovered(false)}
-      onClick={() => {
+      onClick={(e) => {
+        const target = e.target as HTMLElement | null;
+        // Evitar abrir el detalle al interactuar con controles (Autocomplete, inputs, botones, etc.)
+        if (
+          target &&
+          (target.closest('input, textarea, button, [role="button"]') ||
+            target.closest('.MuiAutocomplete-root') ||
+            target.closest('.MuiAutocomplete-popper') ||
+            target.closest('.MuiAutocomplete-listbox'))
+        ) {
+          return;
+        }
         if (editingField !== null || isEditing) {
           setEditingField(null);
           setIsEditing(false);
@@ -523,7 +539,8 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                   ...(campoFalta('habitaciones') ? {
                     '& .MuiOutlinedInput-root': {
                       borderColor: '#f44336',
-                      backgroundColor: '#fff9c4',
+                      backgroundColor: prefersDarkMode ? '#8b6914' : '#fff9c4',
+                      color: prefersDarkMode ? '#fff' : '#000',
                     }
                   } : {})
                 }}
@@ -555,7 +572,8 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                   ...(campoFalta('metrosCuadrados') ? {
                     '& .MuiOutlinedInput-root': {
                       borderColor: '#f44336',
-                      backgroundColor: '#fff9c4',
+                      backgroundColor: prefersDarkMode ? '#8b6914' : '#fff9c4',
+                      color: prefersDarkMode ? '#fff' : '#000',
                     }
                   } : {})
                 }}
@@ -594,7 +612,8 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                   ...(campoFalta('banos') ? {
                     '& .MuiOutlinedInput-root': {
                       borderColor: '#f44336',
-                      backgroundColor: '#fff9c4',
+                      backgroundColor: prefersDarkMode ? '#8b6914' : '#fff9c4',
+                      color: prefersDarkMode ? '#fff' : '#000',
                     }
                   } : {})
                 }}
@@ -677,8 +696,10 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
           {onInputChange ? (
             <Autocomplete
               size="small"
+              openOnFocus
               options={opcionesComunidades}
               getOptionLabel={(option) => option.nombre}
+              isOptionEqualToValue={(option, value) => option.codigo === value?.codigo}
               value={valorComunidadSeleccionada}
               onChange={(_, nuevaComunidad) => {
                 if (nuevaComunidad) {
@@ -687,8 +708,6 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                   handleComunidadChange(0);
                 }
               }}
-              onClick={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
               renderInput={(params) => (
                 <TextField
                   {...params}
@@ -699,7 +718,10 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                     ...(campoFalta('codigoComunidadAutonoma')
                       ? {
                           '& .MuiOutlinedInput-notchedOutline': { borderColor: '#f44336 !important' },
-                          '& .MuiInputBase-root': { backgroundColor: '#fff9c4' },
+                          '& .MuiInputBase-root': { 
+                            backgroundColor: prefersDarkMode ? '#8b6914' : '#fff9c4',
+                            color: prefersDarkMode ? '#fff' : '#000',
+                          },
                         }
                       : {}),
                   }}
@@ -708,10 +730,41 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
               sx={{
                 width: '100%',
                 '& .MuiInputBase-root': { minHeight: 28 },
+                ...(prefersDarkMode ? {
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: '#3d3d3d',
+                    color: '#e4e4e4',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#555',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#666',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#1976d2',
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: '#e4e4e4',
+                  },
+                } : {}),
               }}
               ListboxProps={{
                 sx: {
                   maxHeight: 300,
+                  ...(prefersDarkMode ? {
+                    backgroundColor: '#2d2d2d',
+                    color: '#e4e4e4',
+                    '& .MuiAutocomplete-option': {
+                      color: '#e4e4e4',
+                      '&:hover': {
+                        backgroundColor: '#3d3d3d',
+                      },
+                      '&[aria-selected="true"]': {
+                        backgroundColor: '#505050',
+                      },
+                    },
+                  } : {}),
                 },
               }}
             />
@@ -736,13 +789,12 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
           {onCiudadChange ? (
             <Autocomplete
               size="small"
+              openOnFocus
               options={opcionesCiudad}
               value={ciudad || null}
               onChange={(_, nuevaCiudad) => {
                 handleCiudadChange(nuevaCiudad || '');
               }}
-              onClick={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
               disabled={!(codigoComunidadAutonoma >= 1 && codigoComunidadAutonoma <= 19)}
               renderInput={(params) => (
                 <TextField
@@ -754,7 +806,10 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                     ...(campoFalta('ciudad')
                       ? {
                           '& .MuiOutlinedInput-notchedOutline': { borderColor: '#f44336 !important' },
-                          '& .MuiInputBase-root': { backgroundColor: '#fff9c4' },
+                          '& .MuiInputBase-root': { 
+                            backgroundColor: prefersDarkMode ? '#8b6914' : '#fff9c4',
+                            color: prefersDarkMode ? '#fff' : '#000',
+                          },
                         }
                       : {}),
                   }}
@@ -764,10 +819,41 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                 minWidth: 180,
                 width: '100%',
                 '& .MuiInputBase-root': { minHeight: 28 },
+                ...(prefersDarkMode ? {
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: '#3d3d3d',
+                    color: '#e4e4e4',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#555',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#666',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#1976d2',
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: '#e4e4e4',
+                  },
+                } : {}),
               }}
               ListboxProps={{
                 sx: {
                   maxHeight: 300,
+                  ...(prefersDarkMode ? {
+                    backgroundColor: '#2d2d2d',
+                    color: '#e4e4e4',
+                    '& .MuiAutocomplete-option': {
+                      color: '#e4e4e4',
+                      '&:hover': {
+                        backgroundColor: '#3d3d3d',
+                      },
+                      '&[aria-selected="true"]': {
+                        backgroundColor: '#505050',
+                      },
+                    },
+                  } : {}),
                 },
               }}
             />
@@ -806,7 +892,8 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                   ...(campoFalta('precioCompra') ? {
                     '& .MuiOutlinedInput-root': {
                       borderColor: '#f44336',
-                      backgroundColor: '#fff9c4',
+                      backgroundColor: prefersDarkMode ? '#8b6914' : '#fff9c4',
+                      color: prefersDarkMode ? '#fff' : '#000',
                     }
                   } : {})
                 }}
@@ -881,7 +968,8 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                   ...(campoFalta('alquilerMensual') ? {
                     '& .MuiOutlinedInput-root': {
                       borderColor: '#f44336',
-                      backgroundColor: '#fff9c4',
+                      backgroundColor: prefersDarkMode ? '#8b6914' : '#fff9c4',
+                      color: prefersDarkMode ? '#fff' : '#000',
                     }
                   } : {})
                 }}
@@ -910,7 +998,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                   ...(campoFalta('alquilerMensual') ? { ...estiloCampoFaltante, cursor: 'pointer', '&:hover': { opacity: 0.8 } } : {})
                 }}
               >
-                {card.alquilerEstimado > 0 ? formatEuro(card.alquilerEstimado) : (campoFalta('alquilerMensual') ? '⚠️ Falta' : formatEuro(card.alquilerEstimado))}/mes
+                {card.alquilerEstimado > 0 ? formatEuro(card.alquilerEstimado) : (campoFalta('alquilerMensual') ? 'Alquiler' : formatEuro(card.alquilerEstimado))}/mes
               </Typography>
               {alquilerCambiado && onRevertField && (
                 <Tooltip title="Deshacer alquiler estimado">
@@ -957,7 +1045,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
       {/* Mobile: Información vertical compacta */}
       <Box className="card-info-mobile" sx={{ position: 'relative', pt: 1 }}>
         {/* Botones de acción - esquina superior derecha */}
-        <Box sx={{ position: 'absolute', top: 8, right: 20, display: 'flex', gap: 1, zIndex: 10 }}>
+        <Box sx={{ position: 'absolute', top: 0, right: 8, display: 'flex', gap: 1, zIndex: 10 }}>
           {onToggleFavorite && (
             <Tooltip title={card.isFavorite ? 'Quitar de Mi Portfolio' : 'Añadir a Mi Portfolio'}>
               <IconButton
@@ -989,14 +1077,16 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
         </Box>
         
         {/* Comunidad autónoma - primera fila, con espacio para los iconos */}
-        <Box sx={{ mb: 1.5, pr: 8 }}>
+        <Box sx={{ mb: 1.5, pr: 10 }}>
           <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.25, textTransform: 'uppercase' }}>Comunidad autónoma</Typography>
           {onInputChange ? (
             <Autocomplete
               size="small"
               fullWidth
+              openOnFocus
               options={opcionesComunidades}
               getOptionLabel={(option) => option.nombre}
+              isOptionEqualToValue={(option, value) => option.codigo === value?.codigo}
               value={valorComunidadSeleccionada}
               onChange={(_, nuevaComunidad) => {
                 if (nuevaComunidad) {
@@ -1005,8 +1095,6 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                   handleComunidadChange(0);
                 }
               }}
-              onClick={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
               renderInput={(params) => (
                 <TextField
                   {...params}
@@ -1017,15 +1105,52 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                     ...(campoFalta('codigoComunidadAutonoma')
                       ? {
                           '& .MuiOutlinedInput-notchedOutline': { borderColor: '#f44336 !important' },
-                          '& .MuiInputBase-root': { backgroundColor: '#fff9c4' },
+                          '& .MuiInputBase-root': { 
+                            backgroundColor: prefersDarkMode ? '#8b6914' : '#fff9c4',
+                            color: prefersDarkMode ? '#fff' : '#000',
+                          },
                         }
                       : {}),
                   }}
                 />
               )}
+              sx={{
+                width: '100%',
+                ...(prefersDarkMode ? {
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: '#3d3d3d',
+                    color: '#e4e4e4',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#555',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#666',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#1976d2',
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: '#e4e4e4',
+                  },
+                } : {}),
+              }}
               ListboxProps={{
                 sx: {
                   maxHeight: 300,
+                  ...(prefersDarkMode ? {
+                    backgroundColor: '#2d2d2d',
+                    color: '#e4e4e4',
+                    '& .MuiAutocomplete-option': {
+                      color: '#e4e4e4',
+                      '&:hover': {
+                        backgroundColor: '#3d3d3d',
+                      },
+                      '&[aria-selected="true"]': {
+                        backgroundColor: '#505050',
+                      },
+                    },
+                  } : {}),
                 },
               }}
             />
@@ -1054,13 +1179,12 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
             <Autocomplete
               size="small"
               fullWidth
+              openOnFocus
               options={opcionesCiudad}
               value={ciudad || null}
               onChange={(_, nuevaCiudad) => {
                 handleCiudadChange(nuevaCiudad || '');
               }}
-              onClick={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
               disabled={!(codigoComunidadAutonoma >= 1 && codigoComunidadAutonoma <= 19)}
               renderInput={(params) => (
                 <TextField
@@ -1072,15 +1196,52 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                     ...(campoFalta('ciudad')
                       ? {
                           '& .MuiOutlinedInput-notchedOutline': { borderColor: '#f44336 !important' },
-                          '& .MuiInputBase-root': { backgroundColor: '#fff9c4' },
+                          '& .MuiInputBase-root': { 
+                            backgroundColor: prefersDarkMode ? '#8b6914' : '#fff9c4',
+                            color: prefersDarkMode ? '#fff' : '#000',
+                          },
                         }
                       : {}),
                   }}
                 />
               )}
+              sx={{
+                width: '100%',
+                ...(prefersDarkMode ? {
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: '#3d3d3d',
+                    color: '#e4e4e4',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#555',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#666',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#1976d2',
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: '#e4e4e4',
+                  },
+                } : {}),
+              }}
               ListboxProps={{
                 sx: {
                   maxHeight: 300,
+                  ...(prefersDarkMode ? {
+                    backgroundColor: '#2d2d2d',
+                    color: '#e4e4e4',
+                    '& .MuiAutocomplete-option': {
+                      color: '#e4e4e4',
+                      '&:hover': {
+                        backgroundColor: '#3d3d3d',
+                      },
+                      '&[aria-selected="true"]': {
+                        backgroundColor: '#505050',
+                      },
+                    },
+                  } : {}),
                 },
               }}
             />
@@ -1143,7 +1304,8 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                   ...(campoFalta('habitaciones') ? {
                     '& .MuiOutlinedInput-root': {
                       borderColor: '#f44336',
-                      backgroundColor: '#fff9c4',
+                      backgroundColor: prefersDarkMode ? '#8b6914' : '#fff9c4',
+                      color: prefersDarkMode ? '#fff' : '#000',
                     }
                   } : {})
                 }}
@@ -1182,7 +1344,8 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                   ...(campoFalta('metrosCuadrados') ? {
                     '& .MuiOutlinedInput-root': {
                       borderColor: '#f44336',
-                      backgroundColor: '#fff9c4',
+                      backgroundColor: prefersDarkMode ? '#8b6914' : '#fff9c4',
+                      color: prefersDarkMode ? '#fff' : '#000',
                     }
                   } : {})
                 }}
@@ -1221,7 +1384,8 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                   ...(campoFalta('banos') ? {
                     '& .MuiOutlinedInput-root': {
                       borderColor: '#f44336',
-                      backgroundColor: '#fff9c4',
+                      backgroundColor: prefersDarkMode ? '#8b6914' : '#fff9c4',
+                      color: prefersDarkMode ? '#fff' : '#000',
                     }
                   } : {})
                 }}
@@ -1307,7 +1471,8 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                     ...(campoFalta('precioCompra') ? {
                       '& .MuiOutlinedInput-root': {
                         borderColor: '#f44336',
-                        backgroundColor: '#fff9c4',
+                        backgroundColor: prefersDarkMode ? '#8b6914' : '#fff9c4',
+                        color: prefersDarkMode ? '#fff' : '#000',
                       }
                     } : {})
                   }}
@@ -1382,7 +1547,8 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                     ...(campoFalta('alquilerMensual') ? {
                       '& .MuiOutlinedInput-root': {
                         borderColor: '#f44336',
-                        backgroundColor: '#fff9c4',
+                        backgroundColor: prefersDarkMode ? '#8b6914' : '#fff9c4',
+                        color: prefersDarkMode ? '#fff' : '#000',
                       }
                     } : {})
                   }}
@@ -1411,7 +1577,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                     ...(campoFalta('alquilerMensual') ? { ...estiloCampoFaltante, cursor: 'pointer', '&:hover': { opacity: 0.8 } } : {})
                   }}
                 >
-                  {card.alquilerEstimado > 0 ? formatEuro(card.alquilerEstimado) : (campoFalta('alquilerMensual') ? '⚠️ Falta' : formatEuro(card.alquilerEstimado))}/mes
+                  {card.alquilerEstimado > 0 ? formatEuro(card.alquilerEstimado) : (campoFalta('alquilerMensual') ? 'Alquiler' : formatEuro(card.alquilerEstimado))}/mes
                 </Typography>
                 {alquilerCambiado && onRevertField && (
                   <Tooltip title="Deshacer alquiler estimado">

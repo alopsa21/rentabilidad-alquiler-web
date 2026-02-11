@@ -135,7 +135,31 @@ export async function autofillFromUrlApi(url: string): Promise<IdealistaAutofill
       };
     }
 
-    return data as IdealistaAutofill;
+    const result = data as IdealistaAutofill;
+    
+    // 🧪 TESTING: Simular fallo en extracción de comunidad autónoma o ciudad
+    // Descomenta las líneas que quieras probar:
+    
+    // Simular fallo en comunidad autónoma:
+    // result.codigoComunidadAutonoma = null;
+    
+    // Simular fallo en ciudad:
+    // result.ciudad = null;
+    
+    // Simular fallo en habitaciones:
+    // result.rooms = null;
+    
+    // Simular fallo en metros cuadrados:
+    // result.sqm = null;
+    
+    // Simular fallo en baños:
+    // result.banos = null;
+    
+    // Simular fallo en ambos:
+    // result.codigoComunidadAutonoma = null;
+    // result.ciudad = null;
+    
+    return result;
   } catch (err) {
     // En caso de error, devolver objeto con nulls (nunca lanzar excepción)
     return {

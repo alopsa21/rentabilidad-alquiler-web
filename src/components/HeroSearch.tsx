@@ -81,7 +81,17 @@ export function HeroSearch({ onAnalizar, loading = false }: HeroSearchProps) {
           aria-label="URL del anuncio"
           fullWidth
           size="medium"
-          sx={{ '& .MuiOutlinedInput-root': { fontSize: 16 } }}
+          sx={{ 
+            '& .MuiOutlinedInput-root': { 
+              fontSize: 16,
+              overflow: 'hidden',
+            },
+            '& .MuiInputBase-input': {
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }
+          }}
         />
         <Button
           type="submit"

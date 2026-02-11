@@ -25,6 +25,7 @@ import { cardsToCSV, downloadCSV } from './utils/csv'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
+import Tooltip from '@mui/material/Tooltip'
 import HomeIcon from '@mui/icons-material/Home'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents'
@@ -168,7 +169,9 @@ function App() {
 
       loaded.forEach(({ card, motorOutput, createdAt: cardCreatedAt }) => {
         cards.push({ ...card, isFavorite: card.isFavorite ?? false, notes: card.notes ?? '' })
-        resultados[card.id] = motorOutput
+        if (motorOutput) {
+          resultados[card.id] = motorOutput
+        }
         if (cardCreatedAt) {
           createdAt[card.id] = cardCreatedAt
         }
@@ -194,12 +197,6 @@ function App() {
   useEffect(() => {
     // Solo sincronizar después de la hidratación inicial para evitar guardar datos vacíos
     if (!isHydrated || analisis.length === 0) {
-      return
-    }
-
-    // Guardar solo si hay tarjetas y resultados correspondientes
-    const todasTienenResultados = analisis.every((card) => resultadosPorTarjeta[card.id])
-    if (!todasTienenResultados) {
       return
     }
 
@@ -1175,48 +1172,64 @@ function App() {
             {/* Cabecera sticky con títulos de columnas */}
             <div className="card-header-sticky card-header-full-width" style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: '1rem', width: '100%' }}>
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', minWidth: 0 }} className="card-info-horizontal card-header-row">
-                <div style={{ flex: '1.2 1 0', minWidth: 0, display: 'flex', alignItems: 'center' }}>
-                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Inmueble</strong>
-                </div>
-                <div style={{ flex: '1.4 1 0', minWidth: 240, display: 'flex', alignItems: 'center' }}>
-                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Comunidad autónoma</strong>
-                </div>
-                <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('ciudad')}>
-                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Ciudad</strong>
-                  {ordenarPor.campo === 'ciudad' && (
-                    <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </div>
-                <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('precio')}>
-                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Precio compra</strong>
-                  {ordenarPor.campo === 'precio' && (
-                    <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </div>
-                <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('alquiler')}>
-                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Alquiler estimado</strong>
-                  {ordenarPor.campo === 'alquiler' && (
-                    <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </div>
-                <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('rentabilidad')}>
-                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Rentabilidad neta</strong>
-                  {ordenarPor.campo === 'rentabilidad' && (
-                    <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </div>
-                <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('cashflow')}>
-                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Cashflow</strong>
-                  {ordenarPor.campo === 'cashflow' && (
-                    <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </div>
-                <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('roce')}>
-                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>ROCE</strong>
-                  {ordenarPor.campo === 'roce' && (
-                    <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </div>
+                <Tooltip title="Habitaciones, metros cuadrados y número de baños del inmueble">
+                  <div style={{ flex: '1.2 1 0', minWidth: 0, display: 'flex', alignItems: 'center' }}>
+                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Inmueble</strong>
+                  </div>
+                </Tooltip>
+                <Tooltip title="Comunidad autónoma donde se encuentra el inmueble">
+                  <div style={{ flex: '1.4 1 0', minWidth: 240, display: 'flex', alignItems: 'center' }}>
+                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Comunidad autónoma</strong>
+                  </div>
+                </Tooltip>
+                <Tooltip title="Ciudad donde se encuentra el inmueble">
+                  <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('ciudad')}>
+                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Ciudad</strong>
+                    {ordenarPor.campo === 'ciudad' && (
+                      <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </Tooltip>
+                <Tooltip title="Precio de compra del inmueble en euros">
+                  <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('precio')}>
+                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Precio compra</strong>
+                    {ordenarPor.campo === 'precio' && (
+                      <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </Tooltip>
+                <Tooltip title="Alquiler mensual estimado que se puede obtener del inmueble">
+                  <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('alquiler')}>
+                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Alquiler estimado</strong>
+                    {ordenarPor.campo === 'alquiler' && (
+                      <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </Tooltip>
+                <Tooltip title="Rentabilidad neta anual después de todos los gastos, expresada como porcentaje">
+                  <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('rentabilidad')}>
+                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Rentabilidad neta</strong>
+                    {ordenarPor.campo === 'rentabilidad' && (
+                      <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </Tooltip>
+                <Tooltip title="Cashflow anual final: dinero disponible después de amortizar capital de la hipoteca">
+                  <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('cashflow')}>
+                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Cashflow</strong>
+                    {ordenarPor.campo === 'cashflow' && (
+                      <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </Tooltip>
+                <Tooltip title="ROCE (Return on Capital Employed): rentabilidad del capital propio invertido después de amortizar deuda">
+                  <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('roce')}>
+                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>ROCE</strong>
+                    {ordenarPor.campo === 'roce' && (
+                      <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </Tooltip>
               </div>
             </div>
             {/* Panel de tarjetas: ancho completo */}
