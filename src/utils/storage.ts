@@ -9,7 +9,7 @@ import type { RentabilidadApiResponse } from '../types/api';
 import type { FormularioRentabilidadState } from '../types/formulario';
 
 const STORAGE_KEY = 'rentabilidad-alquiler:cards';
-const STORAGE_VERSION = 1;
+const STORAGE_VERSION = 2;
 
 /**
  * Estructura de datos persistida en localStorage.

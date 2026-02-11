@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { inputsAreEqual } from '../utils/compareInputs';
+import { NOMBRE_COMUNIDAD_POR_CODIGO } from '../constants/comunidades';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import IconButton from '@mui/material/IconButton';
@@ -345,7 +346,14 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
           </Typography>
         </Box>
         <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', pl: 0.5 }}>
-          <Typography component="span" variant="body2" sx={{ fontSize: 14 }}>{card.ciudad || '—'}</Typography>
+          <Typography component="span" variant="body2" sx={{ fontSize: 14 }}>
+            {card.ciudad || '—'}
+            {card.currentInput.codigoComunidadAutonoma && (
+              <Typography component="span" variant="caption" sx={{ fontSize: 12, color: '#666', ml: 0.5 }}>
+                ({NOMBRE_COMUNIDAD_POR_CODIGO[card.currentInput.codigoComunidadAutonoma]})
+              </Typography>
+            )}
+          </Typography>
         </Box>
         <Box sx={{ flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32, pl: 0.5 }}>
           {(isEditing || editingField === 'precioCompra') && onInputChange ? (
@@ -510,7 +518,14 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
         {/* Ciudad - primera fila, con espacio para los iconos */}
         <Box sx={{ mb: 1.5, pr: 8 }}>
           <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.25, textTransform: 'uppercase' }}>Ciudad</Typography>
-          <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 600 }}>{card.ciudad || '—'}</Typography>
+          <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 600 }}>
+            {card.ciudad || '—'}
+          </Typography>
+          {card.currentInput.codigoComunidadAutonoma && (
+            <Typography variant="caption" sx={{ display: 'block', fontSize: 12, color: '#666', mt: 0.25 }}>
+              {NOMBRE_COMUNIDAD_POR_CODIGO[card.currentInput.codigoComunidadAutonoma]}
+            </Typography>
+          )}
         </Box>
         
         {/* Inmueble - segunda fila */}

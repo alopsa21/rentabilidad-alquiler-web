@@ -43,3 +43,25 @@ export function obtenerCiudadAleatoria(comunidadAutonoma: string): string {
   const indiceAleatorio = Math.floor(Math.random() * ciudades.length);
   return ciudades[indiceAleatorio];
 }
+
+/**
+ * Infiere la comunidad autónoma desde el nombre de una ciudad.
+ * Busca la ciudad en el mapeo de ciudades por comunidad.
+ * 
+ * @param ciudad - Nombre de la ciudad
+ * @returns Nombre de la comunidad autónoma o null si no se encuentra
+ */
+export function inferirComunidadDesdeCiudad(ciudad: string): string | null {
+  if (!ciudad) return null;
+  
+  const ciudadNormalizada = ciudad.trim();
+  
+  // Buscar en cada comunidad
+  for (const [comunidad, ciudades] of Object.entries(CIUDADES_POR_COMUNIDAD)) {
+    if (ciudades.some(c => c.toLowerCase() === ciudadNormalizada.toLowerCase())) {
+      return comunidad;
+    }
+  }
+  
+  return null;
+}

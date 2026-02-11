@@ -16,7 +16,7 @@ export function inputsAreEqual(
   return (
     a.precioCompra === b.precioCompra &&
     a.alquilerMensual === b.alquilerMensual &&
-    a.comunidadAutonoma === b.comunidadAutonoma &&
+    a.codigoComunidadAutonoma === b.codigoComunidadAutonoma &&
     a.reforma === b.reforma &&
     a.notaria === b.notaria &&
     a.registro === b.registro &&

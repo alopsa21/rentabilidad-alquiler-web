@@ -8,8 +8,8 @@ const DetalleAnalisis = lazy(() => import('./components/DetalleAnalisis').then(m
 import { ModalDetalle } from './components/ModalDetalle'
 import { ModalNotas } from './components/ModalNotas'
 import { ModalCompartirSelectivo } from './components/ModalCompartirSelectivo'
-import { calcularRentabilidadApi } from './services/api'
-import { COMUNIDADES_AUTONOMAS } from './constants/comunidades'
+import { calcularRentabilidadApi, autofillFromUrlApi } from './services/api'
+import { CODIGOS_COMUNIDADES, NOMBRE_COMUNIDAD_POR_CODIGO } from './constants/comunidades'
 import type { RentabilidadApiResponse } from './types/api'
 import type { FormularioRentabilidadState } from './types/formulario'
 import type { AnalisisCard } from './types/analisis'
@@ -33,7 +33,7 @@ import './App.css'
 /** Payload por defecto para mantener la API conectada hasta que la URL se use para obtener datos */
 const DEFAULT_PAYLOAD: FormularioRentabilidadState = {
   precioCompra: 150000,
-  comunidadAutonoma: 'Comunidad de Madrid',
+  codigoComunidadAutonoma: 13, // Madrid
   alquilerMensual: 800,
   reforma: 0,
   notaria: 0,
@@ -202,19 +202,36 @@ function App() {
     setVeredictoGlobal(null)
     setLoading(true)
     try {
-      // Generar valores aleatorios
+      const autofillData = await autofillFromUrlApi(_url)
+      
+      // Usar datos extraídos o valores por defecto/aleatorios
+      const precioCompra = autofillData.buyPrice ?? Math.floor(Math.random() * (400000 - 100000 + 1)) + 100000
+      const metrosCuadrados = autofillData.sqm ?? (Math.floor(Math.random() * ((200 - 60) / 10 + 1)) * 10) + 60
+      const habitaciones = autofillData.rooms ?? Math.floor(Math.random() * (4 - 1 + 1)) + 1
+      const banos = autofillData.banos ?? Math.floor(Math.random() * (3 - 1 + 1)) + 1
+      
+      // Código de comunidad: primero de autofill (desde ciudad), luego aleatorio
+      let codigoComunidadAutonoma = autofillData.codigoComunidadAutonoma
+      if (codigoComunidadAutonoma == null || codigoComunidadAutonoma < 1 || codigoComunidadAutonoma > 19) {
+        codigoComunidadAutonoma = CODIGOS_COMUNIDADES[Math.floor(Math.random() * CODIGOS_COMUNIDADES.length)]
+      }
+      
+      // Ciudad: usar la extraída o inferir desde comunidad
+      let ciudad = autofillData.ciudad
+      if (!ciudad) {
+        const { obtenerCiudadAleatoria } = await import('./utils/ciudades')
+        const nombreComunidad = NOMBRE_COMUNIDAD_POR_CODIGO[codigoComunidadAutonoma]
+        ciudad = obtenerCiudadAleatoria(nombreComunidad)
+      }
+      
+      // Alquiler mensual: por ahora siempre aleatorio (en el futuro se calculará)
       const alquilerAleatorio = Math.floor(Math.random() * (1000 - 500 + 1)) + 500
-      const precioAleatorio = Math.floor(Math.random() * (400000 - 100000 + 1)) + 100000
-      const comunidadAleatoria = COMUNIDADES_AUTONOMAS[Math.floor(Math.random() * COMUNIDADES_AUTONOMAS.length)]
-      const habitacionesAleatorias = Math.floor(Math.random() * (4 - 1 + 1)) + 1 // 1-4 habitaciones
-      // m² de 10 en 10 entre 60 y 200 (60, 70, 80, ..., 200)
-      const metrosAleatorios = (Math.floor(Math.random() * ((200 - 60) / 10 + 1)) * 10) + 60
-      const banosAleatorios = Math.floor(Math.random() * (3 - 1 + 1)) + 1 // 1-3 baños
+      
       const payload = {
         ...DEFAULT_PAYLOAD,
         alquilerMensual: alquilerAleatorio,
-        precioCompra: precioAleatorio,
-        comunidadAutonoma: comunidadAleatoria,
+        precioCompra: precioCompra,
+        codigoComunidadAutonoma,
       }
       const data = await calcularRentabilidadApi(payload)
       setResultado(data)
@@ -229,23 +246,19 @@ function App() {
           ? rentNetaRaw * 100
           : rentNetaRaw
 
-      // Importar función para obtener ciudad aleatoria
-      const { obtenerCiudadAleatoria } = await import('./utils/ciudades')
-      const ciudadAleatoria = obtenerCiudadAleatoria(payload.comunidadAutonoma)
-
       const nuevaTarjeta: AnalisisCard = {
         id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
         url: _url,
-        ciudad: ciudadAleatoria,
+        ciudad: ciudad,
         precioCompra: payload.precioCompra,
         alquilerEstimado: alquilerAleatorio,
         rentabilidadNetaPct: rentNetaPct,
         estado: veredicto.estado,
         veredictoTitulo: veredicto.titulo,
         veredictoRazones: veredicto.razones,
-        habitaciones: habitacionesAleatorias,
-        metrosCuadrados: metrosAleatorios,
-        banos: banosAleatorios,
+        habitaciones: habitaciones,
+        metrosCuadrados: metrosCuadrados,
+        banos: banos,
         originalInput: { ...payload },
         currentInput: { ...payload },
         isFavorite: false,
@@ -510,9 +523,10 @@ function App() {
       // Resolver nueva ciudad si cambió la comunidad (fuera del setState para poder usar await)
       const tarjetaActual = analisis.find((c) => c.id === tarjetaId);
       let nuevaCiudad: string | null = null;
-      if (tarjetaActual && tarjetaActual.currentInput.comunidadAutonoma !== input.comunidadAutonoma) {
+      if (tarjetaActual && tarjetaActual.currentInput.codigoComunidadAutonoma !== input.codigoComunidadAutonoma) {
         const { obtenerCiudadAleatoria } = await import('./utils/ciudades');
-        nuevaCiudad = obtenerCiudadAleatoria(input.comunidadAutonoma);
+        const nombreComunidad = NOMBRE_COMUNIDAD_POR_CODIGO[input.codigoComunidadAutonoma];
+        nuevaCiudad = nombreComunidad ? obtenerCiudadAleatoria(nombreComunidad) : null;
       }
 
       setAnalisis((prev) => {

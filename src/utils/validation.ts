@@ -13,7 +13,7 @@ export function getFormErrors(state: FormularioRentabilidadState): string[] {
   if (state.alquilerMensual < 0) {
     errors.push('El alquiler mensual no puede ser negativo');
   }
-  if (!state.comunidadAutonoma?.trim()) {
+  if (state.codigoComunidadAutonoma < 1 || state.codigoComunidadAutonoma > 19) {
     errors.push('Seleccione una comunidad autónoma');
   }
 
