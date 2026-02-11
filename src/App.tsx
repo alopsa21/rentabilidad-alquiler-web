@@ -130,7 +130,12 @@ function App() {
 
         sharedCards.forEach((item) => {
           const { card, motorOutput, motorOutputOriginal } = item
-          cards.push({ ...card, isFavorite: card.isFavorite ?? false, notes: card.notes ?? '' })
+          cards.push({ 
+            ...card, 
+            isFavorite: card.isFavorite ?? false, 
+            notes: card.notes ?? '',
+            originalCiudad: card.originalCiudad ?? card.ciudad,
+          })
           resultados[card.id] = motorOutput
           if (motorOutputOriginal) resultadosOriginal[card.id] = motorOutputOriginal
         })
@@ -357,6 +362,7 @@ function App() {
       originalHabitaciones: habitaciones,
       originalMetrosCuadrados: metrosCuadrados,
       originalBanos: banos,
+      originalCiudad: ciudad,
       originalInput: { ...inputReal },
       currentInput: inputReal,
       isFavorite: false,
@@ -887,19 +893,33 @@ function App() {
    * Revierte los cambios de una tarjeta restaurando originalInput.
    */
   /**
-   * Revierte un solo campo (precio compra o alquiler) al valor original.
+   * Revierte un solo campo (precio compra, alquiler, comunidad o ciudad) al valor original.
    */
-  const handleRevertField = useCallback((tarjetaId: string, campo: 'precioCompra' | 'alquilerMensual') => {
+  const handleRevertField = useCallback((tarjetaId: string, campo: 'precioCompra' | 'alquilerMensual' | 'codigoComunidadAutonoma' | 'ciudad') => {
     setAnalisis((prev) => {
       const tarjeta = prev.find((c) => c.id === tarjetaId);
       if (!tarjeta) return prev;
 
-      const nuevoCurrentInput = {
-        ...tarjeta.currentInput,
-        [campo]: tarjeta.originalInput[campo],
-      };
+      let nuevoCurrentInput = { ...tarjeta.currentInput };
+      let nuevaCiudad = tarjeta.ciudad;
 
-      const quedaSinCambios = inputsAreEqual(nuevoCurrentInput, tarjeta.originalInput);
+      if (campo === 'codigoComunidadAutonoma') {
+        nuevoCurrentInput = {
+          ...tarjeta.currentInput,
+          codigoComunidadAutonoma: tarjeta.originalInput.codigoComunidadAutonoma,
+        };
+        // Si se revierte la comunidad, también revertir la ciudad
+        nuevaCiudad = tarjeta.originalCiudad;
+      } else if (campo === 'ciudad') {
+        nuevaCiudad = tarjeta.originalCiudad;
+      } else {
+        nuevoCurrentInput = {
+          ...tarjeta.currentInput,
+          [campo]: tarjeta.originalInput[campo],
+        };
+      }
+
+      const quedaSinCambios = inputsAreEqual(nuevoCurrentInput, tarjeta.originalInput) && nuevaCiudad === tarjeta.originalCiudad;
       if (quedaSinCambios) {
         setResultadoOriginalPorTarjeta((p) => {
           const next = { ...p };
@@ -912,7 +932,7 @@ function App() {
 
       return prev.map((c) =>
         c.id === tarjetaId
-          ? { ...c, currentInput: nuevoCurrentInput }
+          ? { ...c, currentInput: nuevoCurrentInput, ciudad: nuevaCiudad }
           : c
       );
     });
@@ -1322,7 +1342,7 @@ function App() {
                   size="small"
                   onClick={handleNuevoAnalisis}
                   disabled={analisis.length === 0}
-                  title="Borrar todas las tarjetas y limpiar el panel"
+                  title="Borrar todas las tarjetas"
                   disableRipple
                   sx={{
                     outline: 'none',
@@ -1331,7 +1351,7 @@ function App() {
                     '&:active': { outline: 'none', boxShadow: 'none' },
                   }}
                 >
-                  Limpiar
+                  Descartar
                 </Button>
               )}
             </Box>
@@ -1383,10 +1403,10 @@ function App() {
               }}
             >
               <Typography id="modal-limpiar-titulo" variant="h6" component="h2" sx={{ mb: 1.5, color: 'text.primary' }}>
-                Limpiar panel
+                Eliminar tarjetas
               </Typography>
               <Typography variant="body1" sx={{ mb: 3, color: 'text.primary' }}>
-                ¿Quieres borrar todos los análisis actuales?
+                ¿Eliminar todas las tarjetas de análisis? Esta acción no se puede deshacer.
               </Typography>
               <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'flex-end' }}>
                 <Button
@@ -1400,7 +1420,7 @@ function App() {
                     '&:active': { outline: 'none', boxShadow: 'none' },
                   }}
                 >
-                  Cancelar
+                  No, mantener
                 </Button>
                 <Button
                   variant="contained"
@@ -1415,7 +1435,7 @@ function App() {
                     '&:active': { outline: 'none', border: 'none', boxShadow: 'none' },
                   }}
                 >
-                  Limpiar panel
+                  Sí, eliminar todas
                 </Button>
               </Box>
             </div>

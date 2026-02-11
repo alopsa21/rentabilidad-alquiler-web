@@ -19,6 +19,8 @@ export interface AnalisisCard {
   originalHabitaciones: number;
   originalMetrosCuadrados: number;
   originalBanos: number;
+  /** Ciudad original del análisis inicial (scraping/LLM) */
+  originalCiudad: string;
   /** Input original del análisis inicial (scraping/LLM) */
   originalInput: FormularioRentabilidadState;
   /** Input actual editable por el usuario */
