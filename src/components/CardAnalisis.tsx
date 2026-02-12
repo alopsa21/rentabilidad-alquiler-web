@@ -367,7 +367,15 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
       const target = e.target as HTMLElement;
       // Si el click ocurre dentro de un menú/popover de MUI (renderizado en Portal),
       // NO considerarlo como "click fuera" de la tarjeta.
-      if (target?.closest?.('.MuiMenu-paper') || target?.closest?.('.MuiPopover-root') || target?.closest?.('.MuiModal-root')) {
+      if (
+        target?.closest?.('.MuiMenu-paper') ||
+        target?.closest?.('.MuiPopover-root') ||
+        target?.closest?.('.MuiModal-root') ||
+        // Autocomplete renderiza la lista en un Portal (Popper)
+        target?.closest?.('.MuiAutocomplete-popper') ||
+        target?.closest?.('.MuiAutocomplete-listbox') ||
+        target?.closest?.('.MuiPopper-root')
+      ) {
         return;
       }
       if (cardRef.current?.contains(target)) {
@@ -872,6 +880,8 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
               size="small"
               openOnFocus
               options={opcionesCiudad}
+              getOptionLabel={(option) => option || ''}
+              isOptionEqualToValue={(option, value) => option === value}
               value={ciudad || null}
               onChange={(_, nuevaCiudad) => {
                 handleCiudadChange(nuevaCiudad || '');
@@ -1346,6 +1356,8 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
               fullWidth
               openOnFocus
               options={opcionesCiudad}
+              getOptionLabel={(option) => option || ''}
+              isOptionEqualToValue={(option, value) => option === value}
               value={ciudad || null}
               onChange={(_, nuevaCiudad) => {
                 handleCiudadChange(nuevaCiudad || '');
@@ -1468,7 +1480,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
         {/* Inmueble - segunda fila */}
         <Box sx={{ mb: 1.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.25 }}>
-            <Typography variant="caption" sx={{ fontSize: 11, color: '#666', textTransform: 'uppercase' }}>Inmueble</Typography>
+            <Typography variant="caption" sx={{ fontSize: 11, color: '#666', textTransform: 'uppercase' }}>Vivienda</Typography>
             {onInmuebleChange && (isCardHovered || campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos')) && (
               <Tooltip title={(campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos')) ? 'Completar datos del inmueble' : 'Editar datos del inmueble'}>
                 <IconButton

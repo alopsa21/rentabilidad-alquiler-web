@@ -213,10 +213,25 @@ function App() {
     return () => clearTimeout(timeoutId)
   }, [analisis, resultadosPorTarjeta, createdAtPorTarjeta, isHydrated])
 
+  /** Normaliza URL para comparar (evitar duplicados por trailing slash o espacios) */
+  const normalizeUrlForCompare = (u: string) =>
+    u.trim().replace(/\/+$/, '')
+
   const handleAnalizar = async (_url: string) => {
     setError(null)
     setResultado(null)
     setVeredictoGlobal(null)
+
+    const urlNorm = normalizeUrlForCompare(_url)
+    const yaExiste = analisis.find(
+      (c) => normalizeUrlForCompare(c.url) === urlNorm
+    )
+    if (yaExiste) {
+      mostrarNotificacion('Este piso ya ha sido analizado y está en el panel', 'error')
+      setTarjetaActivaId(yaExiste.id)
+      return
+    }
+
     setLoading(true)
     try {
       const autofillData = await autofillFromUrlApi(_url)
@@ -1194,7 +1209,7 @@ function App() {
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', minWidth: 0 }} className="card-info-horizontal card-header-row">
                 <Tooltip title="Habitaciones, metros cuadrados y número de baños del inmueble">
                   <div style={{ flex: '1.2 1 0', minWidth: 0, display: 'flex', alignItems: 'center' }}>
-                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Inmueble</strong>
+                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Vivienda</strong>
                   </div>
                 </Tooltip>
                 <Tooltip title="Comunidad autónoma donde se encuentra el inmueble">
