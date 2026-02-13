@@ -9,7 +9,7 @@ import type { RentabilidadApiResponse } from '../types/api';
 import type { FormularioRentabilidadState } from '../types/formulario';
 
 const STORAGE_KEY = 'rentabilidad-alquiler:cards';
-const STORAGE_VERSION = 1;
+const STORAGE_VERSION = 2;
 
 /**
  * Estructura de datos persistida en localStorage.
@@ -35,9 +35,14 @@ interface PersistedCard {
   habitaciones: number;
   metrosCuadrados: number;
   banos: number;
+  originalHabitaciones?: number; // Opcional para compatibilidad con versiones anteriores
+  originalMetrosCuadrados?: number; // Opcional para compatibilidad con versiones anteriores
+  originalBanos?: number; // Opcional para compatibilidad con versiones anteriores
+  originalCiudad?: string; // Opcional para compatibilidad con versiones anteriores
   originalInput: unknown; // FormularioRentabilidadState
   currentInput: unknown; // FormularioRentabilidadState
-  motorOutput: RentabilidadApiResponse;
+  // Puede ser null/undefined cuando la tarjeta está incompleta y aún no se pudo calcular
+  motorOutput?: RentabilidadApiResponse | null;
   createdAt?: string; // Opcional para compatibilidad con versiones anteriores
   isFavorite?: boolean; // Opcional para compatibilidad con versiones anteriores
   notes?: string;
@@ -48,7 +53,7 @@ interface PersistedCard {
  */
 function cardToPersisted(
   card: AnalisisCard,
-  motorOutput: RentabilidadApiResponse,
+  motorOutput: RentabilidadApiResponse | null,
   createdAt?: string
 ): PersistedCard {
   return {
@@ -64,6 +69,10 @@ function cardToPersisted(
     habitaciones: card.habitaciones,
     metrosCuadrados: card.metrosCuadrados,
     banos: card.banos,
+    originalHabitaciones: card.originalHabitaciones,
+    originalMetrosCuadrados: card.originalMetrosCuadrados,
+    originalBanos: card.originalBanos,
+    originalCiudad: card.originalCiudad,
     originalInput: card.originalInput,
     currentInput: card.currentInput,
     motorOutput,
@@ -90,6 +99,10 @@ function persistedToCard(persisted: PersistedCard): AnalisisCard {
     habitaciones: persisted.habitaciones,
     metrosCuadrados: persisted.metrosCuadrados,
     banos: persisted.banos,
+    originalHabitaciones: persisted.originalHabitaciones ?? persisted.habitaciones,
+    originalMetrosCuadrados: persisted.originalMetrosCuadrados ?? persisted.metrosCuadrados,
+    originalBanos: persisted.originalBanos ?? persisted.banos,
+    originalCiudad: persisted.originalCiudad ?? persisted.ciudad,
     originalInput: persisted.originalInput as FormularioRentabilidadState,
     currentInput: persisted.currentInput as FormularioRentabilidadState,
     isFavorite: persisted.isFavorite ?? false,
@@ -102,7 +115,7 @@ function persistedToCard(persisted: PersistedCard): AnalisisCard {
  * 
  * @returns Array de objetos con card, motorOutput y createdAt, o array vacío si no hay datos o hay error
  */
-export function loadCards(): Array<{ card: AnalisisCard; motorOutput: RentabilidadApiResponse; createdAt?: string }> {
+export function loadCards(): Array<{ card: AnalisisCard; motorOutput: RentabilidadApiResponse | null; createdAt?: string }> {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
@@ -121,7 +134,7 @@ export function loadCards(): Array<{ card: AnalisisCard; motorOutput: Rentabilid
     // Convertir tarjetas persistidas a formato interno
     return data.cards.map((persisted) => ({
       card: persistedToCard(persisted),
-      motorOutput: persisted.motorOutput,
+      motorOutput: persisted.motorOutput ?? null,
       createdAt: persisted.createdAt,
     }));
   } catch (err) {
@@ -146,13 +159,9 @@ export function saveCards(
   try {
     const persistedCards: PersistedCard[] = cards.map((card) => {
       const motorOutput = resultadosPorTarjeta[card.id];
-      if (!motorOutput) {
-        // Si no hay resultado aún, no guardar esta tarjeta (puede estar en proceso de creación)
-        return null;
-      }
       const createdAt = existingCreatedAt?.[card.id];
-      return cardToPersisted(card, motorOutput, createdAt);
-    }).filter((card): card is PersistedCard => card !== null);
+      return cardToPersisted(card, motorOutput ?? null, createdAt);
+    });
 
     const data: PersistedCardsData = {
       version: STORAGE_VERSION,

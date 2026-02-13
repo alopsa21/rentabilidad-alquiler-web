@@ -50,24 +50,24 @@ export function CompactSearchHeader({ onAnalizar, loading = false }: CompactSear
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        backgroundColor: '#fff',
-        borderBottom: '1px solid #eee',
         padding: '12px 16px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
       }}
     >
-      <Box sx={{ maxWidth: '90%', width: '90%', margin: '0 auto', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1.5 }}>
+      <Box sx={{ maxWidth: '90%', width: '90%', margin: '0 auto', display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, flexWrap: 'wrap', alignItems: { xs: 'stretch', sm: 'center' }, gap: 1.5 }}>
         <Typography variant="h6" component="h1" sx={{ margin: 0, whiteSpace: 'nowrap', flexShrink: 0 }}>
           Rentabilidad Alquiler
         </Typography>
-        <form
+        <Box
+          component="form"
           onSubmit={handleSubmit}
-          style={{
+          sx={{
             flex: 1,
             minWidth: 200,
             display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
             gap: 1,
-            alignItems: 'center',
+            alignItems: { xs: 'stretch', sm: 'center' },
           }}
         >
           <TextField
@@ -77,7 +77,19 @@ export function CompactSearchHeader({ onAnalizar, loading = false }: CompactSear
             placeholder="Pega la URL del anuncio..."
             aria-label="URL del anuncio"
             size="small"
-            sx={{ flex: 1, minWidth: 0 }}
+            sx={{ 
+              flex: 1, 
+              minWidth: 0,
+              width: { xs: '100%', sm: 'auto' },
+              '& .MuiOutlinedInput-root': {
+                overflow: 'hidden',
+              },
+              '& .MuiInputBase-input': {
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }
+            }}
           />
           <Button
             type="submit"
@@ -90,16 +102,29 @@ export function CompactSearchHeader({ onAnalizar, loading = false }: CompactSear
             sx={{
               whiteSpace: 'nowrap',
               minHeight: 40,
+              minWidth: { xs: '100%', sm: 100 },
+              width: { xs: '100%', sm: 'auto' },
               outline: 'none',
               border: 'none',
+              backgroundColor: loading ? '#1976d2' : '#1976d2',
+              color: '#fff',
+              '&:disabled': {
+                backgroundColor: loading ? '#1976d2' : '#999',
+                color: '#fff',
+                opacity: loading ? 1 : 0.6,
+                cursor: 'not-allowed',
+              },
+              '&:hover:not(:disabled)': {
+                backgroundColor: '#1565c0',
+              },
               '&:focus': { outline: 'none', border: 'none', boxShadow: 'none' },
               '&:focus-visible': { outline: 'none', border: 'none', boxShadow: 'none' },
               '&:active': { outline: 'none', border: 'none', boxShadow: 'none' },
             }}
           >
-            {loading ? 'Analizando...' : 'Analizar'}
+            Analizar
           </Button>
-        </form>
+        </Box>
       </Box>
     </header>
   );

@@ -81,7 +81,17 @@ export function HeroSearch({ onAnalizar, loading = false }: HeroSearchProps) {
           aria-label="URL del anuncio"
           fullWidth
           size="medium"
-          sx={{ '& .MuiOutlinedInput-root': { fontSize: 16 } }}
+          sx={{ 
+            '& .MuiOutlinedInput-root': { 
+              fontSize: 16,
+              overflow: 'hidden',
+            },
+            '& .MuiInputBase-input': {
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }
+          }}
         />
         <Button
           type="submit"
@@ -94,14 +104,26 @@ export function HeroSearch({ onAnalizar, loading = false }: HeroSearchProps) {
             py: 1.75,
             fontSize: 16,
             fontWeight: 600,
+            minWidth: 140,
             outline: 'none',
             border: 'none',
+            backgroundColor: loading ? '#1976d2' : '#1976d2',
+            color: '#fff',
+            '&:disabled': {
+              backgroundColor: loading ? '#1976d2' : '#999',
+              color: '#fff',
+              opacity: loading ? 1 : 0.6,
+              cursor: 'not-allowed',
+            },
+            '&:hover:not(:disabled)': {
+              backgroundColor: '#1565c0',
+            },
             '&:focus': { outline: 'none', border: 'none', boxShadow: 'none' },
             '&:focus-visible': { outline: 'none', border: 'none', boxShadow: 'none' },
             '&:active': { outline: 'none', border: 'none', boxShadow: 'none' },
           }}
         >
-          {loading ? 'Analizando...' : 'Analizar piso'}
+          Analizar piso
         </Button>
       </form>
       <Typography variant="body2" color="text.disabled" sx={{ mt: 3 }}>

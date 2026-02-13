@@ -5,8 +5,8 @@
 export interface FormularioRentabilidadState {
   /** Precio de adquisición (€) - obligatorio */
   precioCompra: number;
-  /** Comunidad autónoma - obligatorio */
-  comunidadAutonoma: string;
+  /** Código de comunidad autónoma (CODAUTO 1-19) - obligatorio */
+  codigoComunidadAutonoma: number;
   /** Alquiler mensual esperado (€/mes) - obligatorio */
   alquilerMensual: number;
   /** Coste de reforma (€) */
@@ -33,7 +33,7 @@ export interface FormularioRentabilidadState {
 
 export const INITIAL_FORM_STATE: FormularioRentabilidadState = {
   precioCompra: 0,
-  comunidadAutonoma: '',
+  codigoComunidadAutonoma: 0,
   alquilerMensual: 0,
   reforma: 0,
   notaria: 0,

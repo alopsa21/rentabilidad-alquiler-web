@@ -81,7 +81,7 @@ export function ModalNotas({ isOpen, onClose, initialNotes, onSave }: ModalNotas
           <TextField
             value={notesDraft}
             onChange={(e) => setNotesDraft(e.target.value)}
-            placeholder="Escribe aquí tus apuntes..."
+            placeholder="Apunta aquí tus impresiones, visitas, llamadas…"
             multiline
             minRows={4}
             fullWidth

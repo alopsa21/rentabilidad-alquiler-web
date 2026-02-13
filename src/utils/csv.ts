@@ -1,5 +1,6 @@
 import type { AnalisisCard } from '../types/analisis';
 import type { RentabilidadApiResponse } from '../types/api';
+import { NOMBRE_COMUNIDAD_POR_CODIGO } from '../constants/comunidades';
 
 /**
  * Formatea un número para CSV, normalizando porcentajes
@@ -73,7 +74,7 @@ export function cardsToCSV(
       escapeCSVValue(card.ciudad),
       card.precioCompra.toString(),
       card.alquilerEstimado.toString(),
-      escapeCSVValue(card.currentInput.comunidadAutonoma),
+      escapeCSVValue(NOMBRE_COMUNIDAD_POR_CODIGO[card.currentInput.codigoComunidadAutonoma] ?? ''),
       rentabilidadBruta,
       rentabilidadNeta,
       cashflowFinal,

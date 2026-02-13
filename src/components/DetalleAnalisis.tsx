@@ -4,6 +4,7 @@ import Chip from '@mui/material/Chip';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import type { AnalisisCard } from '../types/analisis';
 import type { RentabilidadApiResponse } from '../types/api';
+import { NOMBRE_COMUNIDAD_POR_CODIGO } from '../constants/comunidades';
 
 /** Definiciones de métricas según contrato_del_motor_v1.md */
 const DEFINICIONES_METRICAS: Record<string, string> = {
@@ -202,6 +203,12 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false 
         <section style={{ marginBottom: 20 }}>
         <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 16 }}>Datos básicos</h3>
         <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '1fr auto', gap: isHorizontalLayout ? '6px 8px' : '6px 16px', fontSize: 14 }}>
+          <dt style={{ fontWeight: 500 }}>Comunidad autónoma</dt>
+          <dd style={{ margin: 0, textAlign: 'right' }}>
+            {card.currentInput.codigoComunidadAutonoma >= 1 && card.currentInput.codigoComunidadAutonoma <= 19
+              ? NOMBRE_COMUNIDAD_POR_CODIGO[card.currentInput.codigoComunidadAutonoma] || '—'
+              : '—'}
+          </dd>
           <dt style={{ fontWeight: 500 }}>Ciudad</dt>
           <dd style={{ margin: 0, textAlign: 'right' }}>{card.ciudad || '—'}</dd>
           <dt style={{ fontWeight: 500 }}>Precio compra</dt>

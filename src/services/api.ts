@@ -1,7 +1,8 @@
 import type { FormularioRentabilidadState } from '../types/formulario';
 import type { RentabilidadApiResponse, RentabilidadApiError } from '../types/api';
+import type { IdealistaAutofill } from '../types/autofill';
 
-const getApiUrl = (): string => {
+export const getApiUrl = (): string => {
   const url = import.meta.env.VITE_API_URL;
   if (typeof url === 'string' && url.length > 0) {
     return url.replace(/\/$/, '');
@@ -27,7 +28,7 @@ const getApiUrl = (): string => {
 function buildRentabilidadBody(state: FormularioRentabilidadState): Record<string, unknown> {
   const body: Record<string, unknown> = {
     precioCompra: state.precioCompra,
-    comunidadAutonoma: state.comunidadAutonoma,
+    codigoComunidadAutonoma: state.codigoComunidadAutonoma,
     alquilerMensual: state.alquilerMensual,
     hayHipoteca: state.hayHipoteca,
   };
@@ -97,5 +98,78 @@ export async function calcularRentabilidadApi(
       throw new Error(errorMessage);
     }
     throw err;
+  }
+}
+
+/**
+ * Llama a la API POST /autofill para extraer datos de un anuncio desde su URL.
+ *
+ * @param url - URL del anuncio inmobiliario
+ * @returns Datos extraídos del anuncio (puede contener nulls si no se encuentran)
+ */
+export async function autofillFromUrlApi(url: string): Promise<IdealistaAutofill> {
+  const baseUrl = getApiUrl();
+  const apiUrl = `${baseUrl}/autofill`;
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ url }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      // Si falla, devolver objeto con nulls (nunca lanzar excepción según reglas del producto)
+      return {
+        buyPrice: null,
+        sqm: null,
+        rooms: null,
+        banos: null,
+        ciudad: null,
+        codigoComunidadAutonoma: null,
+        source: "idealista:v1"
+      };
+    }
+
+    const result = data as IdealistaAutofill;
+    
+    // 🧪 TESTING: Simular fallo en extracción de comunidad autónoma o ciudad
+    // Descomenta las líneas que quieras probar:
+    
+    // Simular fallo en comunidad autónoma:
+    // result.codigoComunidadAutonoma = null;
+    
+    // Simular fallo en ciudad:
+    // result.ciudad = null;
+    
+    // Simular fallo en habitaciones:
+    // result.rooms = null;
+    
+    // Simular fallo en metros cuadrados:
+    // result.sqm = null;
+    
+    // Simular fallo en baños:
+    // result.banos = null;
+    
+    // Simular fallo en ambos:
+    // result.codigoComunidadAutonoma = null;
+    // result.ciudad = null;
+    
+    return result;
+  } catch (err) {
+    // En caso de error, devolver objeto con nulls (nunca lanzar excepción)
+    return {
+      buyPrice: null,
+      sqm: null,
+      rooms: null,
+      banos: null,
+      ciudad: null,
+      codigoComunidadAutonoma: null,
+      source: "idealista:v1"
+    };
   }
 }

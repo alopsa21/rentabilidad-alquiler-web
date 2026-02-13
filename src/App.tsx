@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react'
+import { useLocation } from 'react-router-dom'
 import { HeroSearch } from './components/HeroSearch'
 import { CompactSearchHeader } from './components/CompactSearchHeader'
 import { CardAnalisis } from './components/CardAnalisis'
@@ -7,8 +8,9 @@ const DetalleAnalisis = lazy(() => import('./components/DetalleAnalisis').then(m
 import { ModalDetalle } from './components/ModalDetalle'
 import { ModalNotas } from './components/ModalNotas'
 import { ModalCompartirSelectivo } from './components/ModalCompartirSelectivo'
-import { calcularRentabilidadApi } from './services/api'
-import { COMUNIDADES_AUTONOMAS } from './constants/comunidades'
+import { ModalCompletarCampos } from './components/ModalCompletarCampos'
+import { calcularRentabilidadApi, autofillFromUrlApi } from './services/api'
+import { NOMBRE_COMUNIDAD_POR_CODIGO } from './constants/comunidades'
 import type { RentabilidadApiResponse } from './types/api'
 import type { FormularioRentabilidadState } from './types/formulario'
 import type { AnalisisCard } from './types/analisis'
@@ -23,12 +25,17 @@ import { cardsToCSV, downloadCSV } from './utils/csv'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
+import Tooltip from '@mui/material/Tooltip'
+import HomeIcon from '@mui/icons-material/Home'
+import TrendingUpIcon from '@mui/icons-material/TrendingUp'
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents'
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import './App.css'
 
 /** Payload por defecto para mantener la API conectada hasta que la URL se use para obtener datos */
 const DEFAULT_PAYLOAD: FormularioRentabilidadState = {
   precioCompra: 150000,
-  comunidadAutonoma: 'Comunidad de Madrid',
+  codigoComunidadAutonoma: 13, // Madrid
   alquilerMensual: 800,
   reforma: 0,
   notaria: 0,
@@ -43,6 +50,7 @@ const DEFAULT_PAYLOAD: FormularioRentabilidadState = {
 }
 
 function App() {
+  const location = useLocation()
   const [, setResultado] = useState<RentabilidadApiResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -56,6 +64,8 @@ function App() {
   const [ordenarPor, setOrdenarPor] = useState<{ campo: string | null; direccion: 'asc' | 'desc' }>({ campo: null, direccion: 'asc' })
   const [tarjetasExpandidas, setTarjetasExpandidas] = useState<Set<string>>(new Set())
   const [isHydrated, setIsHydrated] = useState(false)
+  // Evitar renderizar hasta confirmar que estamos en la ruta correcta
+  const isCorrectRoute = location.pathname === '/'
   const [createdAtPorTarjeta, setCreatedAtPorTarjeta] = useState<Record<string, string>>({})
   const [, setResetUrlTrigger] = useState(0)
   const [notificacion, setNotificacion] = useState<{ mensaje: string; tipo: 'success' | 'error' } | null>(null)
@@ -64,6 +74,20 @@ function App() {
   const [modalLimpiarPanelOpen, setModalLimpiarPanelOpen] = useState(false)
   const [modalCompartirSelectivoOpen, setModalCompartirSelectivoOpen] = useState(false)
   const [hasUserAnalyzedBefore, setHasUserAnalyzedBefore] = useState(false)
+  const [modalCompletarCamposOpen, setModalCompletarCamposOpen] = useState(false)
+  const [datosPendientes, setDatosPendientes] = useState<{
+    url: string;
+    autofillData: any;
+    camposFaltantes: {
+      habitaciones?: boolean;
+      metrosCuadrados?: boolean;
+      banos?: boolean;
+      codigoComunidadAutonoma?: boolean;
+      ciudad?: boolean;
+      precioCompra?: boolean;
+      alquilerMensual?: boolean;
+    };
+  } | null>(null)
 
   // OPTIMIZACIÓN CRÍTICA: usar refs para evitar recrear callbacks
   const analisisRef = useRef(analisis)
@@ -88,6 +112,11 @@ function App() {
 
   // Hidratación inicial: cargar tarjetas desde localStorage o URL al montar
   useEffect(() => {
+    // Solo ejecutar si estamos en la ruta principal
+    if (location.pathname !== '/') {
+      return
+    }
+    
     let hasAnalyzed = false
 
     // Primero intentar cargar desde URL (tiene prioridad)
@@ -101,7 +130,12 @@ function App() {
 
         sharedCards.forEach((item) => {
           const { card, motorOutput, motorOutputOriginal } = item
-          cards.push({ ...card, isFavorite: card.isFavorite ?? false, notes: card.notes ?? '' })
+          cards.push({ 
+            ...card, 
+            isFavorite: card.isFavorite ?? false, 
+            notes: card.notes ?? '',
+            originalCiudad: card.originalCiudad ?? card.ciudad,
+          })
           resultados[card.id] = motorOutput
           if (motorOutputOriginal) resultadosOriginal[card.id] = motorOutputOriginal
         })
@@ -140,7 +174,9 @@ function App() {
 
       loaded.forEach(({ card, motorOutput, createdAt: cardCreatedAt }) => {
         cards.push({ ...card, isFavorite: card.isFavorite ?? false, notes: card.notes ?? '' })
-        resultados[card.id] = motorOutput
+        if (motorOutput) {
+          resultados[card.id] = motorOutput
+        }
         if (cardCreatedAt) {
           createdAt[card.id] = cardCreatedAt
         }
@@ -159,19 +195,13 @@ function App() {
     }
     setIsHydrated(true)
     setHasUserAnalyzedBefore(hasAnalyzed)
-  }, [])
+  }, [location.pathname])
 
   // Sincronización automática con DEBOUNCE: guardar en localStorage cuando cambien las tarjetas o resultados
   // OPTIMIZACIÓN CRÍTICA: debounce para evitar escrituras constantes que bloquean el hilo principal
   useEffect(() => {
     // Solo sincronizar después de la hidratación inicial para evitar guardar datos vacíos
     if (!isHydrated || analisis.length === 0) {
-      return
-    }
-
-    // Guardar solo si hay tarjetas y resultados correspondientes
-    const todasTienenResultados = analisis.every((card) => resultadosPorTarjeta[card.id])
-    if (!todasTienenResultados) {
       return
     }
 
@@ -183,75 +213,193 @@ function App() {
     return () => clearTimeout(timeoutId)
   }, [analisis, resultadosPorTarjeta, createdAtPorTarjeta, isHydrated])
 
+  /** Normaliza URL para comparar (evitar duplicados por trailing slash o espacios) */
+  const normalizeUrlForCompare = (u: string) =>
+    u.trim().replace(/\/+$/, '')
+
   const handleAnalizar = async (_url: string) => {
     setError(null)
     setResultado(null)
     setVeredictoGlobal(null)
+
+    const urlNorm = normalizeUrlForCompare(_url)
+    const yaExiste = analisis.find(
+      (c) => normalizeUrlForCompare(c.url) === urlNorm
+    )
+    if (yaExiste) {
+      mostrarNotificacion('Este piso ya ha sido analizado y está en el panel', 'error')
+      setTarjetaActivaId(yaExiste.id)
+      return
+    }
+
     setLoading(true)
     try {
-      // Generar valores aleatorios
-      const alquilerAleatorio = Math.floor(Math.random() * (1000 - 500 + 1)) + 500
-      const precioAleatorio = Math.floor(Math.random() * (400000 - 100000 + 1)) + 100000
-      const comunidadAleatoria = COMUNIDADES_AUTONOMAS[Math.floor(Math.random() * COMUNIDADES_AUTONOMAS.length)]
-      const habitacionesAleatorias = Math.floor(Math.random() * (4 - 1 + 1)) + 1 // 1-4 habitaciones
-      // m² de 10 en 10 entre 60 y 200 (60, 70, 80, ..., 200)
-      const metrosAleatorios = (Math.floor(Math.random() * ((200 - 60) / 10 + 1)) * 10) + 60
-      const banosAleatorios = Math.floor(Math.random() * (3 - 1 + 1)) + 1 // 1-3 baños
-      const payload = {
-        ...DEFAULT_PAYLOAD,
-        alquilerMensual: alquilerAleatorio,
-        precioCompra: precioAleatorio,
-        comunidadAutonoma: comunidadAleatoria,
+      const autofillData = await autofillFromUrlApi(_url)
+      
+      // Detectar campos faltantes (obligatorios)
+      const camposFaltantes = {
+        habitaciones: autofillData.rooms == null,
+        metrosCuadrados: autofillData.sqm == null,
+        banos: autofillData.banos == null,
+        codigoComunidadAutonoma: autofillData.codigoComunidadAutonoma == null || autofillData.codigoComunidadAutonoma < 1 || autofillData.codigoComunidadAutonoma > 19,
+        ciudad: !autofillData.ciudad,
+        precioCompra: autofillData.buyPrice == null,
+        alquilerMensual: true, // Siempre falta porque aún no lo calculamos desde el autofill
       }
-      const data = await calcularRentabilidadApi(payload)
-      setResultado(data)
-
-      const veredicto = mapResultadosToVerdict(data)
-      setVeredictoGlobal(veredicto)
-
-      // Construir tarjeta acumulativa
-      const rentNetaRaw = Number(data.rentabilidadNeta)
-      const rentNetaPct =
-        !Number.isNaN(rentNetaRaw) && rentNetaRaw > -1 && rentNetaRaw < 1
-          ? rentNetaRaw * 100
-          : rentNetaRaw
-
-      // Importar función para obtener ciudad aleatoria
-      const { obtenerCiudadAleatoria } = await import('./utils/ciudades')
-      const ciudadAleatoria = obtenerCiudadAleatoria(payload.comunidadAutonoma)
-
-      const nuevaTarjeta: AnalisisCard = {
-        id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
-        url: _url,
-        ciudad: ciudadAleatoria,
-        precioCompra: payload.precioCompra,
-        alquilerEstimado: alquilerAleatorio,
-        rentabilidadNetaPct: rentNetaPct,
-        estado: veredicto.estado,
-        veredictoTitulo: veredicto.titulo,
-        veredictoRazones: veredicto.razones,
-        habitaciones: habitacionesAleatorias,
-        metrosCuadrados: metrosAleatorios,
-        banos: banosAleatorios,
-        originalInput: { ...payload },
-        currentInput: { ...payload },
-        isFavorite: false,
-        notes: '',
-      }
-
-      const ahora = new Date().toISOString()
-      setAnalisis((prev) => [nuevaTarjeta, ...prev])
-      setResultadosPorTarjeta((prev) => ({ ...prev, [nuevaTarjeta.id]: data }))
-      setCreatedAtPorTarjeta((prev) => ({ ...prev, [nuevaTarjeta.id]: ahora }))
-      setHasUserAnalyzedBefore(true)
-      try { localStorage.setItem(STORAGE_KEY_HAS_ANALYZED, '1') } catch { /* ignore */ }
-      // No establecer tarjetaActivaId ni expandir automáticamente
-      // La tarjeta aparecerá sin resaltar hasta que el usuario haga clic
+      
+      // Crear la tarjeta siempre, incluso si faltan campos (se resaltarán en la tarjeta)
+      await crearTarjetaConDatos(_url, autofillData, camposFaltantes)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al analizar')
     } finally {
       setLoading(false)
     }
+  }
+  
+  const handleCompletarCampos = async (datos: {
+    habitaciones: number;
+    metrosCuadrados: number;
+    banos: number;
+    codigoComunidadAutonoma: number;
+    ciudad: string;
+    precioCompra: number;
+    alquilerMensual: number;
+  }) => {
+    if (!datosPendientes) return;
+    
+    setLoading(true);
+    try {
+      // Crear objeto autofillData con los datos completados
+      const autofillDataCompleto = {
+        ...datosPendientes.autofillData,
+        rooms: datos.habitaciones,
+        sqm: datos.metrosCuadrados,
+        banos: datos.banos,
+        codigoComunidadAutonoma: datos.codigoComunidadAutonoma,
+        ciudad: datos.ciudad,
+        buyPrice: datos.precioCompra,
+        alquilerMensual: datos.alquilerMensual,
+      };
+      
+      await crearTarjetaConDatos(datosPendientes.url, autofillDataCompleto, datosPendientes.camposFaltantes);
+      setDatosPendientes(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al crear tarjeta');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const crearTarjetaConDatos = async (
+    _url: string,
+    autofillData: any,
+    camposFaltantes: any
+  ) => {
+    // Usar datos extraídos o valores vacíos (0 o '') si faltan
+    const precioCompra = autofillData.buyPrice ?? 0
+    const metrosCuadrados = autofillData.sqm ?? 0
+    const habitaciones = autofillData.rooms ?? 0
+    const banos = autofillData.banos ?? 0
+    const codigoComunidadAutonoma = autofillData.codigoComunidadAutonoma ?? 0
+    const ciudad = autofillData.ciudad ?? ''
+    const alquilerMensual = autofillData.alquilerMensual ?? 0
+    
+    // Verificar si faltan campos obligatorios
+    const faltanCamposObligatorios = 
+      camposFaltantes.habitaciones ||
+      camposFaltantes.metrosCuadrados ||
+      camposFaltantes.banos ||
+      camposFaltantes.codigoComunidadAutonoma ||
+      camposFaltantes.ciudad ||
+      camposFaltantes.precioCompra ||
+      camposFaltantes.alquilerMensual
+    
+    // Input de la tarjeta: guardar valores vacíos (0 o '') cuando faltan campos
+    const inputReal: FormularioRentabilidadState = {
+      ...DEFAULT_PAYLOAD,
+      alquilerMensual: alquilerMensual, // 0 si falta
+      precioCompra: precioCompra, // 0 si falta
+      codigoComunidadAutonoma: codigoComunidadAutonoma, // 0 si falta
+    }
+    
+    let data: RentabilidadApiResponse | null = null
+    let veredicto: VeredictoHumano | null = null
+    let rentNetaPct = 0
+    let estado: 'verde' | 'amarillo' | 'rojo' = 'amarillo'
+    let veredictoTitulo = 'Completa los datos faltantes'
+    let veredictoRazones: string[] = []
+    
+    // Solo calcular rentabilidad si NO faltan campos obligatorios
+    if (!faltanCamposObligatorios) {
+      data = await calcularRentabilidadApi(inputReal)
+      setResultado(data)
+
+      veredicto = mapResultadosToVerdict(data)
+      setVeredictoGlobal(veredicto)
+
+      // Construir tarjeta acumulativa
+      const rentNetaRaw = Number(data.rentabilidadNeta)
+      rentNetaPct =
+        !Number.isNaN(rentNetaRaw) && rentNetaRaw > -1 && rentNetaRaw < 1
+          ? rentNetaRaw * 100
+          : rentNetaRaw
+      
+      estado = veredicto.estado
+      veredictoTitulo = veredicto.titulo
+      veredictoRazones = veredicto.razones
+    } else {
+      // Si faltan campos, crear mensaje informativo
+      const camposFaltantesLista: string[] = []
+      if (camposFaltantes.habitaciones || camposFaltantes.metrosCuadrados || camposFaltantes.banos) {
+        camposFaltantesLista.push('Datos del inmueble')
+      }
+      if (camposFaltantes.codigoComunidadAutonoma) camposFaltantesLista.push('Comunidad autónoma')
+      if (camposFaltantes.ciudad) camposFaltantesLista.push('Ciudad')
+      if (camposFaltantes.precioCompra) camposFaltantesLista.push('Precio compra')
+      if (camposFaltantes.alquilerMensual) camposFaltantesLista.push('Alquiler estimado')
+      
+      veredictoRazones = [`Completa los siguientes campos: ${camposFaltantesLista.join(', ')}`]
+    }
+
+    const nuevaTarjeta: AnalisisCard = {
+      id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+      url: _url,
+      ciudad: ciudad,
+      precioCompra: precioCompra,
+      alquilerEstimado: alquilerMensual,
+      rentabilidadNetaPct: rentNetaPct,
+      estado: estado,
+      veredictoTitulo: veredictoTitulo,
+      veredictoRazones: veredictoRazones,
+      habitaciones: habitaciones,
+      metrosCuadrados: metrosCuadrados,
+      banos: banos,
+      originalHabitaciones: habitaciones,
+      originalMetrosCuadrados: metrosCuadrados,
+      originalBanos: banos,
+      originalCiudad: ciudad,
+      originalInput: { ...inputReal },
+      currentInput: inputReal,
+      isFavorite: false,
+      notes: '',
+      camposFaltantes: Object.keys(camposFaltantes).some(k => camposFaltantes[k as keyof typeof camposFaltantes]) ? camposFaltantes : undefined,
+    }
+
+    const ahora = new Date().toISOString()
+    setAnalisis((prev) => {
+      const nuevasTarjetas = [nuevaTarjeta, ...prev]
+      // Log temporal para debug
+      console.log('📊 Nueva tarjeta creada:', nuevaTarjeta)
+      console.log('📋 Campos faltantes:', nuevaTarjeta.camposFaltantes)
+      console.log('📦 Todas las tarjetas:', nuevasTarjetas)
+      return nuevasTarjetas
+    })
+    if (data) {
+      setResultadosPorTarjeta((prev) => ({ ...prev, [nuevaTarjeta.id]: data }))
+    }
+    setCreatedAtPorTarjeta((prev) => ({ ...prev, [nuevaTarjeta.id]: ahora }))
+    setHasUserAnalyzedBefore(true)
+    try { localStorage.setItem(STORAGE_KEY_HAS_ANALYZED, '1') } catch { /* ignore */ }
   }
 
   const tarjetaActiva = analisis.find((c) => c.id === tarjetaActivaId)
@@ -302,6 +450,25 @@ function App() {
   const scoreColorKey = getScoreColor(portfolioScore)
   const scoreColorMap = { verde: '#2e7d32', amarillo: '#f9a825', rojo: '#c62828' } as const
   const scoreColor = scoreColorMap[scoreColorKey]
+  
+  // Determinar color del semáforo para ROE medio usando los mismos umbrales del veredicto
+  // Verde: ROCE >= 10%, Amarillo: ROCE >= 7%, Rojo: ROCE < 7%
+  const getROEColor = (roe: number | null): string => {
+    if (roe === null) return scoreColorMap.amarillo
+    if (roe >= 10) return scoreColorMap.verde
+    if (roe >= 7) return scoreColorMap.amarillo
+    return scoreColorMap.rojo
+  }
+  const roeColor = getROEColor(portfolioStats.avgROE)
+  
+  // Determinar color del semáforo para Cashflow anual total
+  // Verde: cashflow >= 5000€, Amarillo: cashflow >= 0€ pero < 5000€, Rojo: cashflow < 0€
+  const getCashflowColor = (cashflow: number): string => {
+    if (cashflow >= 5000) return scoreColorMap.verde
+    if (cashflow >= 0) return scoreColorMap.amarillo
+    return scoreColorMap.rojo
+  }
+  const cashflowColor = getCashflowColor(portfolioStats.totalCashflow)
 
   // Ordenar tarjetas según el criterio seleccionado - memoizado y optimizado
   const analisisOrdenados = useMemo(() => {
@@ -445,16 +612,149 @@ function App() {
         recalcularTarjetaConInput(tarjetaId, nuevoCurrentInput);
       });
 
-      return prev.map((c) =>
-        c.id === tarjetaId
-          ? {
+      return prev.map((c) => {
+        if (c.id !== tarjetaId) return c;
+        
+        // Actualizar camposFaltantes: si se completa un campo que faltaba, marcarlo como completado
+        const camposFaltantesActualizados = c.camposFaltantes ? { ...c.camposFaltantes } : undefined;
+        
+        // Mapear campos del formulario a camposFaltantes
+        if (camposFaltantesActualizados) {
+          if (campo === 'precioCompra' && typeof valor === 'number' && valor > 0) {
+            camposFaltantesActualizados.precioCompra = false;
+          }
+          if (campo === 'alquilerMensual' && typeof valor === 'number' && valor > 0) {
+            camposFaltantesActualizados.alquilerMensual = false;
+          }
+          if (campo === 'codigoComunidadAutonoma' && typeof valor === 'number' && valor >= 1 && valor <= 19) {
+            camposFaltantesActualizados.codigoComunidadAutonoma = false;
+          }
+          
+          // Verificar si todos los campos están completos después de esta actualización
+          const todosCompletos = 
+            nuevoCurrentInput.precioCompra > 0 &&
+            nuevoCurrentInput.codigoComunidadAutonoma >= 1 &&
+            nuevoCurrentInput.codigoComunidadAutonoma <= 19 &&
+            nuevoCurrentInput.alquilerMensual > 0 &&
+            c.ciudad &&
+            c.habitaciones > 0 &&
+            c.metrosCuadrados > 0 &&
+            c.banos > 0;
+          
+          // Si todos están completos, limpiar camposFaltantes
+          if (todosCompletos) {
+            return {
               ...c,
               currentInput: nuevoCurrentInput,
-            }
-          : c
-      );
+              camposFaltantes: undefined,
+            };
+          }
+        }
+        
+        return {
+          ...c,
+          currentInput: nuevoCurrentInput,
+          camposFaltantes: camposFaltantesActualizados,
+        };
+      });
     });
   }, []) // OPTIMIZACIÓN: sin dependencias porque usamos refs
+
+  /**
+   * Maneja el cambio de ciudad en una tarjeta.
+   */
+  const handleCiudadChange = useCallback((tarjetaId: string, ciudad: string) => {
+    setAnalisis((prev) => {
+      return prev.map((c) => {
+        if (c.id !== tarjetaId) return c;
+        
+        const camposFaltantesActualizados = c.camposFaltantes ? { ...c.camposFaltantes } : undefined;
+        if (camposFaltantesActualizados && ciudad) {
+          camposFaltantesActualizados.ciudad = false;
+        }
+        
+        // Verificar si todos los campos están completos después de esta actualización
+        const todosCompletos = 
+          c.currentInput.precioCompra > 0 &&
+          c.currentInput.codigoComunidadAutonoma >= 1 &&
+          c.currentInput.codigoComunidadAutonoma <= 19 &&
+          c.currentInput.alquilerMensual > 0 &&
+          ciudad &&
+          c.habitaciones > 0 &&
+          c.metrosCuadrados > 0 &&
+          c.banos > 0;
+        
+        // Si todos están completos, limpiar camposFaltantes y recalcular
+        if (todosCompletos) {
+          // Recalcular en el siguiente tick para evitar problemas de sincronización
+          setTimeout(() => {
+            const tarjetaActualizada = analisisRef.current.find((t) => t.id === tarjetaId);
+            if (tarjetaActualizada) {
+              recalcularTarjetaConInput(tarjetaId, tarjetaActualizada.currentInput);
+            }
+          }, 0);
+          
+          return {
+            ...c,
+            ciudad,
+            camposFaltantes: undefined,
+          };
+        }
+        
+        return {
+          ...c,
+          ciudad,
+          camposFaltantes: camposFaltantesActualizados,
+        };
+      });
+    });
+  }, []);
+
+  const handleInmuebleChange = useCallback((tarjetaId: string, campo: 'habitaciones' | 'metrosCuadrados' | 'banos', valor: number) => {
+    setAnalisis((prev) => {
+      return prev.map((c) => {
+        if (c.id !== tarjetaId) return c;
+        
+        const camposFaltantesActualizados = c.camposFaltantes ? { ...c.camposFaltantes } : undefined;
+        if (camposFaltantesActualizados && valor > 0) {
+          camposFaltantesActualizados[campo] = false;
+        }
+        
+        // Verificar si todos los campos están completos después de esta actualización
+        const todosCompletos = 
+          c.currentInput.precioCompra > 0 &&
+          c.currentInput.codigoComunidadAutonoma >= 1 &&
+          c.currentInput.codigoComunidadAutonoma <= 19 &&
+          c.currentInput.alquilerMensual > 0 &&
+          c.ciudad &&
+          (campo === 'habitaciones' ? valor : c.habitaciones) > 0 &&
+          (campo === 'metrosCuadrados' ? valor : c.metrosCuadrados) > 0 &&
+          (campo === 'banos' ? valor : c.banos) > 0;
+        
+        // Si todos están completos, recalcular
+        if (todosCompletos) {
+          setTimeout(() => {
+            const tarjetaActualizada = analisisRef.current.find((t) => t.id === tarjetaId);
+            if (tarjetaActualizada) {
+              recalcularTarjetaConInput(tarjetaId, tarjetaActualizada.currentInput);
+            }
+          }, 0);
+          
+          return {
+            ...c,
+            [campo]: valor,
+            camposFaltantes: undefined,
+          };
+        }
+        
+        return {
+          ...c,
+          [campo]: valor,
+          camposFaltantes: camposFaltantesActualizados,
+        };
+      });
+    });
+  }, []);
 
   /**
    * Recalcula las métricas de una tarjeta usando un input específico.
@@ -462,6 +762,54 @@ function App() {
    */
   const recalcularTarjetaConInput = async (tarjetaId: string, input: FormularioRentabilidadState) => {
     try {
+      // Verificar si todos los campos obligatorios están completos
+      const tarjetaActual = analisisRef.current.find((c) => c.id === tarjetaId);
+      if (!tarjetaActual) return;
+      
+      const camposFaltantes = tarjetaActual.camposFaltantes;
+      const faltanCamposObligatorios = camposFaltantes && (
+        camposFaltantes.habitaciones ||
+        camposFaltantes.metrosCuadrados ||
+        camposFaltantes.banos ||
+        camposFaltantes.codigoComunidadAutonoma ||
+        camposFaltantes.ciudad ||
+        camposFaltantes.precioCompra ||
+        camposFaltantes.alquilerMensual
+      );
+      
+      // Verificar también directamente desde el input y la tarjeta
+      const faltanCamposEnInput = 
+        input.precioCompra <= 0 ||
+        input.codigoComunidadAutonoma < 1 ||
+        input.codigoComunidadAutonoma > 19 ||
+        input.alquilerMensual <= 0 ||
+        !tarjetaActual.ciudad ||
+        tarjetaActual.habitaciones <= 0 ||
+        tarjetaActual.metrosCuadrados <= 0 ||
+        tarjetaActual.banos <= 0;
+      
+      // Si faltan campos obligatorios, NO calcular rentabilidad
+      if (faltanCamposObligatorios || faltanCamposEnInput) {
+        // Actualizar solo los valores del input, sin calcular rentabilidad
+        setAnalisis((prev) => {
+          return prev.map((c) =>
+            c.id === tarjetaId
+              ? {
+                  ...c,
+                  precioCompra: input.precioCompra,
+                  alquilerEstimado: input.alquilerMensual,
+                  rentabilidadNetaPct: 0,
+                  estado: 'amarillo' as const,
+                  veredictoTitulo: 'Completa los datos faltantes',
+                  veredictoRazones: ['Completa todos los campos obligatorios para calcular la rentabilidad'],
+                }
+              : c
+          );
+        });
+        return;
+      }
+      
+      // Todos los campos están completos, calcular rentabilidad
       const nuevoResultado = await calcularRentabilidadApi(input);
       const nuevoVeredicto = mapResultadosToVerdict(nuevoResultado);
 
@@ -476,11 +824,11 @@ function App() {
           : rentNetaRaw;
 
       // Resolver nueva ciudad si cambió la comunidad (fuera del setState para poder usar await)
-      const tarjetaActual = analisis.find((c) => c.id === tarjetaId);
       let nuevaCiudad: string | null = null;
-      if (tarjetaActual && tarjetaActual.currentInput.comunidadAutonoma !== input.comunidadAutonoma) {
+      if (tarjetaActual.currentInput.codigoComunidadAutonoma !== input.codigoComunidadAutonoma) {
         const { obtenerCiudadAleatoria } = await import('./utils/ciudades');
-        nuevaCiudad = obtenerCiudadAleatoria(input.comunidadAutonoma);
+        const nombreComunidad = NOMBRE_COMUNIDAD_POR_CODIGO[input.codigoComunidadAutonoma];
+        nuevaCiudad = nombreComunidad ? obtenerCiudadAleatoria(nombreComunidad) : null;
       }
 
       setAnalisis((prev) => {
@@ -498,6 +846,8 @@ function App() {
                 estado: nuevoVeredicto.estado,
                 veredictoTitulo: nuevoVeredicto.titulo,
                 veredictoRazones: nuevoVeredicto.razones,
+                // Limpiar camposFaltantes si todos están completos
+                camposFaltantes: undefined,
               }
             : c
         );
@@ -558,19 +908,33 @@ function App() {
    * Revierte los cambios de una tarjeta restaurando originalInput.
    */
   /**
-   * Revierte un solo campo (precio compra o alquiler) al valor original.
+   * Revierte un solo campo (precio compra, alquiler, comunidad o ciudad) al valor original.
    */
-  const handleRevertField = useCallback((tarjetaId: string, campo: 'precioCompra' | 'alquilerMensual') => {
+  const handleRevertField = useCallback((tarjetaId: string, campo: 'precioCompra' | 'alquilerMensual' | 'codigoComunidadAutonoma' | 'ciudad') => {
     setAnalisis((prev) => {
       const tarjeta = prev.find((c) => c.id === tarjetaId);
       if (!tarjeta) return prev;
 
-      const nuevoCurrentInput = {
-        ...tarjeta.currentInput,
-        [campo]: tarjeta.originalInput[campo],
-      };
+      let nuevoCurrentInput = { ...tarjeta.currentInput };
+      let nuevaCiudad = tarjeta.ciudad;
 
-      const quedaSinCambios = inputsAreEqual(nuevoCurrentInput, tarjeta.originalInput);
+      if (campo === 'codigoComunidadAutonoma') {
+        nuevoCurrentInput = {
+          ...tarjeta.currentInput,
+          codigoComunidadAutonoma: tarjeta.originalInput.codigoComunidadAutonoma,
+        };
+        // Si se revierte la comunidad, también revertir la ciudad
+        nuevaCiudad = tarjeta.originalCiudad;
+      } else if (campo === 'ciudad') {
+        nuevaCiudad = tarjeta.originalCiudad;
+      } else {
+        nuevoCurrentInput = {
+          ...tarjeta.currentInput,
+          [campo]: tarjeta.originalInput[campo],
+        };
+      }
+
+      const quedaSinCambios = inputsAreEqual(nuevoCurrentInput, tarjeta.originalInput) && nuevaCiudad === tarjeta.originalCiudad;
       if (quedaSinCambios) {
         setResultadoOriginalPorTarjeta((p) => {
           const next = { ...p };
@@ -583,11 +947,54 @@ function App() {
 
       return prev.map((c) =>
         c.id === tarjetaId
-          ? { ...c, currentInput: nuevoCurrentInput }
+          ? { ...c, currentInput: nuevoCurrentInput, ciudad: nuevaCiudad }
           : c
       );
     });
   }, []) // OPTIMIZACIÓN: sin dependencias, todo dentro de setState
+
+  /**
+   * Revierte un campo del inmueble (habitaciones, metrosCuadrados o banos) al valor original.
+   */
+  const handleRevertInmueble = useCallback((tarjetaId: string, campo: 'habitaciones' | 'metrosCuadrados' | 'banos') => {
+    setAnalisis((prev) => {
+      return prev.map((c) => {
+        if (c.id !== tarjetaId) return c;
+        
+        const valorOriginal = campo === 'habitaciones' 
+          ? c.originalHabitaciones 
+          : campo === 'metrosCuadrados' 
+          ? c.originalMetrosCuadrados 
+          : c.originalBanos;
+        
+        // Verificar si todos los campos están completos después del revert
+        const todosCompletos = 
+          c.currentInput.precioCompra > 0 &&
+          c.currentInput.codigoComunidadAutonoma >= 1 &&
+          c.currentInput.codigoComunidadAutonoma <= 19 &&
+          c.currentInput.alquilerMensual > 0 &&
+          c.ciudad &&
+          (campo === 'habitaciones' ? valorOriginal : c.habitaciones) > 0 &&
+          (campo === 'metrosCuadrados' ? valorOriginal : c.metrosCuadrados) > 0 &&
+          (campo === 'banos' ? valorOriginal : c.banos) > 0;
+        
+        // Si todos están completos, recalcular
+        if (todosCompletos) {
+          setTimeout(() => {
+            const tarjetaActualizada = analisisRef.current.find((t) => t.id === tarjetaId);
+            if (tarjetaActualizada) {
+              recalcularTarjetaConInput(tarjetaId, tarjetaActualizada.currentInput);
+            }
+          }, 0);
+        }
+        
+        return {
+          ...c,
+          [campo]: valorOriginal,
+        };
+      });
+    });
+  }, []);
 
   /**
    * Abre el modal para seleccionar tarjetas a compartir
@@ -640,6 +1047,12 @@ function App() {
   }
 
 
+  // Solo renderizar si estamos en la ruta principal
+  // Verificar directamente sin estado para evitar cualquier delay
+  if (!isCorrectRoute) {
+    return null
+  }
+
   return (
     <div className="app">
       {/* Notificación toast */}
@@ -666,7 +1079,7 @@ function App() {
           {notificacion.mensaje}
         </div>
       )}
-      {analisis.length === 0 && !hasUserAnalyzedBefore ? (
+      {analisis.length === 0 && !hasUserAnalyzedBefore && isHydrated ? (
         <>
           <HeroSearch onAnalizar={handleAnalizar} loading={loading} />
           <main className="app-main">
@@ -688,11 +1101,12 @@ function App() {
         )}
           <div className="app-layout-desktop layout-horizontal">
             {/* Tabs Todas / Mi Portfolio */}
-            <Box sx={{ display: 'flex', gap: 0, pt: 1, px: 2, borderBottom: '1px solid #e0e0e0', mb: 1 }}>
+            <Box className="tabs-portfolio" sx={{ display: 'flex', gap: 0, pt: 1, px: 2, borderBottom: '1px solid #e0e0e0', mb: 1 }}>
               <Button
                 variant="text"
                 onClick={() => setVistaFiltro('all')}
                 disableRipple
+                className={vistaFiltro === 'all' ? 'tab-active' : 'tab-inactive'}
                 sx={{
                   color: vistaFiltro === 'all' ? 'primary.main' : 'text.secondary',
                   borderRadius: 0,
@@ -709,6 +1123,7 @@ function App() {
                 variant="text"
                 onClick={() => setVistaFiltro('favorites')}
                 disableRipple
+                className={vistaFiltro === 'favorites' ? 'tab-active' : 'tab-inactive'}
                 sx={{
                   color: vistaFiltro === 'favorites' ? 'primary.main' : 'text.secondary',
                   borderRadius: 0,
@@ -724,93 +1139,144 @@ function App() {
             </Box>
             {/* Stats del portfolio (solo en vista Mi Portfolio) */}
             {vistaFiltro === 'favorites' && (
-              <div
-                style={{
-                  padding: '12px 16px',
+              <Box
+                className="portfolio-stats"
+                sx={{
+                  padding: { xs: '12px 16px', md: '16px' },
                   marginBottom: 8,
-                  backgroundColor: '#f5f5f5',
-                  borderRadius: 8,
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: '16px 24px',
-                  alignItems: 'center',
+                  borderRadius: { xs: 0, md: 2 },
                 }}
                 aria-label="Resumen del portfolio"
               >
-                <strong style={{ fontSize: 15, color: '#333', marginRight: 8 }}>
-                  📊 Mi portfolio
-                </strong>
-                <span style={{ fontSize: 14, color: '#555' }}>
-                  Propiedades: {portfolioStats.count}
-                </span>
-                <span style={{ fontSize: 14, color: '#555' }}>
-                  ROE medio:{' '}
-                  {portfolioStats.avgROE !== null
-                    ? `${portfolioStats.avgROE.toFixed(2)} %`
-                    : '—'}
-                </span>
-                <span style={{ fontSize: 14, color: '#555' }}>
-                  Cashflow anual total:{' '}
-                  {portfolioStats.totalCashflow >= 0 ? '+' : ''}
-                  {new Intl.NumberFormat('es-ES', {
-                    style: 'currency',
-                    currency: 'EUR',
-                    maximumFractionDigits: 0,
-                    minimumFractionDigits: 0,
-                  }).format(portfolioStats.totalCashflow)}
-                </span>
-                <span style={{ fontSize: 14, color: scoreColor, fontWeight: 600 }}>
-                  🏆 Score: {portfolioScore} / 100
-                </span>
-              </div>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: { xs: 1.5, md: 2 } }}>
+                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, gap: { xs: 0.5, md: 1 } }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <HomeIcon sx={{ fontSize: 16, color: '#1976d2' }} />
+                      <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                        Propiedades:
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 600, color: '#1976d2' }}>
+                      {portfolioStats.count}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, gap: { xs: 0.5, md: 1 } }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <TrendingUpIcon sx={{ fontSize: 16, color: roeColor }} />
+                      <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                        ROE medio:
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 600, color: roeColor }}>
+                      {portfolioStats.avgROE !== null
+                        ? `${portfolioStats.avgROE.toFixed(2)} %`
+                        : '—'}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, gap: { xs: 0.5, md: 1 } }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <EmojiEventsIcon sx={{ fontSize: 16, color: '#f9a825' }} />
+                      <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                        Score:
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 600, color: scoreColor, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      {portfolioScore} / 100
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, gap: { xs: 0.5, md: 1 } }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <AttachMoneyIcon sx={{ fontSize: 16, color: cashflowColor }} />
+                      <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                        Cashflow anual total:
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 600, color: cashflowColor }}>
+                      {portfolioStats.totalCashflow >= 0 ? '+' : ''}
+                      {new Intl.NumberFormat('es-ES', {
+                        style: 'currency',
+                        currency: 'EUR',
+                        maximumFractionDigits: 0,
+                        minimumFractionDigits: 0,
+                      }).format(portfolioStats.totalCashflow)}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
             )}
             {/* Cabecera sticky con títulos de columnas */}
             <div className="card-header-sticky card-header-full-width" style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: '1rem', width: '100%' }}>
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', minWidth: 0 }} className="card-info-horizontal card-header-row">
-                <div style={{ flex: '1.2 1 0', minWidth: 0, display: 'flex', alignItems: 'center' }}>
-                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Inmueble</strong>
-                </div>
-                <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('ciudad')}>
-                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Ciudad</strong>
-                  {ordenarPor.campo === 'ciudad' && (
-                    <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </div>
-                <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('precio')}>
-                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Precio compra</strong>
-                  {ordenarPor.campo === 'precio' && (
-                    <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </div>
-                <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('alquiler')}>
-                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Alquiler estimado</strong>
-                  {ordenarPor.campo === 'alquiler' && (
-                    <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </div>
-                <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('rentabilidad')}>
-                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Rentabilidad neta</strong>
-                  {ordenarPor.campo === 'rentabilidad' && (
-                    <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </div>
-                <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('cashflow')}>
-                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Cashflow</strong>
-                  {ordenarPor.campo === 'cashflow' && (
-                    <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </div>
-                <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('roce')}>
-                  <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>ROCE</strong>
-                  {ordenarPor.campo === 'roce' && (
-                    <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </div>
+                <Tooltip title="Habitaciones, metros cuadrados y número de baños del inmueble">
+                  <div style={{ flex: '1.2 1 0', minWidth: 0, display: 'flex', alignItems: 'center' }}>
+                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Vivienda</strong>
+                  </div>
+                </Tooltip>
+                <Tooltip title="Comunidad autónoma donde se encuentra el inmueble">
+                  <div style={{ flex: '1.4 1 0', minWidth: 240, display: 'flex', alignItems: 'center' }}>
+                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Comunidad autónoma</strong>
+                  </div>
+                </Tooltip>
+                <Tooltip title="Ciudad donde se encuentra el inmueble">
+                  <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('ciudad')}>
+                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Ciudad</strong>
+                    {ordenarPor.campo === 'ciudad' && (
+                      <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </Tooltip>
+                <Tooltip title="Precio de compra del inmueble en euros">
+                  <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('precio')}>
+                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Precio compra</strong>
+                    {ordenarPor.campo === 'precio' && (
+                      <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </Tooltip>
+                <Tooltip title="Alquiler mensual estimado que se puede obtener del inmueble">
+                  <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('alquiler')}>
+                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Alquiler estimado</strong>
+                    {ordenarPor.campo === 'alquiler' && (
+                      <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </Tooltip>
+                <Tooltip title="Rentabilidad neta anual después de todos los gastos, expresada como porcentaje">
+                  <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('rentabilidad')}>
+                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Rentabilidad neta</strong>
+                    {ordenarPor.campo === 'rentabilidad' && (
+                      <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </Tooltip>
+                <Tooltip title="Cashflow anual final: dinero disponible después de amortizar capital de la hipoteca">
+                  <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('cashflow')}>
+                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Cashflow</strong>
+                    {ordenarPor.campo === 'cashflow' && (
+                      <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </Tooltip>
+                <Tooltip title="ROCE (Return on Capital Employed): rentabilidad del capital propio invertido después de amortizar deuda">
+                  <div style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => handleOrdenar('roce')}>
+                    <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>ROCE</strong>
+                    {ordenarPor.campo === 'roce' && (
+                      <span style={{ fontSize: 12 }}>{ordenarPor.direccion === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </Tooltip>
               </div>
             </div>
             {/* Panel de tarjetas: ancho completo */}
             <section aria-label="Panel de tarjetas" className="app-panel-tarjetas app-panel-tarjetas-horizontal">
-              {analisisOrdenados.map((card) => {
+              {analisisOrdenados.length === 0 && vistaFiltro === 'all' ? (
+                <Box sx={{ py: 6, textAlign: 'center' }}>
+                  <Typography variant="body1" sx={{ fontSize: 15, color: 'text.secondary' }}>
+                    Aún no has analizado ningún piso.
+                  </Typography>
+                </Box>
+              ) : (
+                analisisOrdenados.map((card) => {
                 const mostrarDetalle = tarjetasExpandidas.has(card.id)
                 const resultadoParaDetalle = resultadosPorTarjeta[card.id] || null
                 return (
@@ -826,6 +1292,10 @@ function App() {
                         resultadoOriginal={resultadoOriginalPorTarjeta[card.id]}
                         onInputChange={(campo, valor) => handleInputChange(card.id, campo, valor)}
                         onRevertField={(campo) => handleRevertField(card.id, campo)}
+                        onRevertInmueble={(campo) => handleRevertInmueble(card.id, campo)}
+                        onCiudadChange={(ciudad) => handleCiudadChange(card.id, ciudad)}
+                        onInmuebleChange={(campo, valor) => handleInmuebleChange(card.id, campo, valor)}
+                        isInFavoritesView={vistaFiltro === 'favorites'}
                       />
                     {/* Detalle debajo de la tarjeta: toggle al hacer clic */}
                     {mostrarDetalle && resultadoParaDetalle && (
@@ -841,7 +1311,8 @@ function App() {
                     )}
                   </div>
                 )
-              })}
+              })
+              )}
             </section>
             {/* Botones de acción debajo de las tarjetas */}
             <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
@@ -851,7 +1322,7 @@ function App() {
                 size="small"
                 disabled={analisis.length === 0}
                 onClick={handleShareAll}
-                title="Compartir todas las tarjetas (copiar link)"
+                title="Compartir tarjetas via link"
                 disableRipple
                 sx={{
                   outline: 'none',
@@ -880,21 +1351,24 @@ function App() {
               >
                 Exportar
               </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={handleNuevoAnalisis}
-                title="Borrar todas las tarjetas y limpiar el panel"
-                disableRipple
-                sx={{
-                  outline: 'none',
-                  '&:focus': { outline: 'none', boxShadow: 'none' },
-                  '&:focus-visible': { outline: 'none', boxShadow: 'none' },
-                  '&:active': { outline: 'none', boxShadow: 'none' },
-                }}
-              >
-                Limpiar
-              </Button>
+              {vistaFiltro !== 'favorites' && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleNuevoAnalisis}
+                  disabled={analisis.length === 0}
+                  title="Borrar todas las tarjetas"
+                  disableRipple
+                  sx={{
+                    outline: 'none',
+                    '&:focus': { outline: 'none', boxShadow: 'none' },
+                    '&:focus-visible': { outline: 'none', boxShadow: 'none' },
+                    '&:active': { outline: 'none', boxShadow: 'none' },
+                  }}
+                >
+                  Descartar
+                </Button>
+              )}
             </Box>
           </div>
         
@@ -914,6 +1388,7 @@ function App() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="modal-limpiar-titulo"
+            className="modal-limpiar-overlay"
             onClick={() => setModalLimpiarPanelOpen(false)}
             style={{
               position: 'fixed',
@@ -931,6 +1406,7 @@ function App() {
             }}
           >
             <div
+              className="modal-limpiar-content"
               onClick={(e) => e.stopPropagation()}
               style={{
                 backgroundColor: '#fff',
@@ -941,11 +1417,11 @@ function App() {
                 boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
               }}
             >
-              <Typography id="modal-limpiar-titulo" variant="h6" component="h2" sx={{ mb: 1.5 }}>
-                Limpiar panel
+              <Typography id="modal-limpiar-titulo" variant="h6" component="h2" sx={{ mb: 1.5, color: 'text.primary' }}>
+                Eliminar tarjetas
               </Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                ¿Quieres borrar todos los análisis actuales?
+              <Typography variant="body1" sx={{ mb: 3, color: 'text.primary' }}>
+                ¿Eliminar todas las tarjetas de análisis? Esta acción no se puede deshacer.
               </Typography>
               <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'flex-end' }}>
                 <Button
@@ -959,7 +1435,7 @@ function App() {
                     '&:active': { outline: 'none', boxShadow: 'none' },
                   }}
                 >
-                  Cancelar
+                  No, mantener
                 </Button>
                 <Button
                   variant="contained"
@@ -974,7 +1450,7 @@ function App() {
                     '&:active': { outline: 'none', border: 'none', boxShadow: 'none' },
                   }}
                 >
-                  Limpiar panel
+                  Sí, eliminar todas
                 </Button>
               </Box>
             </div>
@@ -1002,6 +1478,19 @@ function App() {
           resultadosPorTarjeta={resultadosPorTarjeta}
           onShare={handleShareSelected}
         />
+        {datosPendientes && (
+          <ModalCompletarCampos
+            open={modalCompletarCamposOpen}
+            onClose={() => {
+              setModalCompletarCamposOpen(false);
+              setDatosPendientes(null);
+            }}
+            url={datosPendientes.url}
+            autofillData={datosPendientes.autofillData}
+            camposFaltantes={datosPendientes.camposFaltantes}
+            onCompletar={handleCompletarCampos}
+          />
+        )}
       </main>
         </>
       )}
