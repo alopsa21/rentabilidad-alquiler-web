@@ -9,4 +9,9 @@ export interface IdealistaAutofill {
   ciudad: string | null;
   codigoComunidadAutonoma: number | null;
   source: "idealista:v1";
+  /**
+   * Alquiler mensual estimado (mercado) en €/mes.
+   * Se calcula automáticamente desde informes Idealista cuando hay ciudad, m² y comunidad.
+   */
+  estimatedRent?: number | null;
 }

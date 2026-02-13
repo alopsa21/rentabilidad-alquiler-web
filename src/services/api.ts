@@ -131,6 +131,7 @@ export async function autofillFromUrlApi(url: string): Promise<IdealistaAutofill
         banos: null,
         ciudad: null,
         codigoComunidadAutonoma: null,
+        estimatedRent: null,
         source: "idealista:v1"
       };
     }
@@ -169,6 +170,7 @@ export async function autofillFromUrlApi(url: string): Promise<IdealistaAutofill
       banos: null,
       ciudad: null,
       codigoComunidadAutonoma: null,
+      alquilerMensual: null,
       source: "idealista:v1"
     };
   }

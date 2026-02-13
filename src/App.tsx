@@ -244,7 +244,7 @@ function App() {
         codigoComunidadAutonoma: autofillData.codigoComunidadAutonoma == null || autofillData.codigoComunidadAutonoma < 1 || autofillData.codigoComunidadAutonoma > 19,
         ciudad: !autofillData.ciudad,
         precioCompra: autofillData.buyPrice == null,
-        alquilerMensual: true, // Siempre falta porque aún no lo calculamos desde el autofill
+        alquilerMensual: !autofillData.estimatedRent || autofillData.estimatedRent <= 0, // Falta si no viene estimatedRent o es 0
       }
       
       // Crear la tarjeta siempre, incluso si faltan campos (se resaltarán en la tarjeta)
@@ -302,7 +302,8 @@ function App() {
     const banos = autofillData.banos ?? 0
     const codigoComunidadAutonoma = autofillData.codigoComunidadAutonoma ?? 0
     const ciudad = autofillData.ciudad ?? ''
-    const alquilerMensual = autofillData.alquilerMensual ?? 0
+    // Usar estimatedRent si viene del backend, sino 0
+    const alquilerMensual = autofillData.estimatedRent ?? 0
     
     // Verificar si faltan campos obligatorios
     const faltanCamposObligatorios = 
