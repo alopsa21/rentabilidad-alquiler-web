@@ -3,6 +3,7 @@ import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
+import useMediaQuery from '@mui/material/useMediaQuery';
 
 interface ModalNotasProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface ModalNotasProps {
 
 export function ModalNotas({ isOpen, onClose, initialNotes, onSave }: ModalNotasProps) {
   const [notesDraft, setNotesDraft] = useState(initialNotes);
+  const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
 
   useEffect(() => {
     if (isOpen) {
@@ -50,7 +52,7 @@ export function ModalNotas({ isOpen, onClose, initialNotes, onSave }: ModalNotas
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backgroundColor: prefersDarkMode ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)',
         zIndex: 1000,
         display: 'flex',
         alignItems: 'center',
@@ -61,7 +63,8 @@ export function ModalNotas({ isOpen, onClose, initialNotes, onSave }: ModalNotas
       <Box
         onClick={(e) => e.stopPropagation()}
         sx={{
-          backgroundColor: 'background.paper',
+          backgroundColor: prefersDarkMode ? '#1e1e1e' : '#fff',
+          color: prefersDarkMode ? '#e4e4e4' : undefined,
           width: '100%',
           maxWidth: 420,
           borderRadius: 2,
@@ -73,7 +76,7 @@ export function ModalNotas({ isOpen, onClose, initialNotes, onSave }: ModalNotas
         }}
       >
         <Box sx={{ px: 2, pt: 2, flexShrink: 0 }}>
-          <Typography variant="h6" component="h3">
+          <Typography variant="h6" component="h3" sx={prefersDarkMode ? { color: '#fff' } : {}}>
             Notas sobre este piso
           </Typography>
         </Box>
@@ -86,11 +89,24 @@ export function ModalNotas({ isOpen, onClose, initialNotes, onSave }: ModalNotas
             minRows={4}
             fullWidth
             autoFocus
-            sx={{ '& .MuiOutlinedInput-root': { fontSize: 14 } }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                fontSize: 14,
+                ...(prefersDarkMode
+                  ? {
+                      backgroundColor: '#2d2d2d',
+                      color: '#e4e4e4',
+                      '& fieldset': { borderColor: 'rgba(255,255,255,0.23)' },
+                      '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.4)' },
+                      '&.Mui-focused fieldset': { borderColor: '#1976d2' },
+                    }
+                  : {}),
+              },
+            }}
           />
         </Box>
         <Box sx={{ p: 2, display: 'flex', gap: 1, justifyContent: 'flex-end', flexShrink: 0 }}>
-          <Button variant="outlined" onClick={onClose}>
+          <Button variant="outlined" onClick={onClose} sx={prefersDarkMode ? { color: '#b0b0b0', borderColor: 'rgba(255,255,255,0.23)' } : {}}>
             Cerrar
           </Button>
           <Button variant="contained" onClick={handleGuardar}>
