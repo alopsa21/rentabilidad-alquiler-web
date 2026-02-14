@@ -8,5 +8,8 @@ export interface IdealistaAutofill {
   banos: number | null;
   ciudad: string | null;
   codigoComunidadAutonoma: number | null;
-  source: "idealista:v1";
+  featuresText: string | null;
+  estimatedRent?: number | null;
+  alquilerMensual?: number | null;
+  source: "idealista:v1" | "openai:v2";
 }

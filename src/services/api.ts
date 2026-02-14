@@ -131,6 +131,7 @@ export async function autofillFromUrlApi(url: string): Promise<IdealistaAutofill
         banos: null,
         ciudad: null,
         codigoComunidadAutonoma: null,
+        featuresText: null,
         source: "idealista:v1"
       };
     }
@@ -169,7 +170,9 @@ export async function autofillFromUrlApi(url: string): Promise<IdealistaAutofill
       banos: null,
       ciudad: null,
       codigoComunidadAutonoma: null,
+      featuresText: null,
       source: "idealista:v1"
     };
   }
 }
+

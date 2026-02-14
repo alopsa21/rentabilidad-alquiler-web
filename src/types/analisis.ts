@@ -39,5 +39,9 @@ export interface AnalisisCard {
     precioCompra?: boolean;
     alquilerMensual?: boolean;
   };
+  /** Fuente de donde se obtuvieron los datos del inmueble */
+  source?: "idealista:v1" | "openai:v2";
+  /** Si el usuario ha editado manualmente el alquiler estimado */
+  alquilerEditado?: boolean;
 }
 

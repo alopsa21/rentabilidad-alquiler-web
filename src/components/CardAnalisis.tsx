@@ -557,7 +557,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
         </Box>
         <Box sx={{ flex: '1.2 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', pl: 0.5 }}>
           {editingField === 'inmueble' && onInmuebleChange ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap' }}>
               <TextField
                 type="number"
                 size="small"
@@ -687,6 +687,9 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                   lineHeight: 1.4,
                   flexShrink: 1,
                   minWidth: 0,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
                   cursor: onInmuebleChange ? 'pointer' : 'default',
                   ...(campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos') 
                     ? { ...estiloCampoFaltante, '&:hover': { opacity: 0.8 } } 
@@ -1117,23 +1120,52 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
             </Box>
           ) : (
             <>
-              <Typography 
-                component="span" 
-                variant="body2" 
-                onClick={(e) => {
-                  if (onInputChange) {
-                    e.stopPropagation();
-                    setEditingField('alquilerMensual');
-                  }
-                }}
-                sx={{ 
-                  fontSize: 14,
-                  cursor: onInputChange ? 'pointer' : 'default',
-                  ...(campoFalta('alquilerMensual') ? { ...estiloCampoFaltante, '&:hover': { opacity: 0.8 } } : { '&:hover': { opacity: onInputChange ? 0.7 : 1 } })
-                }}
-              >
-                {card.alquilerEstimado > 0 ? formatEuro(card.alquilerEstimado) : (campoFalta('alquilerMensual') ? 'Alquiler' : formatEuro(card.alquilerEstimado))}/mes
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Tooltip title={!card.alquilerEditado && card.source === 'idealista:v1' ? 'Precio orientativo - Revisa y confirma el valor' : ''}>
+                  <Typography 
+                    component="span" 
+                    variant="body2" 
+                    onClick={(e) => {
+                      if (onInputChange) {
+                        e.stopPropagation();
+                        setEditingField('alquilerMensual');
+                      }
+                    }}
+                    sx={{ 
+                      fontSize: 14,
+                      cursor: onInputChange ? 'pointer' : 'default',
+                      ...(!card.alquilerEditado && card.source ? {
+                        backgroundColor: prefersDarkMode ? 'rgba(255, 193, 7, 0.15)' : '#fff9c4',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        border: `1px solid ${prefersDarkMode ? 'rgba(255, 193, 7, 0.3)' : '#fbc02d'}`,
+                      } : {}),
+                      ...(campoFalta('alquilerMensual') ? { ...estiloCampoFaltante, '&:hover': { opacity: 0.8 } } : { '&:hover': { opacity: onInputChange ? 0.7 : 1 } }),
+                    }}
+                  >
+                    {card.alquilerEstimado > 0 ? formatEuro(card.alquilerEstimado) : (campoFalta('alquilerMensual') ? 'Alquiler' : formatEuro(card.alquilerEstimado))}/mes
+                  </Typography>
+                </Tooltip>
+                {!card.alquilerEditado && card.source === 'openai:v2' && (
+                  <Tooltip title="Estimado por IA - Revisa y confirma el valor">
+                    <Box
+                      sx={{
+                        fontSize: 9,
+                        fontWeight: 600,
+                        color: '#1976d2',
+                        backgroundColor: '#e3f2fd',
+                        padding: '1px 4px',
+                        borderRadius: '3px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.3px',
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      IA
+                    </Box>
+                  </Tooltip>
+                )}
+              </Box>
               {onInputChange && (isCardHovered || campoFalta('alquilerMensual')) && (
                 <Tooltip title={campoFalta('alquilerMensual') ? 'Completar alquiler estimado' : 'Editar alquiler estimado'}>
                   <IconButton
@@ -1495,7 +1527,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
             )}
           </Box>
           {editingField === 'inmueble' && onInmuebleChange ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap' }}>
               <TextField
                 type="number"
                 size="small"
@@ -1617,7 +1649,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
               )}
             </Box>
           ) : (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap', minWidth: 0 }}>
               <Typography 
               variant="body2" 
               onClick={(e) => {
@@ -1629,6 +1661,11 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
               sx={{ 
                 fontSize: 14, 
                 lineHeight: 1.4,
+                flexShrink: 1,
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
                 cursor: onInmuebleChange ? 'pointer' : 'default',
                 ...(campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos') 
                   ? { ...estiloCampoFaltante, '&:hover': { opacity: 0.8 } } 
@@ -1758,7 +1795,28 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
             )}
           </Box>
           <Box>
-            <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.25, textTransform: 'uppercase' }}>Alquiler estimado</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.25 }}>
+              <Typography variant="caption" sx={{ fontSize: 11, color: '#666', textTransform: 'uppercase' }}>Alquiler estimado</Typography>
+              {card.source === 'openai:v2' && (
+                <Tooltip title="Estimación orientativa basada en características similares">
+                  <Box
+                    sx={{
+                      fontSize: 9,
+                      fontWeight: 600,
+                      color: '#1976d2',
+                      backgroundColor: '#e3f2fd',
+                      padding: '1px 4px',
+                      borderRadius: '3px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.3px',
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    IA
+                  </Box>
+                </Tooltip>
+              )}
+            </Box>
             {(isEditing || editingField === 'alquilerMensual') && onInputChange ? (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <TextField
@@ -1807,7 +1865,13 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                     fontSize: 16, 
                     fontWeight: 500,
                     cursor: onInputChange ? 'pointer' : 'default',
-                    ...(campoFalta('alquilerMensual') ? { ...estiloCampoFaltante, '&:hover': { opacity: 0.8 } } : { '&:hover': { opacity: onInputChange ? 0.7 : 1 } })
+                    ...(!card.alquilerEditado && card.source ? {
+                      backgroundColor: prefersDarkMode ? 'rgba(255, 193, 7, 0.15)' : '#fff9c4',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      border: `1px solid ${prefersDarkMode ? 'rgba(255, 193, 7, 0.3)' : '#fbc02d'}`,
+                    } : {}),
+                    ...(campoFalta('alquilerMensual') ? { ...estiloCampoFaltante, '&:hover': { opacity: 0.8 } } : { '&:hover': { opacity: onInputChange ? 0.7 : 1 } }),
                   }}
                 >
                   {card.alquilerEstimado > 0 ? formatEuro(card.alquilerEstimado) : (campoFalta('alquilerMensual') ? 'Alquiler' : formatEuro(card.alquilerEstimado))}/mes
@@ -1869,9 +1933,43 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
 
       {/* Información adicional - solo en mobile */}
       <Box className="card-info-extra">
-        <Typography variant="body2">
+        <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
           <Typography component="span" variant="body2" fontWeight={600}>Alquiler estimado:</Typography>{' '}
-          {formatEuro(card.alquilerEstimado)} / mes
+          <Tooltip title={!card.alquilerEditado && card.source === 'idealista:v1' ? 'Precio orientativo - Revisa y confirma el valor' : ''}>
+            <Typography 
+              component="span" 
+              variant="body2"
+              sx={{
+                ...(!card.alquilerEditado && card.source ? {
+                  backgroundColor: prefersDarkMode ? 'rgba(255, 193, 7, 0.15)' : '#fff9c4',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  border: `1px solid ${prefersDarkMode ? 'rgba(255, 193, 7, 0.3)' : '#fbc02d'}`,
+                } : {})
+              }}
+            >
+              {formatEuro(card.alquilerEstimado)} / mes
+            </Typography>
+          </Tooltip>
+          {!card.alquilerEditado && card.source === 'openai:v2' && (
+            <Tooltip title="Estimado por IA - Revisa y confirma el valor">
+              <Box
+                sx={{
+                  fontSize: 9,
+                  fontWeight: 600,
+                  color: '#1976d2',
+                  backgroundColor: '#e3f2fd',
+                  padding: '1px 4px',
+                  borderRadius: '3px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.3px',
+                  lineHeight: 1.2,
+                }}
+              >
+                IA
+              </Box>
+            </Tooltip>
+          )}
         </Typography>
         {card.veredictoRazones.length > 0 && (
           <ul style={{ margin: '4px 0 0 1rem', padding: 0, fontSize: 13 }}>

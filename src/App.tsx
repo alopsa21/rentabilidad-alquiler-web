@@ -236,7 +236,8 @@ function App() {
     try {
       const autofillData = await autofillFromUrlApi(_url)
       
-      // Detectar campos faltantes (obligatorios)
+      // Detectar campos faltantes (obligatorios). Si el API devuelve estimatedRent, el alquiler está completado.
+      const alquilerDelApi = autofillData.estimatedRent ?? autofillData.alquilerMensual
       const camposFaltantes = {
         habitaciones: autofillData.rooms == null,
         metrosCuadrados: autofillData.sqm == null,
@@ -244,7 +245,7 @@ function App() {
         codigoComunidadAutonoma: autofillData.codigoComunidadAutonoma == null || autofillData.codigoComunidadAutonoma < 1 || autofillData.codigoComunidadAutonoma > 19,
         ciudad: !autofillData.ciudad,
         precioCompra: autofillData.buyPrice == null,
-        alquilerMensual: true, // Siempre falta porque aún no lo calculamos desde el autofill
+        alquilerMensual: !(alquilerDelApi != null && alquilerDelApi > 0),
       }
       
       // Crear la tarjeta siempre, incluso si faltan campos (se resaltarán en la tarjeta)
@@ -302,7 +303,8 @@ function App() {
     const banos = autofillData.banos ?? 0
     const codigoComunidadAutonoma = autofillData.codigoComunidadAutonoma ?? 0
     const ciudad = autofillData.ciudad ?? ''
-    const alquilerMensual = autofillData.alquilerMensual ?? 0
+    // Pre-rellenar alquiler con estimación del LLM si está disponible
+    const alquilerMensual = autofillData.estimatedRent ?? autofillData.alquilerMensual ?? 0
     
     // Verificar si faltan campos obligatorios
     const faltanCamposObligatorios = 
@@ -383,6 +385,7 @@ function App() {
       isFavorite: false,
       notes: '',
       camposFaltantes: Object.keys(camposFaltantes).some(k => camposFaltantes[k as keyof typeof camposFaltantes]) ? camposFaltantes : undefined,
+      source: autofillData.source,
     }
 
     const ahora = new Date().toISOString()
@@ -598,6 +601,9 @@ function App() {
     if (hadNoChanges && resultadosPorTarjetaRef.current[tarjetaId]) {
       setResultadoOriginalPorTarjeta((prev) => ({ ...prev, [tarjetaId]: resultadosPorTarjetaRef.current[tarjetaId] }));
     }
+    
+    // Si editan el alquiler, marcar como editado manualmente
+    const esEdicionAlquiler = campo === 'alquilerMensual';
     setAnalisis((prev) => {
       const tarjetaActualizada = prev.find((c) => c.id === tarjetaId);
       if (!tarjetaActualizada) return prev;
@@ -614,6 +620,9 @@ function App() {
 
       return prev.map((c) => {
         if (c.id !== tarjetaId) return c;
+        
+        // Si es edición de alquiler, marcar como editado manualmente
+        const alquilerEditadoFlag = esEdicionAlquiler ? true : c.alquilerEditado;
         
         // Actualizar camposFaltantes: si se completa un campo que faltaba, marcarlo como completado
         const camposFaltantesActualizados = c.camposFaltantes ? { ...c.camposFaltantes } : undefined;
@@ -647,6 +656,7 @@ function App() {
               ...c,
               currentInput: nuevoCurrentInput,
               camposFaltantes: undefined,
+              alquilerEditado: alquilerEditadoFlag,
             };
           }
         }
@@ -655,6 +665,7 @@ function App() {
           ...c,
           currentInput: nuevoCurrentInput,
           camposFaltantes: camposFaltantesActualizados,
+          alquilerEditado: alquilerEditadoFlag,
         };
       });
     });
