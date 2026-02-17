@@ -17,6 +17,8 @@ import EditNoteIcon from '@mui/icons-material/StickyNote2Outlined';
 import EditIcon from '@mui/icons-material/Edit';
 import UndoIcon from '@mui/icons-material/Undo';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -479,7 +481,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
       onMouseLeave={() => setIsCardHovered(false)}
       onClick={(e) => {
         const target = e.target as HTMLElement | null;
-        // Evitar abrir el detalle al interactuar con controles (Autocomplete, inputs, botones, etc.)
+        // Solo cerrar modo edición al hacer clic fuera de controles (la expansión es solo con el icono)
         if (
           target &&
           (target.closest('input, textarea, button, [role="button"]') ||
@@ -492,15 +494,13 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
         if (editingField !== null || isEditing) {
           setEditingField(null);
           setIsEditing(false);
-        } else {
-          onClick?.();
         }
       }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       sx={{
-        cursor: onClick ? 'pointer' : 'default',
+        cursor: 'default',
         transition: isDeleting ? 'transform 0.2s, opacity 0.2s' : swipeOffset === 0 ? 'all 0.2s' : 'none',
         transform: `translateX(${swipeOffset}px)`,
         opacity: isDeleting ? 0 : 1,
@@ -511,7 +511,20 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
     >
       <CardContent sx={{ p: 0.75, '&:last-child': { pb: 0.75 } }}>
       {/* Desktop: Información horizontal */}
-      <Box className="card-info-horizontal card-info-desktop" sx={{ position: 'relative', alignItems: 'center', minHeight: 32 }}>
+      <Box className="card-info-horizontal card-info-desktop" sx={{ position: 'relative', alignItems: 'center', minHeight: 32, display: 'flex' }}>
+        {/* Icono expandir/colapsar al inicio de la fila */}
+        {onClick && (
+          <Tooltip title={isActive ? 'Colapsar detalle' : 'Ver detalle'}>
+            <IconButton
+              size="small"
+              onClick={(e) => { e.stopPropagation(); onClick(); }}
+              aria-label={isActive ? 'Colapsar detalle' : 'Ver detalle'}
+              sx={{ flexShrink: 0, p: 0.35, color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+            >
+              {isActive ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+        )}
         {/* Botones de acción posicionados absolutamente */}
         <Box sx={{ position: 'absolute', top: '50%', right: -8, transform: 'translateY(-50%)', display: 'flex', gap: 0, zIndex: 2 }}>
           {onToggleFavorite && (
@@ -1189,19 +1202,19 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
           )}
         </Box>
         <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'wrap', pl: 0.5 }}>
-          <Typography component="span" variant="body2" className="semaforo-value" sx={{ fontSize: 14, color: colorSemaforo }}>
+          <Typography component="span" variant="body2" className="semaforo-value" sx={{ fontSize: 17, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2 }}>
             {card.rentabilidadNetaPct.toFixed(2)} %
           </Typography>
           {showDeltas && <DeltaLabel delta={deltaRentabilidad} unit="%" />}
         </Box>
         <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'wrap', pl: 0.5 }}>
-          <Typography component="span" variant="body2" className="semaforo-value" sx={{ fontSize: 14, color: colorSemaforo }}>
+          <Typography component="span" variant="body2" className="semaforo-value" sx={{ fontSize: 17, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2 }}>
             {cashflowFinal !== null ? formatEuro(cashflowFinal) : '—'}
           </Typography>
           {showDeltas && <DeltaLabel delta={deltaCashflow} unit="€" />}
         </Box>
         <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'wrap', pl: 0.5 }}>
-          <Typography component="span" variant="body2" className="semaforo-value" sx={{ fontSize: 14, color: colorSemaforo }}>
+          <Typography component="span" variant="body2" className="semaforo-value" sx={{ fontSize: 17, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2 }}>
             {roceFinal !== null ? `${roceFinal.toFixed(2)} %` : '—'}
           </Typography>
           {showDeltas && <DeltaLabel delta={deltaRoce} unit="%" />}
@@ -1210,6 +1223,21 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
 
       {/* Mobile: Información vertical compacta */}
       <Box className="card-info-mobile" sx={{ position: 'relative', pt: 1 }}>
+        {/* Icono expandir/colapsar al inicio (móvil) */}
+        {onClick && (
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+            <Tooltip title={isActive ? 'Colapsar detalle' : 'Ver detalle'}>
+              <IconButton
+                size="small"
+                onClick={(e) => { e.stopPropagation(); onClick(); }}
+                aria-label={isActive ? 'Colapsar detalle' : 'Ver detalle'}
+                sx={{ p: 0.35, color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+              >
+                {isActive ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+              </IconButton>
+            </Tooltip>
+          </Box>
+        )}
         {/* Botones de acción - esquina superior derecha */}
         <Box sx={{ position: 'absolute', top: 0, right: 8, display: 'flex', gap: 1, zIndex: 10 }}>
           {onToggleFavorite && (
@@ -1902,27 +1930,27 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
         {/* Métricas - cuarta fila */}
         <Box className="card-metrics-values" sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
           <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
-            <Typography variant="caption" sx={{ fontSize: 11, color: '#666', mb: 0.25, textTransform: 'uppercase', height: 28, lineHeight: '14px', display: 'flex', alignItems: 'flex-start' }}>Rentabilidad neta</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', minHeight: 24 }}>
-              <Typography variant="body2" className="semaforo-value" sx={{ fontSize: 16, fontWeight: 600, color: colorSemaforo, lineHeight: 1.2 }}>
+            <Typography variant="caption" sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary', mb: 0.25, textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: '14px', display: 'flex', alignItems: 'flex-start' }}>Rentabilidad neta</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', minHeight: 28 }}>
+              <Typography variant="body2" className="semaforo-value" sx={{ fontSize: 20, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2 }}>
                 {card.rentabilidadNetaPct.toFixed(2)} %
               </Typography>
               {showDeltas && <DeltaLabel delta={deltaRentabilidad} unit="%" />}
             </Box>
           </Box>
           <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
-            <Typography variant="caption" sx={{ fontSize: 11, color: '#666', mb: 0.25, textTransform: 'uppercase', height: 28, lineHeight: '14px', display: 'flex', alignItems: 'flex-start' }}>Cashflow</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', minHeight: 24 }}>
-              <Typography variant="body2" className="semaforo-value" sx={{ fontSize: 16, fontWeight: 600, color: colorSemaforo, lineHeight: 1.2 }}>
+            <Typography variant="caption" sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary', mb: 0.25, textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: '14px', display: 'flex', alignItems: 'flex-start' }}>Cashflow</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', minHeight: 28 }}>
+              <Typography variant="body2" className="semaforo-value" sx={{ fontSize: 20, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2 }}>
                 {cashflowFinal !== null ? formatEuro(cashflowFinal) : '—'}
               </Typography>
               {showDeltas && <DeltaLabel delta={deltaCashflow} unit="€" />}
             </Box>
           </Box>
           <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
-            <Typography variant="caption" sx={{ fontSize: 11, color: '#666', mb: 0.25, textTransform: 'uppercase', height: 28, lineHeight: '14px', display: 'flex', alignItems: 'flex-start' }}>ROCE</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', minHeight: 24 }}>
-              <Typography variant="body2" className="semaforo-value" sx={{ fontSize: 16, fontWeight: 600, color: colorSemaforo, lineHeight: 1.2 }}>
+            <Typography variant="caption" sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary', mb: 0.25, textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: '14px', display: 'flex', alignItems: 'flex-start' }}>ROCE</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', minHeight: 28 }}>
+              <Typography variant="body2" className="semaforo-value" sx={{ fontSize: 20, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2 }}>
                 {roceFinal !== null ? `${roceFinal.toFixed(2)} %` : '—'}
               </Typography>
               {showDeltas && <DeltaLabel delta={deltaRoce} unit="%" />}
