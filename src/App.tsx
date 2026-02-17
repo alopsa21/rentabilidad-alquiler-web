@@ -27,6 +27,7 @@ import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
 import Tooltip from '@mui/material/Tooltip'
 import HomeIcon from '@mui/icons-material/Home'
+import PercentIcon from '@mui/icons-material/Percent'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents'
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
@@ -92,6 +93,7 @@ function App() {
   // OPTIMIZACIÓN CRÍTICA: usar refs para evitar recrear callbacks
   const analisisRef = useRef(analisis)
   const resultadosPorTarjetaRef = useRef(resultadosPorTarjeta)
+  const resultadoOriginalPorTarjetaRef = useRef(resultadoOriginalPorTarjeta)
   
   // Mantener refs actualizados
   useEffect(() => {
@@ -101,6 +103,10 @@ function App() {
   useEffect(() => {
     resultadosPorTarjetaRef.current = resultadosPorTarjeta
   }, [resultadosPorTarjeta])
+  
+  useEffect(() => {
+    resultadoOriginalPorTarjetaRef.current = resultadoOriginalPorTarjeta
+  }, [resultadoOriginalPorTarjeta])
 
   // Función helper para mostrar notificaciones
   const mostrarNotificacion = (mensaje: string, tipo: 'success' | 'error' = 'success') => {
@@ -170,12 +176,16 @@ function App() {
     if (loaded.length > 0) {
       const cards: AnalisisCard[] = []
       const resultados: Record<string, RentabilidadApiResponse> = {}
+      const resultadosOriginal: Record<string, RentabilidadApiResponse> = {}
       const createdAt: Record<string, string> = {}
 
-      loaded.forEach(({ card, motorOutput, createdAt: cardCreatedAt }) => {
+      loaded.forEach(({ card, motorOutput, motorOutputOriginal, createdAt: cardCreatedAt }) => {
         cards.push({ ...card, isFavorite: card.isFavorite ?? false, notes: card.notes ?? '' })
         if (motorOutput) {
           resultados[card.id] = motorOutput
+        }
+        if (motorOutputOriginal) {
+          resultadosOriginal[card.id] = motorOutputOriginal
         }
         if (cardCreatedAt) {
           createdAt[card.id] = cardCreatedAt
@@ -184,7 +194,7 @@ function App() {
 
       setAnalisis(cards)
       setResultadosPorTarjeta(resultados)
-      setResultadoOriginalPorTarjeta({})
+      setResultadoOriginalPorTarjeta(resultadosOriginal)
       setCreatedAtPorTarjeta(createdAt)
       hasAnalyzed = true
       try { localStorage.setItem(STORAGE_KEY_HAS_ANALYZED, '1') } catch { /* ignore */ }
@@ -207,11 +217,11 @@ function App() {
 
     // Debounce de 500ms para evitar escrituras constantes en localStorage (bloqueante)
     const timeoutId = setTimeout(() => {
-      saveCards(analisis, resultadosPorTarjeta, createdAtPorTarjeta)
+      saveCards(analisis, resultadosPorTarjeta, resultadoOriginalPorTarjeta, createdAtPorTarjeta)
     }, 500)
 
     return () => clearTimeout(timeoutId)
-  }, [analisis, resultadosPorTarjeta, createdAtPorTarjeta, isHydrated])
+  }, [analisis, resultadosPorTarjeta, resultadoOriginalPorTarjeta, createdAtPorTarjeta, isHydrated])
 
   /** Normaliza URL para comparar (evitar duplicados por trailing slash o espacios) */
   const normalizeUrlForCompare = (u: string) =>
@@ -454,6 +464,16 @@ function App() {
   const scoreColorMap = { verde: '#2e7d32', amarillo: '#f9a825', rojo: '#c62828' } as const
   const scoreColor = scoreColorMap[scoreColorKey]
   
+  // Determinar color del semáforo para Rentabilidad neta media
+  // Verde: rent >= 5%, Amarillo: rent >= 3%, Rojo: rent < 3%
+  const getRentabilidadColor = (rentabilidad: number | null): string => {
+    if (rentabilidad === null) return scoreColorMap.amarillo
+    if (rentabilidad >= 5) return scoreColorMap.verde
+    if (rentabilidad >= 3) return scoreColorMap.amarillo
+    return scoreColorMap.rojo
+  }
+  const rentabilidadColor = getRentabilidadColor(portfolioStats.avgRentabilidadNeta)
+  
   // Determinar color del semáforo para ROE medio usando los mismos umbrales del veredicto
   // Verde: ROCE >= 10%, Amarillo: ROCE >= 7%, Rojo: ROCE < 7%
   const getROEColor = (roe: number | null): string => {
@@ -598,7 +618,10 @@ function App() {
     const tarjeta = analisisRef.current.find((c) => c.id === tarjetaId);
     // Comparación eficiente sin JSON.stringify
     const hadNoChanges = tarjeta && inputsAreEqual(tarjeta.currentInput, tarjeta.originalInput);
-    if (hadNoChanges && resultadosPorTarjetaRef.current[tarjetaId]) {
+    const noTieneOriginal = !resultadoOriginalPorTarjetaRef.current[tarjetaId];
+    
+    // Guardar resultado original cuando: (1) no tenía cambios antes O (2) tiene cambios pero aún no tiene original guardado
+    if ((hadNoChanges || noTieneOriginal) && resultadosPorTarjetaRef.current[tarjetaId]) {
       setResultadoOriginalPorTarjeta((prev) => ({ ...prev, [tarjetaId]: resultadosPorTarjetaRef.current[tarjetaId] }));
     }
     
@@ -1160,17 +1183,21 @@ function App() {
                 aria-label="Resumen del portfolio"
               >
                 <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: { xs: 1.5, md: 2 } }}>
+                  {/* 1. Rentabilidad neta media */}
                   <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, gap: { xs: 0.5, md: 1 } }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <HomeIcon sx={{ fontSize: 16, color: '#1976d2' }} />
+                      <PercentIcon sx={{ fontSize: 16, color: rentabilidadColor }} />
                       <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                        Propiedades:
+                        Rent. neta media:
                       </Typography>
                     </Box>
-                    <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 600, color: '#1976d2' }}>
-                      {portfolioStats.count}
+                    <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 600, color: rentabilidadColor }}>
+                      {portfolioStats.avgRentabilidadNeta !== null
+                        ? `${portfolioStats.avgRentabilidadNeta.toFixed(2)} %`
+                        : '—'}
                     </Typography>
                   </Box>
+                  {/* 2. ROE medio */}
                   <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, gap: { xs: 0.5, md: 1 } }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       <TrendingUpIcon sx={{ fontSize: 16, color: roeColor }} />
@@ -1184,17 +1211,7 @@ function App() {
                         : '—'}
                     </Typography>
                   </Box>
-                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, gap: { xs: 0.5, md: 1 } }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <EmojiEventsIcon sx={{ fontSize: 16, color: '#f9a825' }} />
-                      <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                        Score:
-                      </Typography>
-                    </Box>
-                    <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 600, color: scoreColor, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      {portfolioScore} / 100
-                    </Typography>
-                  </Box>
+                  {/* 3. Cashflow anual total */}
                   <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, gap: { xs: 0.5, md: 1 } }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       <AttachMoneyIcon sx={{ fontSize: 16, color: cashflowColor }} />
@@ -1212,12 +1229,25 @@ function App() {
                       }).format(portfolioStats.totalCashflow)}
                     </Typography>
                   </Box>
+                  {/* 4. Score */}
+                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, gap: { xs: 0.5, md: 1 } }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <EmojiEventsIcon sx={{ fontSize: 16, color: '#f9a825' }} />
+                      <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                        Score:
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 600, color: scoreColor, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      {portfolioScore} / 100
+                    </Typography>
+                  </Box>
                 </Box>
               </Box>
             )}
-            {/* Cabecera sticky con títulos de columnas */}
-            <div className="card-header-sticky card-header-full-width" style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: '1rem', width: '100%' }}>
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', minWidth: 0 }} className="card-info-horizontal card-header-row">
+            {/* Cabecera sticky con títulos de columnas (espaciador = ancho icono expandir + gap 2rem para alinear con filas) */}
+            <div className="card-header-sticky card-header-full-width" style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 0, width: '100%', paddingRight: '80px' }}>
+              <div style={{ width: 72, minWidth: 72, flexShrink: 0 }} aria-hidden />
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', minWidth: 0, paddingLeft: '4px' }} className="card-info-horizontal card-header-row">
                 <Tooltip title="Habitaciones, metros cuadrados y número de baños del inmueble">
                   <div style={{ flex: '1.2 1 0', minWidth: 0, display: 'flex', alignItems: 'center' }}>
                     <strong style={{ fontSize: 13, color: '#666', textTransform: 'uppercase' }}>Vivienda</strong>

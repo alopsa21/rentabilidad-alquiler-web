@@ -211,6 +211,12 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false 
           </dd>
           <dt style={{ fontWeight: 500 }}>Ciudad</dt>
           <dd style={{ margin: 0, textAlign: 'right' }}>{card.ciudad || '—'}</dd>
+          <dt style={{ fontWeight: 500 }}>Habitaciones</dt>
+          <dd style={{ margin: 0, textAlign: 'right' }}>{card.habitaciones > 0 ? card.habitaciones : '—'}</dd>
+          <dt style={{ fontWeight: 500 }}>Metros cuadrados</dt>
+          <dd style={{ margin: 0, textAlign: 'right' }}>{card.metrosCuadrados > 0 ? `${card.metrosCuadrados} m²` : '—'}</dd>
+          <dt style={{ fontWeight: 500 }}>Baños</dt>
+          <dd style={{ margin: 0, textAlign: 'right' }}>{card.banos > 0 ? card.banos : '—'}</dd>
           <dt style={{ fontWeight: 500 }}>Precio compra</dt>
           <dd style={{ margin: 0, textAlign: 'right' }}>
             {formatEuro(String(card.currentInput.precioCompra))}
@@ -220,13 +226,30 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false 
             {formatEuro(String(card.currentInput.alquilerMensual))}
           </dd>
         </dl>
-        <div style={{ marginTop: 12 }}>
+        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <Chip
             label={card.veredictoTitulo}
             size="small"
             color={card.estado === 'verde' ? 'success' : card.estado === 'amarillo' ? 'warning' : 'error'}
             sx={{ fontWeight: 500, fontSize: '0.75rem' }}
           />
+          {card.url && (
+            <a 
+              href={card.url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ 
+                color: '#1976d2', 
+                textDecoration: 'none',
+                fontSize: 13,
+                fontWeight: 500
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+              onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+            >
+              Ver anuncio ↗
+            </a>
+          )}
         </div>
       </section>
 

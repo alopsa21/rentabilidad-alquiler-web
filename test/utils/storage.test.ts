@@ -213,7 +213,7 @@ describe('storage utils', () => {
         roceFinal: '5.2',
       };
 
-      saveCards([mockCard], { 'test-1': mockOutput });
+      saveCards([mockCard], { 'test-1': mockOutput }, {});
 
       // Esperar a que se ejecute el callback
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -269,7 +269,7 @@ describe('storage utils', () => {
       };
 
       const createdAt = '2024-01-01T00:00:00.000Z';
-      saveCards([mockCard], {}, { 'test-1': createdAt });
+      saveCards([mockCard], {}, {}, { 'test-1': createdAt });
 
       await new Promise((resolve) => setTimeout(resolve, 10));
 

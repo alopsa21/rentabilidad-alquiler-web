@@ -140,6 +140,20 @@
   }
 }
 
+/* Efecto "latido" cuando rentabilidad/cashflow/ROCE se actualizan (deltas visibles) */
+@keyframes metricPulse {
+  0%, 100% { transform: scale(1); }
+  12% { transform: scale(1.06); }
+  25% { transform: scale(1); }
+  37% { transform: scale(1.04); }
+  50%, 100% { transform: scale(1); }
+}
+
+.metric-pulse {
+  animation: metricPulse 2.5s ease-in-out;
+  display: inline-block;
+}
+
 /* Card eliminar: mostrar botón solo en desktop */
 .card-delete-btn {
   display: block;
@@ -259,6 +273,7 @@
     position: relative;
     width: 100%;
     box-sizing: border-box;
+    padding-right: 100px; /* espacio para iconos editar/estrella/notas y que el delta ROCE no se solape */
   }
   
   .card-info-extra {

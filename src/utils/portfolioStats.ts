@@ -7,6 +7,7 @@ import type { RentabilidadApiResponse } from '../types/api';
 
 export interface PortfolioStats {
   count: number;
+  avgRentabilidadNeta: number | null;
   avgROE: number | null;
   totalCashflow: number;
 }
@@ -27,6 +28,14 @@ function normalizeROE(raw: number): number {
 }
 
 /**
+ * Normaliza rentabilidad neta que puede venir en decimal (0.094) o en porcentaje (9.4).
+ */
+function normalizeRentabilidad(raw: number): number {
+  if (Number.isNaN(raw)) return 0;
+  return raw > -1 && raw < 1 ? raw * 100 : raw;
+}
+
+/**
  * Calcula estadísticas del portfolio sobre las tarjetas favoritas.
  * Solo incluye tarjetas que tengan resultado en resultadosPorTarjeta.
  */
@@ -36,16 +45,24 @@ export function calculatePortfolioStats(
 ): PortfolioStats {
   const count = favoriteCards.length;
   if (count === 0) {
-    return { count: 0, avgROE: null, totalCashflow: 0 };
+    return { count: 0, avgRentabilidadNeta: null, avgROE: null, totalCashflow: 0 };
   }
 
+  let sumRentabilidad = 0;
   let sumROE = 0;
   let totalCashflow = 0;
+  let rentabilidadCount = 0;
   let roeCount = 0;
 
   for (const card of favoriteCards) {
     const resultado = resultadosPorTarjeta[card.id];
     if (!resultado) continue;
+
+    const rentabilidadRaw = Number(resultado.rentabilidadNeta);
+    if (!Number.isNaN(rentabilidadRaw)) {
+      sumRentabilidad += normalizeRentabilidad(rentabilidadRaw);
+      rentabilidadCount += 1;
+    }
 
     const cf = Number(resultado.cashflowFinal);
     if (!Number.isNaN(cf)) totalCashflow += cf;
@@ -57,8 +74,9 @@ export function calculatePortfolioStats(
     }
   }
 
+  const avgRentabilidadNeta = rentabilidadCount > 0 ? sumRentabilidad / rentabilidadCount : null;
   const avgROE = roeCount > 0 ? sumROE / roeCount : null;
-  return { count, avgROE, totalCashflow };
+  return { count, avgRentabilidadNeta, avgROE, totalCashflow };
 }
 
 function clamp(value: number, min: number, max: number): number {

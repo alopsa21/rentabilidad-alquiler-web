@@ -43,6 +43,7 @@ interface PersistedCard {
   currentInput: unknown; // FormularioRentabilidadState
   // Puede ser null/undefined cuando la tarjeta está incompleta y aún no se pudo calcular
   motorOutput?: RentabilidadApiResponse | null;
+  motorOutputOriginal?: RentabilidadApiResponse | null; // Resultado original para mostrar deltas
   createdAt?: string; // Opcional para compatibilidad con versiones anteriores
   isFavorite?: boolean; // Opcional para compatibilidad con versiones anteriores
   notes?: string;
@@ -54,6 +55,7 @@ interface PersistedCard {
 function cardToPersisted(
   card: AnalisisCard,
   motorOutput: RentabilidadApiResponse | null,
+  motorOutputOriginal: RentabilidadApiResponse | null | undefined,
   createdAt?: string
 ): PersistedCard {
   return {
@@ -76,6 +78,7 @@ function cardToPersisted(
     originalInput: card.originalInput,
     currentInput: card.currentInput,
     motorOutput,
+    motorOutputOriginal: motorOutputOriginal ?? undefined,
     createdAt: createdAt || new Date().toISOString(),
     isFavorite: card.isFavorite,
     notes: card.notes ?? '',
@@ -113,9 +116,9 @@ function persistedToCard(persisted: PersistedCard): AnalisisCard {
 /**
  * Carga las tarjetas desde localStorage.
  * 
- * @returns Array de objetos con card, motorOutput y createdAt, o array vacío si no hay datos o hay error
+ * @returns Array de objetos con card, motorOutput, motorOutputOriginal y createdAt, o array vacío si no hay datos o hay error
  */
-export function loadCards(): Array<{ card: AnalisisCard; motorOutput: RentabilidadApiResponse | null; createdAt?: string }> {
+export function loadCards(): Array<{ card: AnalisisCard; motorOutput: RentabilidadApiResponse | null; motorOutputOriginal?: RentabilidadApiResponse | null; createdAt?: string }> {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
@@ -135,6 +138,7 @@ export function loadCards(): Array<{ card: AnalisisCard; motorOutput: Rentabilid
     return data.cards.map((persisted) => ({
       card: persistedToCard(persisted),
       motorOutput: persisted.motorOutput ?? null,
+      motorOutputOriginal: persisted.motorOutputOriginal ?? null,
       createdAt: persisted.createdAt,
     }));
   } catch (err) {
@@ -150,17 +154,20 @@ export function loadCards(): Array<{ card: AnalisisCard; motorOutput: Rentabilid
  * 
  * @param cards - Array de tarjetas a persistir
  * @param resultadosPorTarjeta - Mapa de resultados por ID de tarjeta
+ * @param resultadoOriginalPorTarjeta - Mapa de resultados originales por ID de tarjeta (para mostrar deltas)
  */
 export function saveCards(
   cards: AnalisisCard[],
   resultadosPorTarjeta: Record<string, RentabilidadApiResponse>,
+  resultadoOriginalPorTarjeta: Record<string, RentabilidadApiResponse>,
   existingCreatedAt?: Record<string, string>
 ): void {
   try {
     const persistedCards: PersistedCard[] = cards.map((card) => {
       const motorOutput = resultadosPorTarjeta[card.id];
+      const motorOutputOriginal = resultadoOriginalPorTarjeta[card.id];
       const createdAt = existingCreatedAt?.[card.id];
-      return cardToPersisted(card, motorOutput ?? null, createdAt);
+      return cardToPersisted(card, motorOutput ?? null, motorOutputOriginal ?? null, createdAt);
     });
 
     const data: PersistedCardsData = {

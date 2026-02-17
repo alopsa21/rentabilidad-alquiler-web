@@ -17,6 +17,8 @@ import EditNoteIcon from '@mui/icons-material/StickyNote2Outlined';
 import EditIcon from '@mui/icons-material/Edit';
 import UndoIcon from '@mui/icons-material/Undo';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import Dialog from '@mui/material/Dialog';
@@ -66,14 +68,27 @@ function normalizePct(raw: number): number {
   return raw > -1 && raw < 1 ? raw * 100 : raw;
 }
 
-function DeltaLabel({ delta, unit }: { delta: number; unit: '%' | '€' }) {
+function DeltaLabel({ delta, unit, className }: { delta: number; unit: '%' | '€'; className?: string }) {
   if (delta === 0) return null;
   const isPositive = delta > 0;
   const sign = delta > 0 ? '+' : '';
   const value = unit === '€' ? `${sign}${Math.round(delta)}€` : `${sign}${delta.toFixed(2)}%`;
   return (
-    <Typography component="span" variant="caption" sx={{ color: isPositive ? 'success.main' : 'error.main', fontWeight: 600, ml: 0.5 }}>
-      ({value})
+    <Typography
+      component="span"
+      variant="caption"
+      className={className}
+      sx={{
+        color: isPositive ? 'success.main' : 'error.main',
+        fontWeight: 600,
+        ml: 0.5,
+        display: 'inline-flex',
+        alignItems: 'center',
+      }}
+    >
+      (
+      {isPositive ? <ArrowDropUpIcon sx={{ fontSize: 18, mr: -0.25 }} /> : <ArrowDropDownIcon sx={{ fontSize: 18, mr: -0.25 }} />}
+      {value})
     </Typography>
   );
 }
@@ -116,6 +131,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
   const [isEditing, setIsEditing] = useState(false);
   const [isCardHovered, setIsCardHovered] = useState(false);
   const [editingField, setEditingField] = useState<'precioCompra' | 'alquilerMensual' | 'codigoComunidadAutonoma' | 'ciudad' | 'inmueble' | null>(null);
+  const [editAllMode, setEditAllMode] = useState(false);
   const [habitacionesInput, setHabitacionesInput] = useState(card.habitaciones > 0 ? card.habitaciones.toString() : '');
   const [metrosCuadradosInput, setMetrosCuadradosInput] = useState(card.metrosCuadrados > 0 ? card.metrosCuadrados.toString() : '');
   const [banosInput, setBanosInput] = useState(card.banos > 0 ? card.banos.toString() : '');
@@ -137,6 +153,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
   );
   const [codigoComunidadAutonoma, setCodigoComunidadAutonoma] = useState(card.currentInput.codigoComunidadAutonoma);
   const [ciudad, setCiudad] = useState(card.ciudad || '');
+  const [highlightMetrics, setHighlightMetrics] = useState(false);
   
   const [ciudadesDisponibles, setCiudadesDisponibles] = useState<string[]>([]);
   useEffect(() => {
@@ -201,12 +218,12 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
     setCodigoComunidadAutonoma(card.currentInput.codigoComunidadAutonoma);
     setCiudad(card.ciudad || '');
     // Actualizar campos del inmueble solo si no estamos editando
-    if (editingField !== 'inmueble') {
+    if (editingField !== 'inmueble' && !editAllMode) {
       setHabitacionesInput(card.habitaciones > 0 ? card.habitaciones.toString() : '');
       setMetrosCuadradosInput(card.metrosCuadrados > 0 ? card.metrosCuadrados.toString() : '');
       setBanosInput(card.banos > 0 ? card.banos.toString() : '');
     }
-  }, [card.currentInput.precioCompra, card.currentInput.alquilerMensual, card.currentInput.codigoComunidadAutonoma, card.ciudad, card.habitaciones, card.metrosCuadrados, card.banos, card.camposFaltantes, editingField]);
+  }, [card.currentInput.precioCompra, card.currentInput.alquilerMensual, card.currentInput.codigoComunidadAutonoma, card.ciudad, card.habitaciones, card.metrosCuadrados, card.banos, card.camposFaltantes, editingField, editAllMode]);
 
   // Verificar si hay cambios pendientes (global y por campo) - comparación eficiente sin JSON.stringify
   const tieneCambios = useMemo(
@@ -234,7 +251,16 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
     const deltaRoce = roceCur - roceOrig;
     return { showDeltas: true, deltaRentabilidad, deltaCashflow, deltaRoce };
   }, [tieneCambios, resultado, resultadoOriginal]);
-  
+
+  // Efecto "latido" cuando las métricas se actualizan (hay deltas): activar highlight 2.5s
+  const hasAnyDelta = showDeltas && (deltaRentabilidad !== 0 || deltaCashflow !== 0 || deltaRoce !== 0);
+  useEffect(() => {
+    if (!hasAnyDelta) return;
+    setHighlightMetrics(true);
+    const t = setTimeout(() => setHighlightMetrics(false), 2500);
+    return () => clearTimeout(t);
+  }, [hasAnyDelta, showDeltas, deltaRentabilidad, deltaCashflow, deltaRoce]);
+
   // Handlers con debounce - AUMENTADO a 1000ms para reducir llamadas a la API
   const handlePrecioChange = (valor: string) => {
     setPrecioCompra(valor);
@@ -363,7 +389,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
 
   // Cerrar modo edición al hacer clic fuera de la tarjeta (modo móvil o edición por campo)
   useEffect(() => {
-    if (!isEditing && editingField === null) return;
+    if (!isEditing && editingField === null && !editAllMode) return;
 
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -385,6 +411,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
       }
       setIsEditing(false);
       setEditingField(null);
+      setEditAllMode(false);
     };
 
     // Usar setTimeout para evitar que se cierre inmediatamente al abrir
@@ -396,7 +423,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
       clearTimeout(timeoutId);
       document.removeEventListener('click', handleClickOutside);
     };
-  }, [isEditing, editingField]);
+  }, [isEditing, editingField, editAllMode]);
 
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -491,9 +518,10 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
         ) {
           return;
         }
-        if (editingField !== null || isEditing) {
+        if (editingField !== null || isEditing || editAllMode) {
           setEditingField(null);
           setIsEditing(false);
+          setEditAllMode(false);
         }
       }}
       onTouchStart={handleTouchStart}
@@ -509,9 +537,9 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
         boxShadow: isActive ? 2 : 0,
       }}
     >
-      <CardContent sx={{ p: 0.75, '&:last-child': { pb: 0.75 } }}>
+      <CardContent sx={{ p: 0.75, '&:last-child': { pb: 0.75 }, position: 'relative' }}>
       {/* Desktop: Información horizontal */}
-      <Box className="card-info-horizontal card-info-desktop" sx={{ position: 'relative', alignItems: 'center', minHeight: 32, display: 'flex' }}>
+      <Box className="card-info-horizontal card-info-desktop" sx={{ position: 'relative', alignItems: 'center', minHeight: 32, display: 'flex', overflow: 'visible', pr: 10 }}>
         {/* Icono expandir/colapsar al inicio de la fila */}
         {onClick && (
           <Tooltip title={isActive ? 'Colapsar detalle' : 'Ver detalle'}>
@@ -527,6 +555,22 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
         )}
         {/* Botones de acción posicionados absolutamente */}
         <Box sx={{ position: 'absolute', top: '50%', right: -8, transform: 'translateY(-50%)', display: 'flex', gap: 0, zIndex: 2 }}>
+          {onInputChange && (
+            <Tooltip title={editAllMode ? 'Salir de edición' : 'Editar vivienda, comunidad, ciudad, precio y alquiler'}>
+              <IconButton
+                size="small"
+                onClick={(e) => { e.stopPropagation(); setEditAllMode((v) => !v); setEditingField(null); }}
+                aria-label={editAllMode ? 'Salir de edición' : 'Editar todos los campos'}
+                sx={{
+                  p: 0.5,
+                  color: editAllMode ? 'primary.main' : 'text.secondary',
+                  '&:hover': { color: 'primary.main' },
+                }}
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
           {onToggleFavorite && (
             <Tooltip title={card.isFavorite ? 'Quitar de Mi Portfolio' : 'Añadir a Mi Portfolio'}>
               <IconButton
@@ -569,7 +613,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
           )}
         </Box>
         <Box sx={{ flex: '1.2 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', pl: 0.5 }}>
-          {editingField === 'inmueble' && onInmuebleChange ? (
+          {((editingField === 'inmueble' || editAllMode) && onInmuebleChange) ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap' }}>
               <TextField
                 type="number"
@@ -717,18 +761,6 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                 {(!card.habitaciones && !campoFalta('habitaciones')) && (!card.metrosCuadrados && !campoFalta('metrosCuadrados')) && (!card.banos && !campoFalta('banos')) && '—'}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0, flexShrink: 0 }}>
-                {onInmuebleChange && (isCardHovered || campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos')) && (
-                  <Tooltip title={(campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos')) ? 'Completar datos del inmueble' : 'Editar datos del inmueble'}>
-                    <IconButton
-                      size="small"
-                      onClick={(e) => { e.stopPropagation(); setEditingField('inmueble'); }}
-                      aria-label="Editar datos del inmueble"
-                      sx={{ p: 0.15, minWidth: 20, width: 20, height: 20, color: (campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos')) ? '#f44336' : '#666', '&:hover': { color: 'primary.main' } }}
-                    >
-                      <EditIcon sx={{ fontSize: 12 }} />
-                    </IconButton>
-                  </Tooltip>
-                )}
                 {habitacionesCambiado && onRevertInmueble && (
                   <Tooltip title="Deshacer habitaciones">
                     <IconButton size="small" onClick={handleRevertInmueble('habitaciones')} aria-label="Deshacer habitaciones" sx={{ p: 0.15, minWidth: 20, width: 20, height: 20, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
@@ -755,7 +787,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
           )}
         </Box>
         <Box sx={{ flex: '1.4 1 0', minWidth: 240, minHeight: 32, display: 'flex', alignItems: 'center', gap: 0.5, pl: 0.5 }}>
-          {onInputChange && editingField === 'codigoComunidadAutonoma' ? (
+          {onInputChange && (editingField === 'codigoComunidadAutonoma' || editAllMode) ? (
             <Autocomplete
               size="small"
               openOnFocus
@@ -853,18 +885,6 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                     ? '⚠️ Falta'
                     : '—'}
               </Typography>
-              {(isCardHovered || campoFalta('codigoComunidadAutonoma')) && (
-                <Tooltip title={campoFalta('codigoComunidadAutonoma') ? 'Seleccionar comunidad' : 'Cambiar comunidad'}>
-                  <IconButton
-                    size="small"
-                    onClick={(e) => { e.stopPropagation(); setEditingField('codigoComunidadAutonoma'); }}
-                    aria-label="Editar comunidad"
-                    sx={{ p: 0.25, color: campoFalta('codigoComunidadAutonoma') ? '#f44336' : '#666', '&:hover': { color: 'primary.main' } }}
-                  >
-                    <EditIcon sx={{ fontSize: 14 }} />
-                  </IconButton>
-                </Tooltip>
-              )}
               {comunidadCambiado && onRevertField && (
                 <Tooltip title="Deshacer comunidad">
                   <IconButton size="small" onClick={handleRevertComunidad} aria-label="Deshacer comunidad" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
@@ -891,7 +911,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
           )}
         </Box>
         <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', gap: 0.5, pl: 0.5 }}>
-          {onCiudadChange && editingField === 'ciudad' ? (
+          {onCiudadChange && (editingField === 'ciudad' || editAllMode) ? (
             <Autocomplete
               size="small"
               openOnFocus
@@ -985,18 +1005,6 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
               >
                 {card.ciudad || (campoFalta('ciudad') ? '⚠️ Falta' : '—')}
               </Typography>
-              {(isCardHovered || campoFalta('ciudad')) && (codigoComunidadAutonoma >= 1 && codigoComunidadAutonoma <= 19) && (
-                <Tooltip title={campoFalta('ciudad') ? 'Seleccionar ciudad' : 'Cambiar ciudad'}>
-                  <IconButton
-                    size="small"
-                    onClick={(e) => { e.stopPropagation(); setEditingField('ciudad'); }}
-                    aria-label="Editar ciudad"
-                    sx={{ p: 0.25, color: campoFalta('ciudad') ? '#f44336' : '#666', '&:hover': { color: 'primary.main' } }}
-                  >
-                    <EditIcon sx={{ fontSize: 14 }} />
-                  </IconButton>
-                </Tooltip>
-              )}
               {ciudadCambiado && onRevertField && (
                 <Tooltip title="Deshacer ciudad">
                   <IconButton size="small" onClick={handleRevertCiudad} aria-label="Deshacer ciudad" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
@@ -1019,7 +1027,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
           )}
         </Box>
         <Box sx={{ flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32, pl: 0.5 }}>
-          {(isEditing || editingField === 'precioCompra') && onInputChange ? (
+          {(isEditing || editingField === 'precioCompra' || editAllMode) && onInputChange ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32 }}>
               <TextField
                 type="number"
@@ -1073,18 +1081,6 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
               >
                 {card.precioCompra > 0 ? formatEuro(card.precioCompra) : (campoFalta('precioCompra') ? '⚠️ Falta' : formatEuro(card.precioCompra))}
               </Typography>
-              {onInputChange && (isCardHovered || campoFalta('precioCompra')) && (
-                <Tooltip title={campoFalta('precioCompra') ? 'Completar precio compra' : 'Editar precio compra'}>
-                  <IconButton
-                    size="small"
-                    onClick={(e) => { e.stopPropagation(); setEditingField('precioCompra'); }}
-                    aria-label="Editar precio compra"
-                    sx={{ p: 0.25, color: campoFalta('precioCompra') ? '#f44336' : '#666', '&:hover': { color: 'primary.main' } }}
-                  >
-                    <EditIcon sx={{ fontSize: 14 }} />
-                  </IconButton>
-                </Tooltip>
-              )}
               {precioCambiado && onRevertField && (
                 <Tooltip title="Deshacer precio compra">
                   <IconButton size="small" onClick={handleRevertPrecio} aria-label="Deshacer precio compra" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
@@ -1096,7 +1092,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
           )}
         </Box>
         <Box sx={{ flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32, pl: 0.5 }}>
-          {(isEditing || editingField === 'alquilerMensual') && onInputChange ? (
+          {(isEditing || editingField === 'alquilerMensual' || editAllMode) && onInputChange ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32 }}>
               <TextField
                 type="number"
@@ -1179,18 +1175,6 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                   </Tooltip>
                 )}
               </Box>
-              {onInputChange && (isCardHovered || campoFalta('alquilerMensual')) && (
-                <Tooltip title={campoFalta('alquilerMensual') ? 'Completar alquiler estimado' : 'Editar alquiler estimado'}>
-                  <IconButton
-                    size="small"
-                    onClick={(e) => { e.stopPropagation(); setEditingField('alquilerMensual'); }}
-                    aria-label="Editar alquiler estimado"
-                    sx={{ p: 0.25, color: campoFalta('alquilerMensual') ? '#f44336' : '#666', '&:hover': { color: 'primary.main' } }}
-                  >
-                    <EditIcon sx={{ fontSize: 14 }} />
-                  </IconButton>
-                </Tooltip>
-              )}
               {alquilerCambiado && onRevertField && (
                 <Tooltip title="Deshacer alquiler estimado">
                   <IconButton size="small" onClick={handleRevertAlquiler} aria-label="Deshacer alquiler estimado" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
@@ -1201,45 +1185,46 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
             </>
           )}
         </Box>
-        <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'wrap', pl: 0.5 }}>
+        <Box sx={{ flex: '1 1 0', minWidth: 90, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'wrap', pl: 0.5 }}>
           <Typography component="span" variant="body2" className="semaforo-value" sx={{ fontSize: 17, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2 }}>
             {card.rentabilidadNetaPct.toFixed(2)} %
           </Typography>
-          {showDeltas && <DeltaLabel delta={deltaRentabilidad} unit="%" />}
+          {showDeltas && <DeltaLabel delta={deltaRentabilidad} unit="%" className={highlightMetrics && deltaRentabilidad !== 0 ? 'metric-pulse' : undefined} />}
         </Box>
-        <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'wrap', pl: 0.5 }}>
+        <Box sx={{ flex: '1 1 0', minWidth: 90, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'wrap', pl: 0.5 }}>
           <Typography component="span" variant="body2" className="semaforo-value" sx={{ fontSize: 17, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2 }}>
             {cashflowFinal !== null ? formatEuro(cashflowFinal) : '—'}
           </Typography>
-          {showDeltas && <DeltaLabel delta={deltaCashflow} unit="€" />}
+          {showDeltas && <DeltaLabel delta={deltaCashflow} unit="€" className={highlightMetrics && deltaCashflow !== 0 ? 'metric-pulse' : undefined} />}
         </Box>
-        <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'wrap', pl: 0.5 }}>
+        <Box sx={{ flex: '1 1 0', minWidth: 90, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'wrap', pl: 0.5 }}>
           <Typography component="span" variant="body2" className="semaforo-value" sx={{ fontSize: 17, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2 }}>
             {roceFinal !== null ? `${roceFinal.toFixed(2)} %` : '—'}
           </Typography>
-          {showDeltas && <DeltaLabel delta={deltaRoce} unit="%" />}
+          {showDeltas && <DeltaLabel delta={deltaRoce} unit="%" className={highlightMetrics && deltaRoce !== 0 ? 'metric-pulse' : undefined} />}
         </Box>
       </Box>
 
       {/* Mobile: Información vertical compacta */}
       <Box className="card-info-mobile" sx={{ position: 'relative', pt: 1 }}>
-        {/* Icono expandir/colapsar al inicio (móvil) */}
-        {onClick && (
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-            <Tooltip title={isActive ? 'Colapsar detalle' : 'Ver detalle'}>
-              <IconButton
-                size="small"
-                onClick={(e) => { e.stopPropagation(); onClick(); }}
-                aria-label={isActive ? 'Colapsar detalle' : 'Ver detalle'}
-                sx={{ p: 0.35, color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
-              >
-                {isActive ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-              </IconButton>
-            </Tooltip>
-          </Box>
-        )}
         {/* Botones de acción - esquina superior derecha */}
         <Box sx={{ position: 'absolute', top: 0, right: 8, display: 'flex', gap: 1, zIndex: 10 }}>
+          {onInputChange && (
+            <Tooltip title={editAllMode ? 'Salir de edición' : 'Editar vivienda, comunidad, ciudad, precio y alquiler'}>
+              <IconButton
+                size="small"
+                onClick={(e) => { e.stopPropagation(); setEditAllMode((v) => !v); setEditingField(null); }}
+                aria-label={editAllMode ? 'Salir de edición' : 'Editar todos los campos'}
+                sx={{
+                  p: 0.5,
+                  color: editAllMode ? 'primary.main' : 'text.secondary',
+                  '&:hover': { color: 'primary.main' },
+                }}
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
           {onToggleFavorite && (
             <Tooltip title={card.isFavorite ? 'Quitar de Mi Portfolio' : 'Añadir a Mi Portfolio'}>
               <IconButton
@@ -1271,9 +1256,9 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
         </Box>
         
         {/* Comunidad autónoma - primera fila, con espacio para los iconos */}
-        <Box sx={{ mb: 1.5, pr: 10 }}>
-          <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.25, textTransform: 'uppercase' }}>Comunidad autónoma</Typography>
-          {onInputChange && editingField === 'codigoComunidadAutonoma' ? (
+        <Box sx={{ mb: 1.5 }}>
+          <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.25, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Comunidad autónoma</Typography>
+          {onInputChange && (editingField === 'codigoComunidadAutonoma' || editAllMode) ? (
             <Autocomplete
               size="small"
               fullWidth
@@ -1371,16 +1356,6 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                     ? '⚠️ Falta'
                     : '—'}
               </Typography>
-              <Tooltip title={campoFalta('codigoComunidadAutonoma') ? 'Seleccionar comunidad' : 'Cambiar comunidad'}>
-                <IconButton
-                  size="small"
-                  onClick={(e) => { e.stopPropagation(); setEditingField('codigoComunidadAutonoma'); }}
-                  aria-label="Editar comunidad"
-                  sx={{ p: 0.25, color: campoFalta('codigoComunidadAutonoma') ? '#f44336' : '#666', '&:hover': { color: 'primary.main' } }}
-                >
-                  <EditIcon sx={{ fontSize: 14 }} />
-                </IconButton>
-              </Tooltip>
               {comunidadCambiado && onRevertField && (
                 <Tooltip title="Deshacer comunidad">
                   <IconButton size="small" onClick={handleRevertComunidad} aria-label="Deshacer comunidad" sx={sxRevertMobile}>
@@ -1410,7 +1385,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
         {/* Ciudad - segunda fila */}
         <Box sx={{ mb: 1.5, pr: 8 }}>
           <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.25, textTransform: 'uppercase' }}>Ciudad</Typography>
-          {onCiudadChange && editingField === 'ciudad' ? (
+          {onCiudadChange && (editingField === 'ciudad' || editAllMode) ? (
             <Autocomplete
               size="small"
               fullWidth
@@ -1503,18 +1478,6 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
               >
                 {card.ciudad || (campoFalta('ciudad') ? '⚠️ Falta' : '—')}
               </Typography>
-              {(codigoComunidadAutonoma >= 1 && codigoComunidadAutonoma <= 19) && (
-                <Tooltip title={campoFalta('ciudad') ? 'Seleccionar ciudad' : 'Cambiar ciudad'}>
-                  <IconButton
-                    size="small"
-                    onClick={(e) => { e.stopPropagation(); setEditingField('ciudad'); }}
-                    aria-label="Editar ciudad"
-                    sx={{ p: 0.25, color: campoFalta('ciudad') ? '#f44336' : '#666', '&:hover': { color: 'primary.main' } }}
-                  >
-                    <EditIcon sx={{ fontSize: 14 }} />
-                  </IconButton>
-                </Tooltip>
-              )}
               {ciudadCambiado && onRevertField && (
                 <Tooltip title="Deshacer ciudad">
                   <IconButton size="small" onClick={handleRevertCiudad} aria-label="Deshacer ciudad" sx={sxRevertMobile}>
@@ -1541,20 +1504,8 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
         <Box sx={{ mb: 1.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.25 }}>
             <Typography variant="caption" sx={{ fontSize: 11, color: '#666', textTransform: 'uppercase' }}>Vivienda</Typography>
-            {onInmuebleChange && (isCardHovered || campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos')) && (
-              <Tooltip title={(campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos')) ? 'Completar datos del inmueble' : 'Editar datos del inmueble'}>
-                <IconButton
-                  size="small"
-                  onClick={(e) => { e.stopPropagation(); setEditingField('inmueble'); }}
-                  aria-label="Editar datos del inmueble"
-                  sx={{ p: 0.25, color: (campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos')) ? '#f44336' : '#666', '&:hover': { color: 'primary.main' } }}
-                >
-                  <EditIcon sx={{ fontSize: 14 }} />
-                </IconButton>
-              </Tooltip>
-            )}
           </Box>
-          {editingField === 'inmueble' && onInmuebleChange ? (
+          {((editingField === 'inmueble' || editAllMode) && onInmuebleChange) ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap' }}>
               <TextField
                 type="number"
@@ -1707,18 +1658,6 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
               {card.banos || campoFalta('banos') ? `${card.banos || '?'} ${card.banos === 1 ? 'baño' : 'baños'}` : ''}
                 {(!card.habitaciones && !campoFalta('habitaciones')) && (!card.metrosCuadrados && !campoFalta('metrosCuadrados')) && (!card.banos && !campoFalta('banos')) && '—'}
               </Typography>
-              {onInmuebleChange && (isCardHovered || campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos')) && (
-                <Tooltip title={(campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos')) ? 'Completar datos del inmueble' : 'Editar datos del inmueble'}>
-                  <IconButton
-                    size="small"
-                    onClick={(e) => { e.stopPropagation(); setEditingField('inmueble'); }}
-                    aria-label="Editar datos del inmueble"
-                    sx={{ p: 0.25, color: (campoFalta('habitaciones') || campoFalta('metrosCuadrados') || campoFalta('banos')) ? '#f44336' : '#666', '&:hover': { color: 'primary.main' } }}
-                  >
-                    <EditIcon sx={{ fontSize: 14 }} />
-                  </IconButton>
-                </Tooltip>
-              )}
               {habitacionesCambiado && onRevertInmueble && (
                 <Tooltip title="Deshacer habitaciones">
                   <IconButton size="small" onClick={handleRevertInmueble('habitaciones')} aria-label="Deshacer habitaciones" sx={sxRevertMobile}>
@@ -1747,7 +1686,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
         <Box sx={{ mb: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
           <Box>
             <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.25, textTransform: 'uppercase' }}>Precio compra</Typography>
-            {(isEditing || editingField === 'precioCompra') && onInputChange ? (
+            {(isEditing || editingField === 'precioCompra' || editAllMode) && onInputChange ? (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <TextField
                   type="number"
@@ -1800,18 +1739,6 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                 >
                   {card.precioCompra > 0 ? formatEuro(card.precioCompra) : (campoFalta('precioCompra') ? '⚠️ Falta' : formatEuro(card.precioCompra))}
                 </Typography>
-                {onInputChange && (
-                  <Tooltip title={campoFalta('precioCompra') ? 'Completar precio compra' : 'Editar precio compra'}>
-                    <IconButton 
-                      size="small" 
-                      onClick={(e) => { e.stopPropagation(); setEditingField('precioCompra'); }} 
-                      aria-label="Editar precio compra" 
-                      sx={{ p: 0.25, color: campoFalta('precioCompra') ? '#f44336' : '#666', '&:hover': { color: 'primary.main' } }}
-                    >
-                      <EditIcon sx={{ fontSize: 14 }} />
-                    </IconButton>
-                  </Tooltip>
-                )}
                 {precioCambiado && onRevertField && (
                   <Tooltip title="Deshacer precio compra">
                     <IconButton size="small" onClick={handleRevertPrecio} aria-label="Deshacer precio compra" sx={sxRevertMobile}>
@@ -1845,7 +1772,7 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                 </Tooltip>
               )}
             </Box>
-            {(isEditing || editingField === 'alquilerMensual') && onInputChange ? (
+            {(isEditing || editingField === 'alquilerMensual' || editAllMode) && onInputChange ? (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <TextField
                   type="number"
@@ -1904,18 +1831,6 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                 >
                   {card.alquilerEstimado > 0 ? formatEuro(card.alquilerEstimado) : (campoFalta('alquilerMensual') ? 'Alquiler' : formatEuro(card.alquilerEstimado))}/mes
                 </Typography>
-                {onInputChange && (
-                  <Tooltip title={campoFalta('alquilerMensual') ? 'Completar alquiler estimado' : 'Editar alquiler estimado'}>
-                    <IconButton 
-                      size="small" 
-                      onClick={(e) => { e.stopPropagation(); setEditingField('alquilerMensual'); }} 
-                      aria-label="Editar alquiler estimado" 
-                      sx={{ p: 0.25, color: campoFalta('alquilerMensual') ? '#f44336' : '#666', '&:hover': { color: 'primary.main' } }}
-                    >
-                      <EditIcon sx={{ fontSize: 14 }} />
-                    </IconButton>
-                  </Tooltip>
-                )}
                 {alquilerCambiado && onRevertField && (
                   <Tooltip title="Deshacer alquiler estimado">
                     <IconButton size="small" onClick={handleRevertAlquiler} aria-label="Deshacer alquiler estimado" sx={sxRevertMobile}>
@@ -1927,36 +1842,51 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
             )}
           </Box>
         </Box>
-        {/* Métricas - cuarta fila */}
-        <Box className="card-metrics-values" sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
-          <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
-            <Typography variant="caption" sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary', mb: 0.25, textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: '14px', display: 'flex', alignItems: 'flex-start' }}>Rentabilidad neta</Typography>
+        {/* Métricas - cuarta fila con icono expandir en la esquina inferior derecha */}
+        <Box className="card-metrics-values" sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', pt: 1, borderTop: '1px solid', borderColor: 'divider', position: 'relative' }}>
+          <Box sx={{ flex: '1 1 0', minWidth: 70 }}>
+            <Typography variant="caption" sx={{ fontSize: 11, fontWeight: 600, color: 'text.secondary', mb: 0.25, textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: '14px', display: 'flex', alignItems: 'flex-start' }}>Rent. neta</Typography>
             <Box sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', minHeight: 28 }}>
-              <Typography variant="body2" className="semaforo-value" sx={{ fontSize: 20, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2 }}>
+              <Typography variant="body2" className="semaforo-value" sx={{ fontSize: 18, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2 }}>
                 {card.rentabilidadNetaPct.toFixed(2)} %
               </Typography>
-              {showDeltas && <DeltaLabel delta={deltaRentabilidad} unit="%" />}
+              {showDeltas && <DeltaLabel delta={deltaRentabilidad} unit="%" className={highlightMetrics && deltaRentabilidad !== 0 ? 'metric-pulse' : undefined} />}
             </Box>
           </Box>
-          <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
-            <Typography variant="caption" sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary', mb: 0.25, textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: '14px', display: 'flex', alignItems: 'flex-start' }}>Cashflow</Typography>
+          <Box sx={{ flex: '1 1 0', minWidth: 70 }}>
+            <Typography variant="caption" sx={{ fontSize: 11, fontWeight: 600, color: 'text.secondary', mb: 0.25, textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: '14px', display: 'flex', alignItems: 'flex-start' }}>Cashflow</Typography>
             <Box sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', minHeight: 28 }}>
-              <Typography variant="body2" className="semaforo-value" sx={{ fontSize: 20, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2 }}>
+              <Typography variant="body2" className="semaforo-value" sx={{ fontSize: 18, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2 }}>
                 {cashflowFinal !== null ? formatEuro(cashflowFinal) : '—'}
               </Typography>
-              {showDeltas && <DeltaLabel delta={deltaCashflow} unit="€" />}
+              {showDeltas && <DeltaLabel delta={deltaCashflow} unit="€" className={highlightMetrics && deltaCashflow !== 0 ? 'metric-pulse' : undefined} />}
             </Box>
           </Box>
-          <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
-            <Typography variant="caption" sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary', mb: 0.25, textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: '14px', display: 'flex', alignItems: 'flex-start' }}>ROCE</Typography>
+          <Box sx={{ flex: '1 1 0', minWidth: 70 }}>
+            <Typography variant="caption" sx={{ fontSize: 11, fontWeight: 600, color: 'text.secondary', mb: 0.25, textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: '14px', display: 'flex', alignItems: 'flex-start' }}>ROCE</Typography>
             <Box sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', minHeight: 28 }}>
-              <Typography variant="body2" className="semaforo-value" sx={{ fontSize: 20, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2 }}>
+              <Typography variant="body2" className="semaforo-value" sx={{ fontSize: 18, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2 }}>
                 {roceFinal !== null ? `${roceFinal.toFixed(2)} %` : '—'}
               </Typography>
-              {showDeltas && <DeltaLabel delta={deltaRoce} unit="%" />}
+              {showDeltas && <DeltaLabel delta={deltaRoce} unit="%" className={highlightMetrics && deltaRoce !== 0 ? 'metric-pulse' : undefined} />}
             </Box>
           </Box>
         </Box>
+        
+        {/* Icono expandir/colapsar - esquina derecha alineado con métricas (móvil) */}
+        {onClick && (
+          <Box sx={{ position: 'absolute', bottom: 8, right: 8, zIndex: 5 }}>
+            <Tooltip title={isActive ? 'Colapsar detalle' : 'Ver detalle'}>
+              <IconButton
+                onClick={(e) => { e.stopPropagation(); onClick(); }}
+                aria-label={isActive ? 'Colapsar detalle' : 'Ver detalle'}
+                sx={{ p: 0.5, color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+              >
+                {isActive ? <ExpandLessIcon sx={{ fontSize: 32 }} /> : <ExpandMoreIcon sx={{ fontSize: 32 }} />}
+              </IconButton>
+            </Tooltip>
+          </Box>
+        )}
       </Box>
 
       {/* Información adicional - solo en mobile */}
