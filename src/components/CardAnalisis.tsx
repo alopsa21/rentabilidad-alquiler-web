@@ -547,7 +547,12 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
               size="small"
               onClick={(e) => { e.stopPropagation(); onClick(); }}
               aria-label={isActive ? 'Colapsar detalle' : 'Ver detalle'}
-              sx={{ flexShrink: 0, p: 0.35, color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+              sx={{
+                flexShrink: 0,
+                p: 0.35,
+                color: prefersDarkMode ? 'white' : 'primary.main',
+                '&:hover': { color: prefersDarkMode ? 'grey.300' : 'primary.dark', opacity: 1 },
+              }}
             >
               {isActive ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
             </IconButton>
@@ -563,8 +568,8 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                 aria-label={editAllMode ? 'Salir de edición' : 'Editar todos los campos'}
                 sx={{
                   p: 0.5,
-                  color: editAllMode ? 'primary.main' : 'text.secondary',
-                  '&:hover': { color: 'primary.main' },
+                  color: 'primary.main',
+                  '&:hover': { color: 'primary.dark', opacity: 1 },
                 }}
               >
                 <EditIcon fontSize="small" />
@@ -1217,8 +1222,8 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
                 aria-label={editAllMode ? 'Salir de edición' : 'Editar todos los campos'}
                 sx={{
                   p: 0.5,
-                  color: editAllMode ? 'primary.main' : 'text.secondary',
-                  '&:hover': { color: 'primary.main' },
+                  color: 'primary.main',
+                  '&:hover': { color: 'primary.dark', opacity: 1 },
                 }}
               >
                 <EditIcon fontSize="small" />
@@ -1880,7 +1885,11 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
               <IconButton
                 onClick={(e) => { e.stopPropagation(); onClick(); }}
                 aria-label={isActive ? 'Colapsar detalle' : 'Ver detalle'}
-                sx={{ p: 0.5, color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+                sx={{
+                  p: 0.5,
+                  color: prefersDarkMode ? 'white' : 'primary.main',
+                  '&:hover': { color: prefersDarkMode ? 'grey.300' : 'primary.dark', opacity: 1 },
+                }}
               >
                 {isActive ? <ExpandLessIcon sx={{ fontSize: 32 }} /> : <ExpandMoreIcon sx={{ fontSize: 32 }} />}
               </IconButton>

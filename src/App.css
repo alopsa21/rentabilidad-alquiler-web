@@ -345,14 +345,29 @@
 }
 
 
-.detalle-valor-clickable:hover {
+.detalle-valor-clickable {
   text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+.detalle-valor-clickable:hover {
+  text-decoration-style: solid;
 }
 
 /* Mobile: mostrar modal cuando está abierto */
 @media (max-width: 768px) {
   .modal-detalle-overlay {
     display: flex !important;
+  }
+
+  /* Subrayado punteado en valores clicables también en móvil */
+  .detalle-valor-clickable {
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 2px;
+  }
+  .detalle-valor-clickable:hover {
+    text-decoration-style: solid;
   }
 
   /* Evitar que el detalle se salga por la derecha en el modal móvil */

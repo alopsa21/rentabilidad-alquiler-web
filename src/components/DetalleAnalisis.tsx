@@ -1,6 +1,7 @@
 import { Fragment, useState, memo } from 'react';
 import IconButton from '@mui/material/IconButton';
 import Chip from '@mui/material/Chip';
+import Tooltip from '@mui/material/Tooltip';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import type { AnalisisCard } from '../types/analisis';
 import type { RentabilidadApiResponse } from '../types/api';
@@ -267,22 +268,24 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false 
                 <InfoIcon onClick={() => setDefinicionAbierta((k) => (k === id ? null : id))} />
               </dt>
               <dd style={{ margin: 0, textAlign: 'right' }}>
-                <button
-                  type="button"
-                  className="detalle-valor-clickable"
-                  onClick={() => setDesgloseAbierto((k) => (k === id ? null : id))}
-                  aria-label="Ver desglose del cálculo"
-                  style={{
-                    padding: 0,
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    font: 'inherit',
-                    color: 'inherit',
-                  }}
-                >
-                  {value}
-                </button>
+                <Tooltip title="Pulsa para ver la fórmula" placement="left">
+                  <button
+                    type="button"
+                    className="detalle-valor-clickable"
+                    onClick={() => setDesgloseAbierto((k) => (k === id ? null : id))}
+                    aria-label="Ver fórmula del cálculo"
+                    style={{
+                      padding: 0,
+                      border: 'none',
+                      background: 'none',
+                      cursor: 'pointer',
+                      font: 'inherit',
+                      color: 'inherit',
+                    }}
+                  >
+                    {value}
+                  </button>
+                </Tooltip>
               </dd>
             </Fragment>
           ))}
@@ -306,22 +309,24 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false 
                 <InfoIcon onClick={() => setDefinicionAbierta((k) => (k === id ? null : id))} />
               </dt>
               <dd style={{ margin: 0, textAlign: 'right' }}>
-                <button
-                  type="button"
-                  className="detalle-valor-clickable"
-                  onClick={() => setDesgloseAbierto((k) => (k === id ? null : id))}
-                  aria-label="Ver desglose del cálculo"
-                  style={{
-                    padding: 0,
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    font: 'inherit',
-                    color: 'inherit',
-                  }}
-                >
-                  {value}
-                </button>
+                <Tooltip title="Pulsa para ver la fórmula" placement="left">
+                  <button
+                    type="button"
+                    className="detalle-valor-clickable"
+                    onClick={() => setDesgloseAbierto((k) => (k === id ? null : id))}
+                    aria-label="Ver fórmula del cálculo"
+                    style={{
+                      padding: 0,
+                      border: 'none',
+                      background: 'none',
+                      cursor: 'pointer',
+                      font: 'inherit',
+                      color: 'inherit',
+                    }}
+                  >
+                    {value}
+                  </button>
+                </Tooltip>
               </dd>
             </Fragment>
           ))}
