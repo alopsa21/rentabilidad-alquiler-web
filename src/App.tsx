@@ -64,6 +64,8 @@ function App() {
   const [modalAbierto, setModalAbierto] = useState(false)
   const [ordenarPor, setOrdenarPor] = useState<{ campo: string | null; direccion: 'asc' | 'desc' }>({ campo: null, direccion: 'asc' })
   const [tarjetasExpandidas, setTarjetasExpandidas] = useState<Set<string>>(new Set())
+  /** ID de la tarjeta resaltada al pegar una URL ya analizada (borde de color); se limpia a los pocos segundos */
+  const [tarjetaResaltadaPorUrlId, setTarjetaResaltadaPorUrlId] = useState<string | null>(null)
   const [isHydrated, setIsHydrated] = useState(false)
   // Evitar renderizar hasta confirmar que estamos en la ruta correcta
   const isCorrectRoute = location.pathname === '/'
@@ -223,6 +225,13 @@ function App() {
     return () => clearTimeout(timeoutId)
   }, [analisis, resultadosPorTarjeta, resultadoOriginalPorTarjeta, createdAtPorTarjeta, isHydrated])
 
+  /** Quitar resaltado de tarjeta (borde) a los 4 s de haber pegado una URL duplicada */
+  useEffect(() => {
+    if (!tarjetaResaltadaPorUrlId) return
+    const t = setTimeout(() => setTarjetaResaltadaPorUrlId(null), 4000)
+    return () => clearTimeout(t)
+  }, [tarjetaResaltadaPorUrlId])
+
   /** Normaliza URL para comparar (evitar duplicados por trailing slash o espacios) */
   const normalizeUrlForCompare = (u: string) =>
     u.trim().replace(/\/+$/, '')
@@ -238,7 +247,7 @@ function App() {
     )
     if (yaExiste) {
       mostrarNotificacion('Este piso ya ha sido analizado y está en el panel', 'error')
-      setTarjetaActivaId(yaExiste.id)
+      setTarjetaResaltadaPorUrlId(yaExiste.id)
       return
     }
 
@@ -1325,6 +1334,7 @@ function App() {
                     <CardAnalisis
                         card={card}
                         isActive={mostrarDetalle}
+                        highlightBorder={card.id === tarjetaResaltadaPorUrlId}
                         onClick={() => handleClickTarjeta(card.id)}
                         onDelete={() => handleEliminarTarjeta(card.id)}
                         onToggleFavorite={() => handleToggleFavorite(card.id)}

@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
+import ClearIcon from '@mui/icons-material/Clear';
 import { STORAGE_KEY_URL } from '../constants/storage';
 
 interface HeroSearchProps {
@@ -81,6 +84,21 @@ export function HeroSearch({ onAnalizar, loading = false }: HeroSearchProps) {
           aria-label="URL del anuncio"
           fullWidth
           size="medium"
+          InputProps={{
+            endAdornment: url ? (
+              <InputAdornment position="end">
+                <IconButton
+                  size="small"
+                  onClick={() => setUrl('')}
+                  onMouseDown={(e) => e.preventDefault()}
+                  aria-label="Borrar URL"
+                  edge="end"
+                >
+                  <ClearIcon fontSize="small" />
+                </IconButton>
+              </InputAdornment>
+            ) : null,
+          }}
           sx={{ 
             '& .MuiOutlinedInput-root': { 
               fontSize: 16,

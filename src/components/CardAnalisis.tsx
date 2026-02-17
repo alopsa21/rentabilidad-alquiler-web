@@ -49,6 +49,8 @@ const formatEuro = (value: number): string => {
 interface CardAnalisisProps {
   card: AnalisisCard;
   isActive?: boolean;
+  /** Resaltar con borde cuando se pega una URL ya analizada */
+  highlightBorder?: boolean;
   onClick?: () => void;
   onDelete?: () => void;
   onToggleFavorite?: () => void;
@@ -93,7 +95,7 @@ function DeltaLabel({ delta, unit, className }: { delta: number; unit: '%' | 'â‚
   );
 }
 
-function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onToggleFavorite, onOpenNotes, resultado, resultadoOriginal, onInputChange, onRevertField, onRevertInmueble, onCiudadChange, onInmuebleChange, isInFavoritesView = false }: CardAnalisisProps) {
+function CardAnalisisComponent({ card, isActive = false, highlightBorder = false, onClick, onDelete, onToggleFavorite, onOpenNotes, resultado, resultadoOriginal, onInputChange, onRevertField, onRevertInmueble, onCiudadChange, onInmuebleChange, isInFavoritesView = false }: CardAnalisisProps) {
   // Detectar modo oscuro
   const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
   
@@ -535,6 +537,11 @@ function CardAnalisisComponent({ card, isActive = false, onClick, onDelete, onTo
         position: 'relative',
         backgroundColor: isActive ? '#e8f5e9' : undefined,
         boxShadow: isActive ? 2 : 0,
+        ...(highlightBorder && {
+          border: '2px solid',
+          borderColor: 'error.main',
+          boxShadow: 2,
+        }),
       }}
     >
       <CardContent sx={{ p: 0.75, '&:last-child': { pb: 0.75 }, position: 'relative' }}>

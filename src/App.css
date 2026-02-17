@@ -829,25 +829,7 @@
     color: #b0b0b0 !important;
   }
 
-  /* Mantener colores específicos de iconos y números en modo oscuro */
-  /* Los iconos y números mantienen sus colores del modo claro */
-  .portfolio-stats .MuiSvgIcon-root[style*="#1976d2"],
-  .portfolio-stats .MuiSvgIcon-root[style*="#2e7d32"],
-  .portfolio-stats .MuiSvgIcon-root[style*="#f9a825"],
-  .portfolio-stats .MuiSvgIcon-root[style*="#c62828"] {
-    color: inherit !important;
-  }
-
-  .portfolio-stats .MuiTypography-body2[style*="#1976d2"],
-  .portfolio-stats .MuiTypography-body2[style*="#2e7d32"],
-  .portfolio-stats .MuiTypography-body2[style*="#f9a825"],
-  .portfolio-stats .MuiTypography-body2[style*="#c62828"] {
-    color: inherit !important;
-  }
-
-  .portfolio-stats .MuiSvgIcon-root {
-    color: #e4e4e4 !important;
-  }
+  /* Iconos y valores del portfolio mantienen sus colores semáforo (verde/amarillo/rojo) en modo oscuro */
 
   /* TextField en modo oscuro - dentro de tarjetas */
   .MuiTextField-root .MuiOutlinedInput-root {
