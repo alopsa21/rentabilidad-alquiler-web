@@ -1,18 +1,12 @@
-import { Fragment, useState, memo, useCallback, useRef, useEffect } from 'react';
+import { useState, memo, useCallback, useRef, useEffect } from 'react';
 import IconButton from '@mui/material/IconButton';
-import Chip from '@mui/material/Chip';
-import Tooltip from '@mui/material/Tooltip';
 import TextField from '@mui/material/TextField';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
-import Accordion from '@mui/material/Accordion';
-import AccordionSummary from '@mui/material/AccordionSummary';
-import AccordionDetails from '@mui/material/AccordionDetails';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import RestoreIcon from '@mui/icons-material/Restore';
 import type { AnalisisCard } from '../types/analisis';
 import type { RentabilidadApiResponse } from '../types/api';
@@ -248,8 +242,6 @@ function getDesgloseCalculo(
       };
     }
     case 'capitalPropio': {
-      const totalCompra = Number(resultado.totalCompra);
-      const capitalPropio = Number(resultado.capitalPropio);
       const effective = card ? getEffectiveOptionals(card) : null;
       const importeHipoteca = (effective?.hayHipoteca && effective?.importeHipoteca) ? effective.importeHipoteca : 0;
       return {
@@ -294,7 +286,6 @@ function getDesgloseCalculo(
       const interesesFinanciacion = Number(resultado.rentabilidadNeta) * Number(resultado.totalCompra) - Number(resultado.beneficioAntesImpuestos);
       
       const gastosFijos = comunidadAnual + ibi + seguroHogar + seguroImpago + seguroVidaHipoteca + basura + agua + electricidad + gas + internet;
-      const totalCalculado = gastosFijos + mantenimiento + periodoSinAlquilar + interesesFinanciacion;
       
       const lines: string[] = [
         `Fórmula: Gastos fijos + Mantenimiento + Periodo sin alquilar + Intereses`,
@@ -404,22 +395,6 @@ interface DetalleAnalisisProps {
   onRestoreDefaults?: () => void;
 }
 
-function InfoIcon({ onClick }: { onClick: () => void }) {
-  return (
-    <IconButton
-      size="small"
-      onClick={(e) => {
-        e.preventDefault();
-        onClick();
-      }}
-      aria-label="Ver definición"
-      sx={{ ml: 0.5, p: 0.25, color: '#666', verticalAlign: 'middle' }}
-    >
-      <InfoOutlinedIcon sx={{ fontSize: 18 }} />
-    </IconButton>
-  );
-}
-
 /**
  * Devuelve los IDs de los campos que deben resaltarse cuando se muestra el desglose de una métrica.
  */
@@ -439,17 +414,23 @@ function getHighlightedFields(metricId: string | null): string[] {
       // Resaltar los campos de entrada que componen ingresosAnuales y gastosAnuales
       return ['alquilerMensual', 'comunidadAnual', 'ibi', 'seguroHogar', 'seguroImpago', 'basura', 'agua', 'electricidad', 'gas', 'internet', 'mantenimiento', 'periodoSinAlquilar', 'seguroVidaHipoteca'];
     case 'rentabilidadBruta':
-      return ['ingresosAnuales', 'totalCompra'];
+      // Resaltar campos que componen ingresosAnuales (alquilerMensual) y totalCompra
+      return ['alquilerMensual', 'precioCompra', 'reforma', 'notaria', 'registro', 'comisionInmobiliaria', 'otrosGastosCompra', 'totalITP', 'tasacion', 'gestoriaBanco', 'seguroVidaHipoteca'];
     case 'rentabilidadNeta':
-      return ['beneficioAntesImpuestos', 'totalCompra'];
+      // Resaltar campos que componen beneficioAntesImpuestos y totalCompra
+      return ['alquilerMensual', 'comunidadAnual', 'ibi', 'seguroHogar', 'seguroImpago', 'basura', 'agua', 'electricidad', 'gas', 'internet', 'mantenimiento', 'periodoSinAlquilar', 'seguroVidaHipoteca', 'precioCompra', 'reforma', 'notaria', 'registro', 'comisionInmobiliaria', 'otrosGastosCompra', 'totalITP', 'tasacion', 'gestoriaBanco'];
     case 'cashflowAntesAmortizar':
-      return ['beneficioAntesImpuestos'];
+      // Resaltar campos que componen beneficioAntesImpuestos
+      return ['alquilerMensual', 'comunidadAnual', 'ibi', 'seguroHogar', 'seguroImpago', 'basura', 'agua', 'electricidad', 'gas', 'internet', 'mantenimiento', 'periodoSinAlquilar', 'seguroVidaHipoteca'];
     case 'cashflowFinal':
-      return ['beneficioAntesImpuestos', 'capitalAmortizadoAnual'];
+      // Resaltar campos que componen beneficioAntesImpuestos y capitalAmortizadoAnual
+      return ['alquilerMensual', 'comunidadAnual', 'ibi', 'seguroHogar', 'seguroImpago', 'basura', 'agua', 'electricidad', 'gas', 'internet', 'mantenimiento', 'periodoSinAlquilar', 'seguroVidaHipoteca', 'capitalAmortizadoAnual', 'importeHipoteca', 'tipoInteres', 'plazoHipoteca'];
     case 'roceAntes':
-      return ['beneficioAntesImpuestos', 'capitalPropio'];
+      // Resaltar campos que componen beneficioAntesImpuestos y capitalPropio (totalCompra e importeHipoteca)
+      return ['alquilerMensual', 'comunidadAnual', 'ibi', 'seguroHogar', 'seguroImpago', 'basura', 'agua', 'electricidad', 'gas', 'internet', 'mantenimiento', 'periodoSinAlquilar', 'seguroVidaHipoteca', 'precioCompra', 'reforma', 'notaria', 'registro', 'comisionInmobiliaria', 'otrosGastosCompra', 'totalITP', 'tasacion', 'gestoriaBanco', 'importeHipoteca'];
     case 'roceFinal':
-      return ['cashflowFinal', 'capitalPropio'];
+      // Resaltar campos que componen cashflowFinal y capitalPropio
+      return ['alquilerMensual', 'comunidadAnual', 'ibi', 'seguroHogar', 'seguroImpago', 'basura', 'agua', 'electricidad', 'gas', 'internet', 'mantenimiento', 'periodoSinAlquilar', 'seguroVidaHipoteca', 'capitalAmortizadoAnual', 'importeHipoteca', 'tipoInteres', 'plazoHipoteca', 'precioCompra', 'reforma', 'notaria', 'registro', 'comisionInmobiliaria', 'otrosGastosCompra', 'totalITP', 'tasacion', 'gestoriaBanco'];
     default:
       return [];
   }
@@ -473,23 +454,111 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
     setLocalOverrides(card.overrides ?? {});
   }, [card.overrides]);
 
+  // Aplicar defaults de gastos de financiación cuando hay hipoteca pero no hay overrides explícitos
+  useEffect(() => {
+    if (!editable || !onOverrideChange) return;
+    if (!card.currentInput.hayHipoteca) return;
+    
+    const precioCompra = Number(card.currentInput.precioCompra) || 0;
+    if (precioCompra === 0) return;
+    
+    // Verificar overrides originales de la tarjeta, no los locales (para evitar bucles)
+    const originalOverrides = card.overrides ?? {};
+    const currentOverrides = localOverridesRef.current;
+    const needsUpdate: Partial<MotorInputOptionals> = {};
+    let hasChanges = false;
+    
+    // Solo aplicar defaults si no hay overrides explícitos (ni en card.overrides ni en localOverrides)
+    if (!('tasacion' in originalOverrides) && !('tasacion' in currentOverrides)) {
+      needsUpdate.tasacion = 400;
+      hasChanges = true;
+    }
+    if (!('gestoriaBanco' in originalOverrides) && !('gestoriaBanco' in currentOverrides)) {
+      needsUpdate.gestoriaBanco = 400;
+      hasChanges = true;
+    }
+    if (!('seguroVidaHipoteca' in originalOverrides) && !('seguroVidaHipoteca' in currentOverrides)) {
+      needsUpdate.seguroVidaHipoteca = 250;
+      hasChanges = true;
+    }
+    
+    if (hasChanges) {
+      const nextOverrides = { ...currentOverrides, ...needsUpdate };
+      localOverridesRef.current = nextOverrides;
+      setLocalOverrides(nextOverrides);
+      // Usar debounce para evitar múltiples llamadas
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        debounceRef.current = null;
+        onOverrideChange(nextOverrides);
+      }, 100);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [card.currentInput.hayHipoteca, card.currentInput.precioCompra, card.overrides, editable]);
+
   const handleOptionalChange = useCallback(
     (field: keyof MotorInputOptionals, value: number | boolean) => {
       if (!onOverrideChange) return;
       const prev = localOverridesRef.current;
       const updates: Partial<MotorInputOptionals> = { [field]: value };
       
+      // Sincronizar Importe hipoteca y Capital propio
+      const totalCompra = Number(resultado.totalCompra);
+      if (field === 'importeHipoteca' && typeof value === 'number' && effective.hayHipoteca) {
+        // Si cambio Importe hipoteca, calculo Capital propio
+        const capitalPropioCalculado = Math.max(0, totalCompra - value);
+        updates.capitalPropio = capitalPropioCalculado;
+      } else if (field === 'capitalPropio' && typeof value === 'number' && effective.hayHipoteca) {
+        // Si cambio Capital propio, calculo Importe hipoteca
+        const importeHipotecaCalculado = Math.max(0, totalCompra - value);
+        updates.importeHipoteca = importeHipotecaCalculado;
+      }
+      
       if (field === 'hayHipoteca' && value === true) {
         const precioCompra = Number(card.currentInput.precioCompra) || 0;
-        const currentImporte = prev.importeHipoteca ?? getEffectiveOptionals({ ...card, overrides: prev }).importeHipoteca;
+        const effective = getEffectiveOptionals({ ...card, overrides: prev });
+        const currentImporte = prev.importeHipoteca ?? effective.importeHipoteca;
         if (precioCompra > 0 && (!currentImporte || currentImporte === 0)) {
-          updates.importeHipoteca = Math.round(precioCompra * 0.8);
+          const importeHipotecaDefault = Math.round(precioCompra * 0.8);
+          updates.importeHipoteca = importeHipotecaDefault;
+          // Calcular capital propio basado en el importe de hipoteca por defecto
+          const totalCompra = Number(resultado.totalCompra);
+          updates.capitalPropio = Math.max(0, totalCompra - importeHipotecaDefault);
+        } else if (currentImporte > 0) {
+          // Si ya hay un importe, calcular capital propio basado en ese importe
+          const totalCompra = Number(resultado.totalCompra);
+          updates.capitalPropio = Math.max(0, totalCompra - currentImporte);
+        }
+        // Aplicar valores por defecto de tipo de interés y plazo si no tienen valores
+        const currentTipoInteres = prev.tipoInteres ?? effective.tipoInteres;
+        if (!currentTipoInteres || currentTipoInteres === 0) {
+          updates.tipoInteres = 3.5;
+        }
+        const currentPlazo = prev.plazoHipoteca ?? effective.plazoHipoteca;
+        if (!currentPlazo || currentPlazo === 0) {
+          updates.plazoHipoteca = 25;
+        }
+        // Aplicar defaults de gastos de financiación si no tienen valores
+        const currentTasacion = prev.tasacion ?? effective.tasacion;
+        if (!currentTasacion || currentTasacion === 0) {
+          updates.tasacion = 400;
+        }
+        const currentGestoria = prev.gestoriaBanco ?? effective.gestoriaBanco;
+        if (!currentGestoria || currentGestoria === 0) {
+          updates.gestoriaBanco = 400;
+        }
+        const currentSeguroVida = prev.seguroVidaHipoteca ?? effective.seguroVidaHipoteca;
+        if (!currentSeguroVida || currentSeguroVida === 0) {
+          updates.seguroVidaHipoteca = 250;
         }
       }
       if (field === 'hayHipoteca' && value === false) {
         updates.importeHipoteca = 0;
         updates.tipoInteres = 0;
         updates.plazoHipoteca = 0;
+        updates.tasacion = 0;
+        updates.gestoriaBanco = 0;
+        updates.seguroVidaHipoteca = 0;
       }
       
       const nextOverrides = { ...prev, ...updates };
@@ -514,206 +583,28 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
         backgroundColor: '#fff',
         position: 'sticky',
         top: 80,
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 'fit-content',
+        overflow: 'visible',
+        maxWidth: '100%',
       }}
     >
-      <div className={isHorizontalLayout ? 'detalle-secciones-container' : ''}>
-        <div className={isHorizontalLayout ? 'detalle-secciones-fila' : ''}>
-        <section style={{ marginBottom: 20 }}>
-        <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 16 }}>Datos básicos</h3>
-        <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '1fr auto', gap: isHorizontalLayout ? '6px 8px' : '6px 16px', fontSize: 14 }}>
-          <dt style={{ fontWeight: 500 }}>Comunidad autónoma</dt>
-          <dd style={{ margin: 0, textAlign: 'right' }}>
-            {card.currentInput.codigoComunidadAutonoma >= 1 && card.currentInput.codigoComunidadAutonoma <= 19
-              ? NOMBRE_COMUNIDAD_POR_CODIGO[card.currentInput.codigoComunidadAutonoma] || '—'
-              : '—'}
-          </dd>
-          <dt style={{ fontWeight: 500 }}>Ciudad</dt>
-          <dd style={{ margin: 0, textAlign: 'right' }}>{card.ciudad || '—'}</dd>
-          <dt style={{ fontWeight: 500 }}>Habitaciones</dt>
-          <dd style={{ margin: 0, textAlign: 'right' }}>{card.habitaciones > 0 ? card.habitaciones : '—'}</dd>
-          <dt style={{ fontWeight: 500 }}>Metros cuadrados</dt>
-          <dd style={{ margin: 0, textAlign: 'right' }}>{card.metrosCuadrados > 0 ? `${card.metrosCuadrados} m²` : '—'}</dd>
-          <dt style={{ fontWeight: 500 }}>Baños</dt>
-          <dd style={{ margin: 0, textAlign: 'right' }}>{card.banos > 0 ? card.banos : '—'}</dd>
-          <dt style={{ fontWeight: 500 }}>Precio compra</dt>
-          <dd style={{ margin: 0, textAlign: 'right' }}>
-            {formatEuro(String(card.currentInput.precioCompra))}
-          </dd>
-          <dt style={{ 
-            fontWeight: 500,
-            backgroundColor: highlightedFields.includes('alquilerMensual') ? '#fff9c4' : 'transparent',
-            padding: highlightedFields.includes('alquilerMensual') ? '4px 8px' : '0',
-            borderRadius: highlightedFields.includes('alquilerMensual') ? '4px' : '0',
-            transition: 'background-color 0.2s ease, padding 0.2s ease',
-          }}>
-            Alquiler mensual
-          </dt>
-          <dd style={{ 
-            margin: 0, 
-            textAlign: 'right',
-            backgroundColor: highlightedFields.includes('alquilerMensual') ? '#fff9c4' : 'transparent',
-            padding: highlightedFields.includes('alquilerMensual') ? '4px 8px' : '0',
-            borderRadius: highlightedFields.includes('alquilerMensual') ? '4px' : '0',
-            transition: 'background-color 0.2s ease, padding 0.2s ease',
-          }}>
-            {formatEuro(String(card.currentInput.alquilerMensual))}
-          </dd>
-        </dl>
-        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-          <Chip
-            label={card.veredictoTitulo}
-            size="small"
-            color={card.estado === 'verde' ? 'success' : card.estado === 'amarillo' ? 'warning' : 'error'}
-            sx={{ fontWeight: 500, fontSize: '0.75rem' }}
-          />
-          {card.url && (
-            <a 
-              href={card.url} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              style={{ 
-                color: '#1976d2', 
-                textDecoration: 'none',
-                fontSize: 13,
-                fontWeight: 500
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-              onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-            >
-              Ver anuncio ↗
-            </a>
-          )}
-        </div>
-      </section>
-
-      <section style={{ marginBottom: 20 }}>
-        <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 16 }}>Métricas clave</h3>
-        <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '1fr auto', gap: isHorizontalLayout ? '6px 8px' : '6px 16px', fontSize: 14 }}>
-          {[
-            { id: 'totalCompra', label: 'Total compra', value: formatEuro(resultado.totalCompra) },
-            { id: 'capitalPropio', label: 'Capital propio', value: formatEuro(resultado.capitalPropio) },
-            { id: 'ingresosAnuales', label: 'Ingresos anuales', value: formatEuro(resultado.ingresosAnuales) },
-            { id: 'gastosAnuales', label: 'Gastos anuales', value: formatEuro(resultado.gastosAnuales) },
-            { id: 'beneficioAntesImpuestos', label: 'Beneficio antes de impuestos', value: formatEuro(resultado.beneficioAntesImpuestos) },
-          ].map(({ id, label, value }) => {
-            const isHighlighted = highlightedFields.includes(id);
-            return (
-              <Fragment key={id}>
-                <dt style={{ 
-                  fontWeight: 500, 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  flexWrap: 'wrap',
-                  backgroundColor: isHighlighted ? '#fff9c4' : 'transparent',
-                  padding: isHighlighted ? '4px 8px' : '0',
-                  borderRadius: isHighlighted ? '4px' : '0',
-                  transition: 'background-color 0.2s ease, padding 0.2s ease',
-                }}>
-                  {label}
-                  <InfoIcon onClick={() => setDefinicionAbierta((k) => (k === id ? null : id))} />
-                </dt>
-                <dd style={{ 
-                  margin: 0, 
-                  textAlign: 'right',
-                  backgroundColor: isHighlighted ? '#fff9c4' : 'transparent',
-                  padding: isHighlighted ? '4px 8px' : '0',
-                  borderRadius: isHighlighted ? '4px' : '0',
-                  transition: 'background-color 0.2s ease, padding 0.2s ease',
-                }}>
-                  <Tooltip title="Pulsa para ver la fórmula" placement="left">
-                    <button
-                      type="button"
-                      className="detalle-valor-clickable"
-                      onClick={() => setDesgloseAbierto((k) => (k === id ? null : id))}
-                      aria-label="Ver fórmula del cálculo"
-                      style={{
-                        padding: 0,
-                        border: 'none',
-                        background: 'none',
-                        cursor: 'pointer',
-                        font: 'inherit',
-                        color: 'inherit',
-                      }}
-                    >
-                      {value}
-                    </button>
-                  </Tooltip>
-                </dd>
-              </Fragment>
-            );
-          })}
-        </dl>
-      </section>
-
-      <section>
-        <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 16 }}>Rentabilidades</h3>
-        <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '1fr auto', gap: isHorizontalLayout ? '6px 8px' : '6px 16px', fontSize: 14 }}>
-          {[
-            { id: 'rentabilidadBruta', label: 'Rentabilidad bruta', value: formatPercent(resultado.rentabilidadBruta) },
-            { id: 'rentabilidadNeta', label: 'Rentabilidad neta', value: formatPercent(resultado.rentabilidadNeta) },
-            { id: 'cashflowAntesAmortizar', label: 'Cashflow antes de amortizar deuda', value: formatEuro(resultado.cashflowAntesAmortizar) },
-            { id: 'cashflowFinal', label: 'Cashflow final', value: formatEuro(resultado.cashflowFinal) },
-            { id: 'roceAntes', label: 'ROCE antes de amortizar deuda', value: formatPercent(resultado.roceAntes) },
-            { id: 'roceFinal', label: 'ROCE final', value: formatPercent(resultado.roceFinal) },
-          ].map(({ id, label, value }) => {
-            const isHighlighted = highlightedFields.includes(id);
-            return (
-              <Fragment key={id}>
-                <dt style={{ 
-                  fontWeight: 500, 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  flexWrap: 'wrap',
-                  backgroundColor: isHighlighted ? '#fff9c4' : 'transparent',
-                  padding: isHighlighted ? '4px 8px' : '0',
-                  borderRadius: isHighlighted ? '4px' : '0',
-                  transition: 'background-color 0.2s ease, padding 0.2s ease',
-                }}>
-                  {label}
-                  <InfoIcon onClick={() => setDefinicionAbierta((k) => (k === id ? null : id))} />
-                </dt>
-                <dd style={{ 
-                  margin: 0, 
-                  textAlign: 'right',
-                  backgroundColor: isHighlighted ? '#fff9c4' : 'transparent',
-                  padding: isHighlighted ? '4px 8px' : '0',
-                  borderRadius: isHighlighted ? '4px' : '0',
-                  transition: 'background-color 0.2s ease, padding 0.2s ease',
-                }}>
-                  <Tooltip title="Pulsa para ver la fórmula" placement="left">
-                    <button
-                      type="button"
-                      className="detalle-valor-clickable"
-                      onClick={() => setDesgloseAbierto((k) => (k === id ? null : id))}
-                      aria-label="Ver fórmula del cálculo"
-                      style={{
-                        padding: 0,
-                        border: 'none',
-                        background: 'none',
-                        cursor: 'pointer',
-                        font: 'inherit',
-                        color: 'inherit',
-                      }}
-                    >
-                      {value}
-                    </button>
-                  </Tooltip>
-                </dd>
-              </Fragment>
-            );
-          })}
-        </dl>
-      </section>
-
-        </div>
 
       {/* Panel Gastos y Financiación: fila completa debajo (solo si editable) */}
       {editable && (
         <section className="detalle-gastos-full" style={{ marginBottom: 20 }}>
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, auto)' }, gap: 3, border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 2 }}>
+          <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', flexWrap: { xs: 'wrap', lg: 'nowrap' }, justifyContent: 'flex-start', position: 'relative' }}>
+            <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: { xs: 1, md: 1.5 }, minWidth: { xs: '100%', md: 0 }, maxWidth: { xs: '100%', md: 'none' }, flex: { xs: '0 0 100%', md: '1 1 auto' }, flexShrink: 0, width: { xs: '100%', md: 'auto' }, boxSizing: 'border-box' }}>
+              <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                Importe Total Compra
+                <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 'auto' }}>
+                  {formatEuro(resultado.totalCompra)}
+                </Typography>
+              </Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(2, 1fr)', lg: 'repeat(3, auto)' }, gap: { xs: 1.5, md: 2, lg: 3 }, columnGap: { xs: 1, md: 1.5, lg: 3 } }}>
             {/* Columna 1 - Inmueble */}
-            <Box>
+            <Box sx={{ gridColumn: { xs: '1 / -1', md: 'auto' } }}>
               {(() => {
                 const precioCompra = Number(card.currentInput.precioCompra) || 0;
                 const reforma = effective.reforma || 0;
@@ -731,7 +622,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                   </Typography>
                 );
               })()}
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: '1fr' }, gap: { xs: 1.25, md: 1.5 }, columnGap: { xs: 0.5, md: 1.5 }, rowGap: { xs: 2, md: 2 } }}>
                 {(() => {
                   const isPrecioCompraHighlighted = highlightedFields.includes('precioCompra');
                   const isReformaHighlighted = highlightedFields.includes('reforma');
@@ -747,7 +638,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                         borderRadius: isPrecioCompraHighlighted ? '4px' : '0',
                         transition: 'background-color 0.2s ease, padding 0.2s ease',
                       }}>
-                        <TextField type="number" label="Precio compra" value={card.currentInput.precioCompra || ''} disabled size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="precioCompra" />
+                        <TextField type="number" label="Precio compra" value={card.currentInput.precioCompra || ''} disabled size="small" inputProps={{ min: 0 }} sx={{ width: '100%', '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} id="precioCompra" />
                       </Box>
                       <Box sx={{ 
                         backgroundColor: isReformaHighlighted ? '#fff9c4' : 'transparent',
@@ -755,7 +646,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                         borderRadius: isReformaHighlighted ? '4px' : '0',
                         transition: 'background-color 0.2s ease, padding 0.2s ease',
                       }}>
-                        <TextField type="number" label="Reforma" value={effective.reforma || ''} onChange={(e) => handleOptionalChange('reforma', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="reforma" />
+                        <TextField type="number" label="Reforma" value={effective.reforma || ''} onChange={(e) => handleOptionalChange('reforma', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ width: '100%', '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} id="reforma" />
                       </Box>
                       <Box sx={{ 
                         backgroundColor: isNotariaHighlighted ? '#fff9c4' : 'transparent',
@@ -763,7 +654,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                         borderRadius: isNotariaHighlighted ? '4px' : '0',
                         transition: 'background-color 0.2s ease, padding 0.2s ease',
                       }}>
-                        <TextField type="number" label="Notaría" value={effective.notaria || ''} onChange={(e) => handleOptionalChange('notaria', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="notaria" />
+                        <TextField type="number" label="Notaría" value={effective.notaria || ''} onChange={(e) => handleOptionalChange('notaria', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ width: '100%', '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} id="notaria" />
                       </Box>
                       <Box sx={{ 
                         backgroundColor: isRegistroHighlighted ? '#fff9c4' : 'transparent',
@@ -771,7 +662,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                         borderRadius: isRegistroHighlighted ? '4px' : '0',
                         transition: 'background-color 0.2s ease, padding 0.2s ease',
                       }}>
-                        <TextField type="number" label="Registro" value={effective.registro || ''} onChange={(e) => handleOptionalChange('registro', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="registro" />
+                        <TextField type="number" label="Registro" value={effective.registro || ''} onChange={(e) => handleOptionalChange('registro', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ width: '100%', '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} id="registro" />
                       </Box>
                       <Box sx={{ 
                         backgroundColor: isComisionHighlighted ? '#fff9c4' : 'transparent',
@@ -779,7 +670,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                         borderRadius: isComisionHighlighted ? '4px' : '0',
                         transition: 'background-color 0.2s ease, padding 0.2s ease',
                       }}>
-                        <TextField type="number" label="Comisión inmob." value={effective.comisionInmobiliaria || ''} onChange={(e) => handleOptionalChange('comisionInmobiliaria', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="comisionInmobiliaria" />
+                        <TextField type="number" label="Comisión inmob." value={effective.comisionInmobiliaria || ''} onChange={(e) => handleOptionalChange('comisionInmobiliaria', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ width: '100%', '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} id="comisionInmobiliaria" />
                       </Box>
                       <Box sx={{ 
                         backgroundColor: isOtrosGastosHighlighted ? '#fff9c4' : 'transparent',
@@ -787,7 +678,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                         borderRadius: isOtrosGastosHighlighted ? '4px' : '0',
                         transition: 'background-color 0.2s ease, padding 0.2s ease',
                       }}>
-                        <TextField type="number" label="Otros gastos" value={effective.otrosGastosCompra || ''} onChange={(e) => handleOptionalChange('otrosGastosCompra', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="otrosGastosCompra" />
+                        <TextField type="number" label="Otros gastos" value={effective.otrosGastosCompra || ''} onChange={(e) => handleOptionalChange('otrosGastosCompra', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ width: '100%', '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} id="otrosGastosCompra" />
                       </Box>
                     </>
                   );
@@ -806,27 +697,27 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                 : '—';
               
               return (
-                <Box>
+                <Box sx={{ width: { xs: '100%', md: 'auto' } }}>
                   <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
                     Impuestos
                     <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 'auto' }}>
                       {totalITP > 0 ? formatEuro(String(totalITP)) : formatEuro('0')}
                     </Typography>
                   </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 2 } }}>
                     <TextField 
                       label="Comunidad autónoma" 
                       value={nombreComunidad} 
                       disabled 
                       size="small" 
-                      sx={{ maxWidth: 150 }} 
+                      sx={{ maxWidth: { xs: '100%', md: 150 }, width: '100%', '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} 
                     />
                     <TextField 
                       label="% ITP" 
                       value={porcentajeITP > 0 ? `${porcentajeITP}%` : '—'} 
                       disabled 
                       size="small" 
-                      sx={{ maxWidth: 150 }} 
+                      sx={{ maxWidth: { xs: '100%', md: 150 }, width: '100%', '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} 
                     />
                     {(() => {
                       const isTotalITPHighlighted = highlightedFields.includes('totalITP');
@@ -842,7 +733,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                             value={totalITP > 0 ? formatEuro(String(totalITP)) : '—'} 
                             disabled 
                             size="small" 
-                            sx={{ maxWidth: 150 }} 
+                            sx={{ maxWidth: { xs: '100%', md: 130 }, width: '100%', '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} 
                             id="totalITP"
                           />
                         </Box>
@@ -853,16 +744,142 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
               );
             })()}
             
-            {/* Columna 3 - Gastos Anuales */}
-            <Box>
-              <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                Gastos Anuales
+            {/* Columna 3 - Gastos Financiación */}
+            {(() => {
+              // Obtener valores efectivos, asegurando que se muestren los defaults cuando hay hipoteca
+              const tasacion = effective.tasacion ?? 0;
+              const gestoriaBanco = effective.gestoriaBanco ?? 0;
+              const seguroVidaHipoteca = effective.seguroVidaHipoteca ?? 0;
+              const subtotalGastosFinanciacion = tasacion + gestoriaBanco + seguroVidaHipoteca;
+              return (
+                <Box sx={{ width: { xs: '100%', md: 'auto' } }}>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    G. Financiación
+                    <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 'auto' }}>
+                      {formatEuro(String(subtotalGastosFinanciacion))}
+                    </Typography>
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 2 } }}>
+                    {(() => {
+                      const isTasacionHighlighted = highlightedFields.includes('tasacion');
+                      const isGestoriaHighlighted = highlightedFields.includes('gestoriaBanco');
+                      const isSeguroVidaHighlighted = highlightedFields.includes('seguroVidaHipoteca');
+                      return (
+                        <>
+                          <Box sx={{ 
+                            backgroundColor: isTasacionHighlighted ? '#fff9c4' : 'transparent',
+                            padding: isTasacionHighlighted ? '4px 8px' : '0',
+                            borderRadius: isTasacionHighlighted ? '4px' : '0',
+                            transition: 'background-color 0.2s ease, padding 0.2s ease',
+                          }}>
+                            <TextField 
+                              type="number" 
+                              label="Tasación" 
+                              value={tasacion > 0 ? tasacion : ''} 
+                              onChange={(e) => handleOptionalChange('tasacion', Number(e.target.value) || 0)} 
+                              size="small" 
+                              inputProps={{ min: 0 }} 
+                              sx={{ maxWidth: { xs: '100%', md: 130 }, width: '100%', '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} 
+                              id="tasacion"
+                            />
+                          </Box>
+                          <Box sx={{ 
+                            backgroundColor: isGestoriaHighlighted ? '#fff9c4' : 'transparent',
+                            padding: isGestoriaHighlighted ? '4px 8px' : '0',
+                            borderRadius: isGestoriaHighlighted ? '4px' : '0',
+                            transition: 'background-color 0.2s ease, padding 0.2s ease',
+                          }}>
+                            <TextField 
+                              type="number" 
+                              label="Gestoría" 
+                              value={gestoriaBanco > 0 ? gestoriaBanco : ''} 
+                              onChange={(e) => handleOptionalChange('gestoriaBanco', Number(e.target.value) || 0)} 
+                              size="small" 
+                              inputProps={{ min: 0 }} 
+                              sx={{ maxWidth: { xs: '100%', md: 130 }, width: '100%', '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} 
+                              id="gestoriaBanco"
+                            />
+                          </Box>
+                          <Box sx={{ 
+                            backgroundColor: isSeguroVidaHighlighted ? '#fff9c4' : 'transparent',
+                            padding: isSeguroVidaHighlighted ? '4px 8px' : '0',
+                            borderRadius: isSeguroVidaHighlighted ? '4px' : '0',
+                            transition: 'background-color 0.2s ease, padding 0.2s ease',
+                          }}>
+                            <TextField 
+                              type="number" 
+                              label="Seguro vida" 
+                              value={seguroVidaHipoteca > 0 ? seguroVidaHipoteca : ''} 
+                              onChange={(e) => handleOptionalChange('seguroVidaHipoteca', Number(e.target.value) || 0)} 
+                              size="small" 
+                              inputProps={{ min: 0 }} 
+                              sx={{ maxWidth: { xs: '100%', md: 130 }, width: '100%', '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} 
+                              id="seguroVidaHipoteca"
+                            />
+                          </Box>
+                        </>
+                      );
+                    })()}
+                  </Box>
+                </Box>
+              );
+            })()}
+              </Box>
+            </Box>
+            
+            {/* Panel Beneficios */}
+            <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1.5, ml: { xs: 0, md: 1.5 }, mt: { xs: 1.5, md: 0 }, minWidth: { xs: '100%', md: 0 }, maxWidth: { xs: '100%', md: 'none' }, flex: { xs: '0 0 100%', md: '1 1 auto' }, flexShrink: 0 }}>
+              <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                Beneficios
                 <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 'auto' }}>
-                  {formatEuro(resultado.gastosAnuales)}
+                  {formatEuro(resultado.beneficioAntesImpuestos)}
                 </Typography>
               </Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, auto)' }, gap: 3 }}>
+                {/* Panel Ingresos Anuales */}
+                <Box>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    Ingresos Anuales
+                    <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 'auto' }}>
+                      {formatEuro(resultado.ingresosAnuales)}
+                    </Typography>
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 2 } }}>
+                    {(() => {
+                      const isAlquilerMensualHighlighted = highlightedFields.includes('alquilerMensual');
+                      return (
+                        <Box sx={{ 
+                          backgroundColor: isAlquilerMensualHighlighted ? '#fff9c4' : 'transparent',
+                          padding: isAlquilerMensualHighlighted ? '4px 8px' : '0',
+                          borderRadius: isAlquilerMensualHighlighted ? '4px' : '0',
+                          transition: 'background-color 0.2s ease, padding 0.2s ease',
+                        }}>
+                          <TextField 
+                            type="number" 
+                            label="Alquiler mensual" 
+                            value={card.currentInput.alquilerMensual || ''} 
+                            disabled 
+                            size="small" 
+                            inputProps={{ min: 0 }} 
+                            sx={{ maxWidth: 130 }} 
+                            id="alquilerMensual"
+                          />
+                        </Box>
+                      );
+                    })()}
+                  </Box>
+                </Box>
+                
+                {/* Panel Gastos Anuales */}
+                <Box>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    Gastos Anuales
+                    <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 'auto' }}>
+                      {formatEuro(resultado.gastosAnuales)}
+                    </Typography>
+                  </Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5, rowGap: 2 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {(() => {
                     const isComunidadHighlighted = highlightedFields.includes('comunidadAnual');
                     const isIbiHighlighted = highlightedFields.includes('ibi');
@@ -915,7 +932,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                     );
                   })()}
                 </Box>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {(() => {
                     const isAguaHighlighted = highlightedFields.includes('agua');
                     const isElectricidadHighlighted = highlightedFields.includes('electricidad');
@@ -982,37 +999,27 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                 </Box>
               </Box>
             </Box>
+              </Box>
             </Box>
             
-            {/* Financiación - separado de Gastos */}
-            <Box sx={{ ml: 4, border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 2 }}>
-              <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1, display: 'block' }}>Financiación</Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {/* Financiación y Rentabilidades - en la misma fila */}
+            <Box sx={{ display: 'flex', gap: 1.5, ml: { xs: 0, md: 1.5 }, mt: { xs: 1.5, md: 0 }, alignItems: 'flex-start', flexShrink: 0, flexWrap: { xs: 'wrap', md: 'nowrap' }, minWidth: { xs: '100%', md: 0 }, maxWidth: { xs: '100%', md: 'none' }, flex: { xs: '0 0 100%', md: '1 1 auto' }, width: { xs: '100%', md: 'auto' }, overflow: 'visible' }}>
+              {/* Financiación */}
+              <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1.5, minWidth: { xs: '100%', md: 0 }, maxWidth: { xs: '100%', md: 'none' }, flex: { xs: '0 0 100%', md: '1 1 auto' }, flexShrink: 0, width: { xs: '100%', md: 'auto' }, overflow: 'visible' }}>
+                <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1, display: 'block' }}>Financiación</Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, overflow: 'visible' }}>
                 <FormControlLabel
                   control={<Switch checked={effective.hayHipoteca} onChange={(_, v) => handleOptionalChange('hayHipoteca', v)} />}
                   label="Hay hipoteca"
                 />
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1.5, alignItems: 'start' }}>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                    {(() => {
-                      const tasacion = effective.tasacion || 0;
-                      const gestoriaBanco = effective.gestoriaBanco || 0;
-                      const seguroVidaHipoteca = effective.seguroVidaHipoteca || 0;
-                      const subtotalGastosFinanciacion = tasacion + gestoriaBanco + seguroVidaHipoteca;
-                      return (
-                        <Box sx={{ mb: 0.5, minHeight: 40, display: 'flex', alignItems: 'center' }}>
-                          <Typography variant="caption" sx={{ fontWeight: 600, color: 'transparent', display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                            Gastos Financiación
-                            <Typography component="span" sx={{ fontWeight: 600, ml: 'auto' }}>
-                              {formatEuro(String(subtotalGastosFinanciacion))}
-                            </Typography>
-                          </Typography>
-                        </Box>
-                      );
-                    })()}
-                    {(() => {
-                      const isImporteHipotecaHighlighted = highlightedFields.includes('importeHipoteca');
-                      return (
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: '1fr' }, gap: { xs: 1.25, md: 2 }, columnGap: { xs: 0.5, md: 2 }, rowGap: { xs: 1.25, md: 2 } }}>
+                  {(() => {
+                    const isImporteHipotecaHighlighted = highlightedFields.includes('importeHipoteca');
+                    const totalCompra = Number(resultado.totalCompra);
+                    const importeHipoteca = effective.importeHipoteca || 0;
+                    const porcentajeHipoteca = totalCompra > 0 ? ((importeHipoteca / totalCompra) * 100).toFixed(1) : '0';
+                    return (
+                      <Box>
                         <Box sx={{ 
                           backgroundColor: isImporteHipotecaHighlighted ? '#fff9c4' : 'transparent',
                           padding: isImporteHipotecaHighlighted ? '4px 8px' : '0',
@@ -1021,139 +1028,123 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                         }}>
                           <TextField 
                             type="number" 
-                            label="Importe hipoteca (€)" 
-                            value={effective.hayHipoteca ? (effective.importeHipoteca || '') : 0} 
+                            label="Importe hipoteca (€)"
+                            value={effective.hayHipoteca ? (importeHipoteca || '') : 0} 
                             onChange={(e) => handleOptionalChange('importeHipoteca', Number(e.target.value) || 0)} 
                             disabled={!effective.hayHipoteca}
                             size="small" 
                             inputProps={{ min: 0 }} 
-                            sx={{ maxWidth: 150 }} 
+                            sx={{ width: '100%', maxWidth: { xs: '100%', md: 130 }, '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} 
                             id="importeHipoteca"
                           />
                         </Box>
-                      );
-                    })()}
-                    <TextField 
-                      type="number" 
-                      label="Tipo interés (% anual)" 
-                      value={effective.hayHipoteca ? (effective.tipoInteres || '') : 0} 
-                      onChange={(e) => handleOptionalChange('tipoInteres', Number(e.target.value) || 0)} 
-                      disabled={!effective.hayHipoteca}
-                      size="small" 
-                      inputProps={{ min: 0, step: 0.1 }} 
-                      sx={{ maxWidth: 150 }} 
-                    />
-                    <TextField 
-                      type="number" 
-                      label="Plazo (años)" 
-                      value={effective.hayHipoteca ? (effective.plazoHipoteca || '') : 0} 
-                      onChange={(e) => handleOptionalChange('plazoHipoteca', Number(e.target.value) || 0)} 
-                      disabled={!effective.hayHipoteca}
-                      size="small" 
-                      inputProps={{ min: 0 }} 
-                      sx={{ maxWidth: 150 }} 
-                    />
-                  </Box>
-                  
-                  {/* Gastos Financiación - a la derecha */}
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                    {(() => {
-                      const tasacion = effective.tasacion || 0;
-                      const gestoriaBanco = effective.gestoriaBanco || 0;
-                      const seguroVidaHipoteca = effective.seguroVidaHipoteca || 0;
-                      const subtotalGastosFinanciacion = tasacion + gestoriaBanco + seguroVidaHipoteca;
-                      return (
-                        <Box sx={{ mb: 0.5, minHeight: 40, display: 'flex', alignItems: 'center' }}>
-                          <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                            Gastos Financiación
-                            <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 'auto' }}>
-                              {formatEuro(String(subtotalGastosFinanciacion))}
-                            </Typography>
+                        {effective.hayHipoteca && importeHipoteca > 0 && (
+                          <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', mt: 0.5, display: 'block' }}>
+                            {porcentajeHipoteca}% del total compra
                           </Typography>
+                        )}
+                      </Box>
+                    );
+                  })()}
+                  {(() => {
+                    const isCapitalPropioHighlighted = highlightedFields.includes('capitalPropio');
+                    const totalCompra = Number(resultado.totalCompra);
+                    const capitalPropioCalculado = totalCompra - (effective.importeHipoteca || 0);
+                    const capitalPropioValue = effective.capitalPropio ?? capitalPropioCalculado;
+                    const porcentajeCapitalPropio = totalCompra > 0 ? ((capitalPropioValue / totalCompra) * 100).toFixed(1) : '0';
+                    return (
+                      <Box>
+                        <Box sx={{ 
+                          backgroundColor: isCapitalPropioHighlighted ? '#fff9c4' : 'transparent',
+                          padding: isCapitalPropioHighlighted ? '4px 8px' : '0',
+                          borderRadius: isCapitalPropioHighlighted ? '4px' : '0',
+                          transition: 'background-color 0.2s ease, padding 0.2s ease',
+                        }}>
+                          <TextField 
+                            type="number" 
+                            label="Capital propio (€)"
+                            value={effective.hayHipoteca ? (capitalPropioValue || '') : ''} 
+                            onChange={(e) => handleOptionalChange('capitalPropio', Number(e.target.value) || 0)} 
+                            disabled={!effective.hayHipoteca}
+                            size="small" 
+                            inputProps={{ min: 0 }} 
+                            sx={{ width: '100%', maxWidth: { xs: '100%', md: 130 }, '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} 
+                            id="capitalPropio"
+                          />
                         </Box>
-                      );
-                    })()}
-                    {(() => {
-                      const isTasacionHighlighted = highlightedFields.includes('tasacion');
-                      const isGestoriaHighlighted = highlightedFields.includes('gestoriaBanco');
-                      const isSeguroVidaHighlighted = highlightedFields.includes('seguroVidaHipoteca');
-                      return (
-                        <>
-                          <Box sx={{ 
-                            backgroundColor: isTasacionHighlighted ? '#fff9c4' : 'transparent',
-                            padding: isTasacionHighlighted ? '4px 8px' : '0',
-                            borderRadius: isTasacionHighlighted ? '4px' : '0',
-                            transition: 'background-color 0.2s ease, padding 0.2s ease',
-                          }}>
-                            <TextField 
-                              type="number" 
-                              label="Tasación" 
-                              value={effective.tasacion || ''} 
-                              onChange={(e) => handleOptionalChange('tasacion', Number(e.target.value) || 0)} 
-                              size="small" 
-                              inputProps={{ min: 0 }} 
-                              sx={{ maxWidth: 150 }} 
-                              id="tasacion"
-                            />
-                          </Box>
-                          <Box sx={{ 
-                            backgroundColor: isGestoriaHighlighted ? '#fff9c4' : 'transparent',
-                            padding: isGestoriaHighlighted ? '4px 8px' : '0',
-                            borderRadius: isGestoriaHighlighted ? '4px' : '0',
-                            transition: 'background-color 0.2s ease, padding 0.2s ease',
-                          }}>
-                            <TextField 
-                              type="number" 
-                              label="Gestoría" 
-                              value={effective.gestoriaBanco || ''} 
-                              onChange={(e) => handleOptionalChange('gestoriaBanco', Number(e.target.value) || 0)} 
-                              size="small" 
-                              inputProps={{ min: 0 }} 
-                              sx={{ maxWidth: 150 }} 
-                              id="gestoriaBanco"
-                            />
-                          </Box>
-                          <Box sx={{ 
-                            backgroundColor: isSeguroVidaHighlighted ? '#fff9c4' : 'transparent',
-                            padding: isSeguroVidaHighlighted ? '4px 8px' : '0',
-                            borderRadius: isSeguroVidaHighlighted ? '4px' : '0',
-                            transition: 'background-color 0.2s ease, padding 0.2s ease',
-                          }}>
-                            <TextField 
-                              type="number" 
-                              label="Seguro vida" 
-                              value={effective.seguroVidaHipoteca || ''} 
-                              onChange={(e) => handleOptionalChange('seguroVidaHipoteca', Number(e.target.value) || 0)} 
-                              size="small" 
-                              inputProps={{ min: 0 }} 
-                              sx={{ maxWidth: 150 }} 
-                              id="seguroVidaHipoteca"
-                            />
-                          </Box>
-                        </>
-                      );
-                    })()}
-                  </Box>
-              </Box>
+                        {effective.hayHipoteca && capitalPropioValue > 0 && (
+                          <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', mt: 0.5, display: 'block' }}>
+                            {porcentajeCapitalPropio}% del total compra
+                          </Typography>
+                        )}
+                      </Box>
+                    );
+                  })()}
+                  {(() => {
+                    const isTipoInteresHighlighted = highlightedFields.includes('tipoInteres');
+                    const tipoInteresValue = effective.hayHipoteca ? (effective.tipoInteres ?? (localOverrides.tipoInteres ?? 0)) : 0;
+                    const tipoInteresNum = typeof tipoInteresValue === 'number' ? tipoInteresValue : Number(tipoInteresValue) || 0;
+                    return (
+                      <Box sx={{ 
+                        backgroundColor: isTipoInteresHighlighted ? '#fff9c4' : 'transparent',
+                        padding: isTipoInteresHighlighted ? '4px 8px' : '0',
+                        borderRadius: isTipoInteresHighlighted ? '4px' : '0',
+                        transition: 'background-color 0.2s ease, padding 0.2s ease',
+                      }}>
+                        <TextField 
+                          type="number" 
+                          label="Tipo interés (% anual)" 
+                          value={effective.hayHipoteca && tipoInteresNum > 0 ? tipoInteresNum : ''} 
+                          onChange={(e) => handleOptionalChange('tipoInteres', Number(e.target.value) || 0)} 
+                          disabled={!effective.hayHipoteca}
+                          size="small" 
+                          inputProps={{ min: 0, step: 0.1 }} 
+                          sx={{ width: '100%', maxWidth: { xs: '100%', md: 130 }, '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} 
+                          id="tipoInteres"
+                        />
+                      </Box>
+                    );
+                  })()}
+                  {(() => {
+                    const isPlazoHipotecaHighlighted = highlightedFields.includes('plazoHipoteca');
+                    const plazoHipotecaValue = effective.hayHipoteca ? (effective.plazoHipoteca ?? (localOverrides.plazoHipoteca ?? 0)) : 0;
+                    const plazoHipotecaNum = typeof plazoHipotecaValue === 'number' ? plazoHipotecaValue : Number(plazoHipotecaValue) || 0;
+                    return (
+                      <Box sx={{ 
+                        backgroundColor: isPlazoHipotecaHighlighted ? '#fff9c4' : 'transparent',
+                        padding: isPlazoHipotecaHighlighted ? '4px 8px' : '0',
+                        borderRadius: isPlazoHipotecaHighlighted ? '4px' : '0',
+                        transition: 'background-color 0.2s ease, padding 0.2s ease',
+                      }}>
+                        <TextField 
+                          type="number" 
+                          label="Plazo (años)" 
+                          value={effective.hayHipoteca && plazoHipotecaNum > 0 ? plazoHipotecaNum : ''} 
+                          onChange={(e) => handleOptionalChange('plazoHipoteca', Number(e.target.value) || 0)} 
+                          disabled={!effective.hayHipoteca}
+                          size="small" 
+                          inputProps={{ min: 0 }} 
+                          sx={{ width: '100%', maxWidth: { xs: '100%', md: 130 }, '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} 
+                          id="plazoHipoteca"
+                        />
+                      </Box>
+                    );
+                  })()}
+                </Box>
                 {effective.hayHipoteca && effective.importeHipoteca > 0 && effective.tipoInteres > 0 && effective.plazoHipoteca > 0 && (() => {
                   const datosHipoteca = calcularDatosHipoteca(
                     effective.importeHipoteca,
                     effective.tipoInteres,
                     effective.plazoHipoteca
                   );
+                  const totalOperacionConIntereses = Number(resultado.totalCompra) + datosHipoteca.interesesTotales;
                   const isCapitalAmortizadoHighlighted = highlightedFields.includes('capitalAmortizadoAnual');
                   return (
-                    <Box sx={{ mt: 1, pt: 1.5, borderTop: '1px solid', borderColor: 'divider', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Box sx={{ mt: 1, pt: 1.5, borderTop: '1px solid', borderColor: 'divider', display: 'flex', flexDirection: 'column', gap: 1, overflow: 'visible', width: '100%' }}>
                       <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 0.5 }}>Datos calculados de la hipoteca:</Typography>
-                      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '4px 16px', fontSize: 13 }}>
-                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>Cuota mensual:</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 500, textAlign: 'right' }}>{formatEuro(String(datosHipoteca.cuotaMensual))}</Typography>
-                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>Total a devolver:</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 500, textAlign: 'right' }}>{formatEuro(String(datosHipoteca.totalADevolver))}</Typography>
-                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>Intereses totales:</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 500, textAlign: 'right' }}>{formatEuro(String(datosHipoteca.interesesTotales))}</Typography>
-                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>Intereses primer año:</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 500, textAlign: 'right' }}>{formatEuro(String(datosHipoteca.interesesPrimerAnio))}</Typography>
+                      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr) minmax(min-content, max-content)', sm: '1fr auto' }, gap: { xs: '4px 8px', sm: '4px 16px' }, fontSize: 13, width: '100%', overflow: 'visible' }}>
+                        <Typography variant="body2" sx={{ color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>Cuota mensual:</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, textAlign: 'right', whiteSpace: 'nowrap', flexShrink: 0, minWidth: 'fit-content' }}>{formatEuro(String(datosHipoteca.cuotaMensual))}</Typography>
                         <Box sx={{ 
                           gridColumn: '1 / -1',
                           backgroundColor: isCapitalAmortizadoHighlighted ? '#fff9c4' : 'transparent',
@@ -1161,32 +1152,133 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                           borderRadius: isCapitalAmortizadoHighlighted ? '4px' : '0',
                           transition: 'background-color 0.2s ease, padding 0.2s ease',
                           display: 'grid',
-                          gridTemplateColumns: '1fr auto',
-                          gap: '4px 16px',
+                          gridTemplateColumns: { xs: 'minmax(0, 1fr) minmax(min-content, max-content)', sm: '1fr auto' },
+                          gap: { xs: '4px 8px', sm: '4px 16px' },
                         }}>
-                          <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: isCapitalAmortizadoHighlighted ? 600 : 400 }}>Capital amortizado (año):</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 500, textAlign: 'right' }} id="capitalAmortizadoAnual">{formatEuro(String(datosHipoteca.capitalAmortizadoPrimerAnio))}</Typography>
+                          <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: isCapitalAmortizadoHighlighted ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>Capital amortizado (año):</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 500, textAlign: 'right', whiteSpace: 'nowrap', flexShrink: 0, minWidth: 'fit-content' }} id="capitalAmortizadoAnual">{formatEuro(String(datosHipoteca.capitalAmortizadoPrimerAnio))}</Typography>
                         </Box>
+                        <Typography variant="body2" sx={{ color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>Intereses primer año:</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, textAlign: 'right', whiteSpace: 'nowrap', flexShrink: 0, minWidth: 'fit-content' }}>{formatEuro(String(datosHipoteca.interesesPrimerAnio))}</Typography>
+                        <Typography variant="body2" sx={{ color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>Intereses totales:</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, textAlign: 'right', whiteSpace: 'nowrap', flexShrink: 0, minWidth: 'fit-content' }}>{formatEuro(String(datosHipoteca.interesesTotales))}</Typography>
+                        <Typography variant="body2" sx={{ color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>Total a devolver:</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, textAlign: 'right', whiteSpace: 'nowrap', flexShrink: 0, minWidth: 'fit-content' }}>{formatEuro(String(datosHipoteca.totalADevolver))}</Typography>
+                        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>Total operación con intereses:</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap', flexShrink: 0, minWidth: 'fit-content' }}>{formatEuro(String(totalOperacionConIntereses))}</Typography>
                       </Box>
                     </Box>
                   );
                 })()}
               </Box>
+              </Box>
+              
+              {/* Panel Rentabilidades */}
+              <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1.5, minWidth: { xs: '100%', md: 0 }, maxWidth: { xs: '100%', md: 'none' }, flex: { xs: '0 0 100%', md: '1 1 auto' }, flexShrink: 0, width: { xs: '100%', md: 'auto' }, overflow: 'visible' }}>
+                <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1, display: 'block' }}>Rentabilidades</Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, overflow: 'visible', width: '100%' }}>
+                {[
+                  { id: 'rentabilidadBruta', label: 'Rentabilidad bruta', value: formatPercent(resultado.rentabilidadBruta) },
+                  { id: 'rentabilidadNeta', label: 'Rentabilidad neta', value: formatPercent(resultado.rentabilidadNeta) },
+                  { id: 'cashflowAntesAmortizar', label: 'Cashflow antes de amortizar deuda', value: formatEuro(resultado.cashflowAntesAmortizar) },
+                  { id: 'cashflowFinal', label: 'Cashflow final', value: formatEuro(resultado.cashflowFinal) },
+                  { id: 'roceAntes', label: 'ROCE antes de amortizar deuda', value: formatPercent(resultado.roceAntes) },
+                  { id: 'roceFinal', label: 'ROCE final', value: formatPercent(resultado.roceFinal) },
+                ].map(({ id, label, value }) => {
+                  const isHighlighted = highlightedFields.includes(id);
+                  return (
+                    <Box key={id} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      <Box sx={{ 
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        backgroundColor: isHighlighted ? '#fff9c4' : 'transparent',
+                        padding: isHighlighted ? '4px 8px' : '0',
+                        borderRadius: isHighlighted ? '4px' : '0',
+                        transition: 'background-color 0.2s ease, padding 0.2s ease',
+                        gap: 0.5,
+                        width: '100%',
+                        overflow: 'visible',
+                      }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', flex: '1 1 auto', mr: 1, minWidth: 0, overflow: 'hidden' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 500, color: 'text.secondary', fontSize: { xs: 12, sm: 13 }, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {label}
+                          </Typography>
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setDefinicionAbierta((k) => (k === id ? null : id));
+                            }}
+                            aria-label="Ver definición"
+                            sx={{ ml: 0.5, p: 0.25, color: '#666', verticalAlign: 'middle', flexShrink: 0 }}
+                          >
+                            <InfoOutlinedIcon sx={{ fontSize: 18 }} />
+                          </IconButton>
+                        </Box>
+                        <Typography 
+                          variant="body2" 
+                          sx={{ 
+                            fontWeight: 500, 
+                            color: 'text.primary',
+                            fontSize: { xs: 12, sm: 13 },
+                            cursor: 'pointer',
+                            textDecoration: 'underline',
+                            textDecorationStyle: 'dotted',
+                            textDecorationColor: 'transparent',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0,
+                            flex: '0 0 auto',
+                            '&:hover': {
+                              textDecorationColor: 'inherit',
+                            }
+                          }}
+                          onClick={() => setDesgloseAbierto((k) => (k === id ? null : id))}
+                        >
+                          {value}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                })}
+                </Box>
+              </Box>
             </Box>
           </Box>
         </section>
       )}
-      {editable && (
-        <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.secondary' }}>
-          Valores orientativos basados en medias habituales en España. Puedes modificarlos.
-        </Typography>
-      )}
-      {hasOverrides && onRestoreDefaults && (
-        <Button startIcon={<RestoreIcon />} onClick={onRestoreDefaults} size="small" sx={{ mt: 1, mb: 2 }} variant="outlined">
-          Restaurar valores por defecto
-        </Button>
-      )}
-      </div>
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: { xs: 'flex-start', md: 'space-between' }, alignItems: { xs: 'flex-start', md: 'center' }, gap: { xs: 1.5, md: 2 }, mt: 'auto', mb: 0, pt: 2 }}>
+        {editable && (
+          <Typography variant="caption" sx={{ color: 'text.secondary', flex: { xs: 'none', md: 1 }, textAlign: { xs: 'left', md: 'left' } }}>
+            Valores orientativos basados en medias habituales en España. Puedes modificarlos.
+          </Typography>
+        )}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {card.url && (
+            <a 
+              href={card.url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ 
+                color: '#1976d2', 
+                textDecoration: 'none',
+                fontSize: 13,
+                fontWeight: 500,
+                whiteSpace: 'nowrap'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+              onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+            >
+              Ver anuncio ↗
+            </a>
+          )}
+          {hasOverrides && onRestoreDefaults && (
+            <Button startIcon={<RestoreIcon />} onClick={onRestoreDefaults} size="small" variant="outlined" sx={{ whiteSpace: 'nowrap' }}>
+              Restaurar valores por defecto
+            </Button>
+          )}
+        </Box>
+      </Box>
 
       {/* Popover emergente: por encima del contenido, sin desplazar */}
       {definicionAbierta && (

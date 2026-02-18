@@ -9,6 +9,7 @@ export interface MotorInputOptionals {
   // Financiación
   hayHipoteca: boolean;
   importeHipoteca: number;
+  capitalPropio: number; // Capital propio invertido (Total compra - Importe hipoteca)
   tipoInteres: number;
   plazoHipoteca: number;
   // Gastos de compra (€)
@@ -42,6 +43,7 @@ export interface MotorInputOptionals {
 export const DEFAULT_PANEL_OPTIONALS: MotorInputOptionals = {
   hayHipoteca: false,
   importeHipoteca: 0, // Se calcula como precioCompra * 0.8 si hayHipoteca
+  capitalPropio: 0, // Se calcula como Total compra - Importe hipoteca
   tipoInteres: 3.5,
   plazoHipoteca: 25,
   notaria: 0, // Se calcula según precioCompra
