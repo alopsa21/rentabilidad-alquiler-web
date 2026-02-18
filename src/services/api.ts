@@ -1,6 +1,8 @@
 import type { FormularioRentabilidadState } from '../types/formulario';
 import type { RentabilidadApiResponse, RentabilidadApiError } from '../types/api';
 import type { IdealistaAutofill } from '../types/autofill';
+import type { AnalisisCard } from '../types/analisis';
+import { getEffectiveOptionals } from '../types/panelDefaults';
 
 export const getApiUrl = (): string => {
   const url = import.meta.env.VITE_API_URL;
@@ -47,6 +49,58 @@ function buildRentabilidadBody(state: FormularioRentabilidadState): Record<strin
   }
 
   return body;
+}
+
+/**
+ * Construye el body para POST /rentabilidad a partir de una tarjeta.
+ * Merge: defaults globales + currentInput + card.overrides (ganan los overrides).
+ */
+export function buildRentabilidadBodyFromCard(card: AnalisisCard): Record<string, unknown> {
+  const input = card.currentInput;
+  const optionals = getEffectiveOptionals(card);
+  return {
+    precioCompra: input.precioCompra,
+    codigoComunidadAutonoma: input.codigoComunidadAutonoma,
+    alquilerMensual: input.alquilerMensual,
+    ...optionals,
+  };
+}
+
+/**
+ * Llama a la API POST /rentabilidad con el body mergeado de la tarjeta (defaults + currentInput + overrides).
+ */
+export async function calcularRentabilidadApiForCard(
+  card: AnalisisCard
+): Promise<RentabilidadApiResponse> {
+  const body = buildRentabilidadBodyFromCard(card);
+  const baseUrl = getApiUrl();
+  const url = `${baseUrl}/rentabilidad`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const err = data as RentabilidadApiError;
+      throw new Error(err?.message || `Error ${response.status}: ${response.statusText}`);
+    }
+    return data as RentabilidadApiResponse;
+  } catch (err) {
+    if (err instanceof TypeError && err.message.includes('fetch')) {
+      const hostname = window.location.hostname;
+      let errorMessage = `No se puede conectar con la API en ${baseUrl}.`;
+      if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+        errorMessage += `\n\nVerifica que la API esté corriendo y escuchando en 0.0.0.0:3000`;
+      } else {
+        errorMessage += '\n\nVerifica que el servidor de la API esté corriendo.';
+      }
+      throw new Error(errorMessage);
+    }
+    throw err;
+  }
 }
 
 /**

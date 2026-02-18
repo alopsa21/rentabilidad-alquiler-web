@@ -3,6 +3,7 @@ import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
 import type { AnalisisCard } from '../types/analisis';
 import type { RentabilidadApiResponse } from '../types/api';
+import type { MotorInputOptionals } from '../types/panelDefaults';
 import { DetalleAnalisis } from './DetalleAnalisis';
 
 interface ModalDetalleProps {
@@ -10,9 +11,11 @@ interface ModalDetalleProps {
   resultado: RentabilidadApiResponse;
   isOpen: boolean;
   onClose: () => void;
+  onOverrideChange?: (overrides: Partial<MotorInputOptionals>) => void;
+  onRestoreDefaults?: () => void;
 }
 
-export function ModalDetalle({ card, resultado, isOpen, onClose }: ModalDetalleProps) {
+export function ModalDetalle({ card, resultado, isOpen, onClose, onOverrideChange, onRestoreDefaults }: ModalDetalleProps) {
   // Cerrar con tecla Escape
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -92,7 +95,7 @@ export function ModalDetalle({ card, resultado, isOpen, onClose }: ModalDetalleP
 
         {/* Contenido del detalle */}
         <div style={{ padding: '20px 16px 40px', boxSizing: 'border-box', maxWidth: '100%', overflow: 'hidden' }}>
-          <DetalleAnalisis card={card} resultado={resultado} />
+          <DetalleAnalisis card={card} resultado={resultado} onOverrideChange={onOverrideChange} onRestoreDefaults={onRestoreDefaults} />
         </div>
       </div>
 

@@ -7,6 +7,7 @@
 import type { AnalisisCard } from '../types/analisis';
 import type { RentabilidadApiResponse } from '../types/api';
 import type { FormularioRentabilidadState } from '../types/formulario';
+import type { MotorInputOptionals } from '../types/panelDefaults';
 
 const STORAGE_KEY = 'rentabilidad-alquiler:cards';
 const STORAGE_VERSION = 2;
@@ -47,6 +48,7 @@ interface PersistedCard {
   createdAt?: string; // Opcional para compatibilidad con versiones anteriores
   isFavorite?: boolean; // Opcional para compatibilidad con versiones anteriores
   notes?: string;
+  overrides?: Partial<MotorInputOptionals>; // Overrides del panel de detalle por anuncio
 }
 
 /**
@@ -82,6 +84,7 @@ function cardToPersisted(
     createdAt: createdAt || new Date().toISOString(),
     isFavorite: card.isFavorite,
     notes: card.notes ?? '',
+    overrides: card.overrides,
   };
 }
 
@@ -108,6 +111,7 @@ function persistedToCard(persisted: PersistedCard): AnalisisCard {
     originalCiudad: persisted.originalCiudad ?? persisted.ciudad,
     originalInput: persisted.originalInput as FormularioRentabilidadState,
     currentInput: persisted.currentInput as FormularioRentabilidadState,
+    overrides: persisted.overrides,
     isFavorite: persisted.isFavorite ?? false,
     notes: persisted.notes ?? '',
   };

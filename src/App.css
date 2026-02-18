@@ -318,8 +318,16 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-/* Layout horizontal: mostrar secciones en fila */
+/* Layout horizontal: primera fila (Datos básicos, Métricas, Rentabilidades, Financiación) en fila; Gastos debajo a ancho completo */
 .detalle-analisis-horizontal .detalle-secciones-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  align-items: stretch;
+  width: 100%;
+}
+
+.detalle-analisis-horizontal .detalle-secciones-fila {
   display: flex;
   flex-direction: row;
   gap: 5rem;
@@ -327,21 +335,27 @@
   width: 100%;
 }
 
-.detalle-analisis-horizontal .detalle-secciones-container > section {
+.detalle-analisis-horizontal .detalle-secciones-fila > section {
   flex: 1;
   margin-bottom: 0 !important;
   min-width: 200px;
 }
 
-.detalle-analisis-horizontal .detalle-secciones-container > section h3 {
+.detalle-analisis-horizontal .detalle-secciones-fila > section h3,
+.detalle-analisis-horizontal .detalle-gastos-full h3 {
   font-size: 14px;
   margin-bottom: 8px;
   margin-top: 0;
 }
 
-.detalle-analisis-horizontal .detalle-secciones-container > section dl {
+.detalle-analisis-horizontal .detalle-secciones-fila > section dl {
   font-size: 13px;
   gap: 6px 12px !important;
+}
+
+.detalle-analisis-horizontal .detalle-gastos-full {
+  width: 100%;
+  margin-top: 1.5rem;
 }
 
 
@@ -846,6 +860,93 @@
 
   .MuiTextField-root .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
     border-color: #777 !important;
+  }
+
+  /* Acordeones en panel de detalle (Financiación y Gastos) */
+  .detalle-analisis .MuiAccordion-root {
+    background-color: #2d2d2d !important;
+    border-color: #444 !important;
+  }
+
+  .detalle-analisis .MuiAccordionSummary-root {
+    color: #e4e4e4 !important;
+  }
+
+  .detalle-analisis .MuiAccordionSummary-expandIconWrapper {
+    color: #e4e4e4 !important;
+  }
+
+  .detalle-analisis .MuiAccordionDetails-root {
+    color: #e4e4e4 !important;
+  }
+
+  .detalle-analisis .MuiFormControlLabel-label {
+    color: #e4e4e4 !important;
+  }
+
+  .detalle-analisis .MuiSwitch-root .MuiSwitch-switchBase {
+    color: #999 !important;
+  }
+
+  .detalle-analisis .MuiSwitch-root .MuiSwitch-switchBase.Mui-checked {
+    color: #42a5f5 !important;
+  }
+
+  .detalle-analisis .MuiSwitch-root .MuiSwitch-track {
+    background-color: #555 !important;
+  }
+
+  .detalle-analisis .MuiSwitch-root .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track {
+    background-color: #42a5f5 !important;
+  }
+
+  .detalle-analisis .MuiTextField-root .MuiOutlinedInput-root {
+    background-color: #3d3d3d !important;
+  }
+
+  .detalle-analisis .MuiTextField-root .MuiOutlinedInput-input {
+    color: #e4e4e4 !important;
+  }
+
+  .detalle-analisis .MuiTextField-root .MuiInputLabel-root {
+    color: #b0b0b0 !important;
+  }
+
+  .detalle-analisis .MuiTextField-root .MuiOutlinedInput-notchedOutline {
+    border-color: #555 !important;
+  }
+
+  .detalle-analisis .MuiTextField-root .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+    border-color: #777 !important;
+  }
+
+  .detalle-analisis .MuiTextField-root .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+    border-color: #42a5f5 !important;
+  }
+
+  .detalle-analisis .MuiButton-outlined {
+    color: #e4e4e4 !important;
+    border-color: #555 !important;
+  }
+
+  .detalle-analisis .MuiButton-outlined:hover {
+    background-color: #3d3d3d !important;
+    border-color: #777 !important;
+  }
+
+  /* Datos calculados de hipoteca en panel de detalle */
+  .detalle-analisis .MuiTypography-caption {
+    color: #b0b0b0 !important;
+  }
+
+  .detalle-analisis .MuiTypography-body2 {
+    color: #e4e4e4 !important;
+  }
+
+  /* Border divider en modo oscuro */
+  .detalle-analisis .MuiBox-root[style*="border-top"],
+  .detalle-analisis .MuiBox-root[style*="borderTop"] {
+    border-color: #444 !important;
   }
 
   .MuiTextField-root .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {

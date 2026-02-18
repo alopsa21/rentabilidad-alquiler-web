@@ -9,11 +9,12 @@ import { ModalDetalle } from './components/ModalDetalle'
 import { ModalNotas } from './components/ModalNotas'
 import { ModalCompartirSelectivo } from './components/ModalCompartirSelectivo'
 import { ModalCompletarCampos } from './components/ModalCompletarCampos'
-import { calcularRentabilidadApi, autofillFromUrlApi } from './services/api'
+import { calcularRentabilidadApi, calcularRentabilidadApiForCard, autofillFromUrlApi } from './services/api'
 import { NOMBRE_COMUNIDAD_POR_CODIGO } from './constants/comunidades'
 import type { RentabilidadApiResponse } from './types/api'
 import type { FormularioRentabilidadState } from './types/formulario'
 import type { AnalisisCard } from './types/analisis'
+import type { MotorInputOptionals } from './types/panelDefaults'
 import type { VeredictoHumano } from './utils/veredicto'
 import { mapResultadosToVerdict } from './utils/veredicto'
 import { loadCards, saveCards, clearCards } from './utils/storage'
@@ -96,7 +97,9 @@ function App() {
   const analisisRef = useRef(analisis)
   const resultadosPorTarjetaRef = useRef(resultadosPorTarjeta)
   const resultadoOriginalPorTarjetaRef = useRef(resultadoOriginalPorTarjeta)
-  
+  /** ID de tarjeta pendiente de recalcular tras actualizar overrides (evita doble llamada en Strict Mode) */
+  const pendingRecalcCardIdRef = useRef<string | null>(null)
+
   // Mantener refs actualizados
   useEffect(() => {
     analisisRef.current = analisis
@@ -852,8 +855,9 @@ function App() {
         return;
       }
       
-      // Todos los campos están completos, calcular rentabilidad
-      const nuevoResultado = await calcularRentabilidadApi(input);
+      // Todos los campos están completos, calcular rentabilidad (merge defaults + currentInput + overrides)
+      const cardForApi: AnalisisCard = { ...tarjetaActual, currentInput: input };
+      const nuevoResultado = await calcularRentabilidadApiForCard(cardForApi);
       const nuevoVeredicto = mapResultadosToVerdict(nuevoResultado);
 
       // Actualizar resultado
@@ -909,6 +913,97 @@ function App() {
       // No mostrar error global, solo en consola para no interrumpir la UX
     }
   }
+
+  /**
+   * Recalcula las métricas de una tarjeta usando la tarjeta completa (incl. overrides del panel).
+   * Usado cuando el usuario edita overrides en el panel de detalle.
+   */
+  const recalcularTarjetaConCard = async (card: AnalisisCard) => {
+    const tarjetaId = card.id;
+    try {
+      const input = card.currentInput;
+      const faltanCamposEnInput =
+        input.precioCompra <= 0 ||
+        input.codigoComunidadAutonoma < 1 ||
+        input.codigoComunidadAutonoma > 19 ||
+        input.alquilerMensual <= 0 ||
+        !card.ciudad ||
+        card.habitaciones <= 0 ||
+        card.metrosCuadrados <= 0 ||
+        card.banos <= 0;
+      if (faltanCamposEnInput) return;
+
+      const nuevoResultado = await calcularRentabilidadApiForCard(card);
+      const nuevoVeredicto = mapResultadosToVerdict(nuevoResultado);
+      setResultadosPorTarjeta((prev) => ({ ...prev, [tarjetaId]: nuevoResultado }));
+
+      const rentNetaRaw = Number(nuevoResultado.rentabilidadNeta);
+      const rentNetaPct =
+        !Number.isNaN(rentNetaRaw) && rentNetaRaw > -1 && rentNetaRaw < 1
+          ? rentNetaRaw * 100
+          : rentNetaRaw;
+
+      setAnalisis((prev) =>
+        prev.map((c) =>
+          c.id === tarjetaId
+            ? {
+                ...c,
+                precioCompra: input.precioCompra,
+                alquilerEstimado: input.alquilerMensual,
+                rentabilidadNetaPct: rentNetaPct,
+                estado: nuevoVeredicto.estado,
+                veredictoTitulo: nuevoVeredicto.titulo,
+                veredictoRazones: nuevoVeredicto.razones,
+              }
+            : c
+        )
+      );
+      setTarjetaActivaId((activaId) => {
+        if (activaId === tarjetaId) {
+          setResultado(nuevoResultado);
+          setVeredictoGlobal(nuevoVeredicto);
+        }
+        return activaId;
+      });
+    } catch (err) {
+      console.error('Error al recalcular tarjeta (overrides):', err);
+    }
+  };
+
+  /**
+   * Actualiza overrides del panel de detalle para una tarjeta. La recalculación se hace en un
+   * useEffect para evitar doble llamada al endpoint (p. ej. por React Strict Mode).
+   */
+  const handleOverrideChange = useCallback((tarjetaId: string, overrides: Partial<MotorInputOptionals>) => {
+    pendingRecalcCardIdRef.current = tarjetaId;
+    setAnalisis((prev) => {
+      const card = prev.find((c) => c.id === tarjetaId);
+      if (!card) return prev;
+      return prev.map((c) => (c.id === tarjetaId ? { ...c, overrides } : c));
+    });
+  }, []);
+
+  /**
+   * Restaura valores por defecto (elimina overrides) de una tarjeta. La recalculación se hace
+   * en un useEffect para evitar doble llamada al endpoint.
+   */
+  const handleRestoreDefaults = useCallback((tarjetaId: string) => {
+    pendingRecalcCardIdRef.current = tarjetaId;
+    setAnalisis((prev) => {
+      const card = prev.find((c) => c.id === tarjetaId);
+      if (!card) return prev;
+      return prev.map((c) => (c.id === tarjetaId ? { ...c, overrides: undefined } : c));
+    });
+  }, []);
+
+  // Recalcular tarjeta tras actualizar overrides (una sola llamada por cambio, fuera del setState)
+  useEffect(() => {
+    const cardId = pendingRecalcCardIdRef.current;
+    if (cardId == null) return;
+    pendingRecalcCardIdRef.current = null;
+    const card = analisis.find((c) => c.id === cardId);
+    if (card) recalcularTarjetaConCard(card);
+  }, [analisis]);
 
   /**
    * Exporta todas las tarjetas a CSV
@@ -1356,6 +1451,8 @@ function App() {
                             card={card}
                             resultado={resultadoParaDetalle}
                             isHorizontalLayout={true}
+                            onOverrideChange={(overrides) => handleOverrideChange(card.id, overrides)}
+                            onRestoreDefaults={() => handleRestoreDefaults(card.id)}
                           />
                         </Suspense>
                       </div>
@@ -1430,6 +1527,8 @@ function App() {
             resultado={resultadosPorTarjeta[tarjetaActiva.id]}
             isOpen={modalAbierto}
             onClose={() => setModalAbierto(false)}
+            onOverrideChange={(overrides) => handleOverrideChange(tarjetaActiva.id, overrides)}
+            onRestoreDefaults={() => handleRestoreDefaults(tarjetaActiva.id)}
           />
         )}
 
