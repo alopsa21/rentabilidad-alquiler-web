@@ -131,7 +131,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [revertPending, setRevertPending] = useState<{ type: 'field'; campo: 'precioCompra' | 'alquilerMensual' | 'codigoComunidadAutonoma' | 'ciudad' } | { type: 'inmueble'; campo: 'habitaciones' | 'metrosCuadrados' | 'banos' } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [isCardHovered, setIsCardHovered] = useState(false);
+  const [, setIsCardHovered] = useState(false);
   const [editingField, setEditingField] = useState<'precioCompra' | 'alquilerMensual' | 'codigoComunidadAutonoma' | 'ciudad' | 'inmueble' | null>(null);
   const [editAllMode, setEditAllMode] = useState(false);
   const [habitacionesInput, setHabitacionesInput] = useState(card.habitaciones > 0 ? card.habitaciones.toString() : '');

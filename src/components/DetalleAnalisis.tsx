@@ -8,6 +8,9 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import RestoreIcon from '@mui/icons-material/Restore';
+import { Decimal } from 'decimal.js';
+import { calcularITP as calcularITPEngine } from 'rentabilidad-alquiler-engine';
+import { calcularHipotecaDesdeInput } from 'rentabilidad-alquiler-engine';
 import type { AnalisisCard } from '../types/analisis';
 import type { RentabilidadApiResponse } from '../types/api';
 import type { MotorInputOptionals } from '../types/panelDefaults';
@@ -67,8 +70,8 @@ const formatRatio = (value: string): string => {
 };
 
 /**
- * Tabla de porcentajes de ITP por comunidad autónoma.
- * Basado en la legislación vigente y en códigos oficiales del INE.
+ * Tabla de porcentajes de ITP por comunidad autónoma (solo para mostrar en UI).
+ * Los cálculos reales se hacen con el engine.
  */
 const PORCENTAJES_ITP: Record<number, number> = {
   1: 7.0,   // Andalucía
@@ -93,20 +96,22 @@ const PORCENTAJES_ITP: Record<number, number> = {
 };
 
 /**
+ * Wrapper para calcularITP del engine que convierte entre number y Decimal.
  * Calcula el ITP (Impuesto de Transmisiones Patrimoniales).
- * ITP a pagar = %ITP(comunidad) × precioCompra
  */
 function calcularITP(precioCompra: number, codigoComunidadAutonoma: number): number {
-  const porcentajeITP = PORCENTAJES_ITP[codigoComunidadAutonoma];
-  if (!porcentajeITP) {
+  try {
+    const itpDecimal = calcularITPEngine(new Decimal(precioCompra), codigoComunidadAutonoma);
+    return itpDecimal.toNumber();
+  } catch {
+    // Si el código no es válido, devolver 0 (comportamiento anterior)
     return 0;
   }
-  return (porcentajeITP / 100) * precioCompra;
 }
 
 /**
- * Calcula los datos de la hipoteca usando la misma lógica del engine.
- * Fórmula PMT: PMT = PV × (r × (1 + r)^n) / ((1 + r)^n - 1)
+ * Wrapper para calcularHipotecaDesdeInput del engine que convierte entre number y Decimal.
+ * Calcula los datos de la hipoteca usando el motor financiero.
  */
 function calcularDatosHipoteca(
   importeHipoteca: number,
@@ -119,57 +124,19 @@ function calcularDatosHipoteca(
   totalADevolver: number;
   interesesTotales: number;
 } {
-  // Tasa de interés mensual
-  const tasaMensual = tipoInteres / 100 / 12;
-  
-  // Número de períodos (meses)
-  const numPeriodos = plazoHipoteca * 12;
-  
-  // (1 + r)^n
-  const unoMasTasa = 1 + tasaMensual;
-  const unoMasTasaElevadoN = Math.pow(unoMasTasa, numPeriodos);
-  
-  // r × (1 + r)^n
-  const numerador = tasaMensual * unoMasTasaElevadoN;
-  
-  // (1 + r)^n - 1
-  const denominador = unoMasTasaElevadoN - 1;
-  
-  // PMT = PV × (numerador / denominador)
-  const cuotaMensual = importeHipoteca * (numerador / denominador);
-  
-  // Simular mes a mes durante 12 meses para calcular intereses y capital del primer año
-  let saldoPendiente = importeHipoteca;
-  let interesesPrimerAnio = 0;
-  let capitalAmortizadoPrimerAnio = 0;
-  
-  for (let mes = 1; mes <= 12; mes++) {
-    // Interés del mes = saldo pendiente × tasa mensual
-    const interesMes = saldoPendiente * tasaMensual;
-    
-    // Amortización del mes = cuota mensual - interés del mes
-    const amortizacionMes = cuotaMensual - interesMes;
-    
-    // Actualizar saldo pendiente
-    saldoPendiente -= amortizacionMes;
-    
-    // Acumular para el primer año
-    interesesPrimerAnio += interesMes;
-    capitalAmortizadoPrimerAnio += amortizacionMes;
-  }
-  
-  // Total a devolver = número de cuotas × cuota mensual
-  const totalADevolver = cuotaMensual * numPeriodos;
-  
-  // Intereses totales = total a devolver - importe de la hipoteca
-  const interesesTotales = totalADevolver - importeHipoteca;
+  const resultado = calcularHipotecaDesdeInput({
+    hayHipoteca: true,
+    importeHipoteca: new Decimal(importeHipoteca),
+    tipoInteres: new Decimal(tipoInteres),
+    plazoHipoteca,
+  });
   
   return {
-    cuotaMensual,
-    interesesPrimerAnio,
-    capitalAmortizadoPrimerAnio,
-    totalADevolver,
-    interesesTotales,
+    cuotaMensual: resultado.cuotaMensual.toNumber(),
+    interesesPrimerAnio: resultado.interesesPrimerAnio.toNumber(),
+    capitalAmortizadoPrimerAnio: resultado.capitalAmortizadoPrimerAnio.toNumber(),
+    totalADevolver: resultado.totalADevolver.toNumber(),
+    interesesTotales: resultado.interesesTotales.toNumber(),
   };
 }
 
@@ -414,23 +381,23 @@ function getHighlightedFields(metricId: string | null): string[] {
       // Resaltar los campos de entrada que componen ingresosAnuales y gastosAnuales
       return ['alquilerMensual', 'comunidadAnual', 'ibi', 'seguroHogar', 'seguroImpago', 'basura', 'agua', 'electricidad', 'gas', 'internet', 'mantenimiento', 'periodoSinAlquilar', 'seguroVidaHipoteca'];
     case 'rentabilidadBruta':
-      // Resaltar campos que componen ingresosAnuales (alquilerMensual) y totalCompra
-      return ['alquilerMensual', 'precioCompra', 'reforma', 'notaria', 'registro', 'comisionInmobiliaria', 'otrosGastosCompra', 'totalITP', 'tasacion', 'gestoriaBanco', 'seguroVidaHipoteca'];
+      // Resaltar solo los títulos de las secciones que componen la fórmula (no los campos individuales)
+      return ['totalCompra', 'ingresosAnuales'];
     case 'rentabilidadNeta':
-      // Resaltar campos que componen beneficioAntesImpuestos y totalCompra
-      return ['alquilerMensual', 'comunidadAnual', 'ibi', 'seguroHogar', 'seguroImpago', 'basura', 'agua', 'electricidad', 'gas', 'internet', 'mantenimiento', 'periodoSinAlquilar', 'seguroVidaHipoteca', 'precioCompra', 'reforma', 'notaria', 'registro', 'comisionInmobiliaria', 'otrosGastosCompra', 'totalITP', 'tasacion', 'gestoriaBanco'];
+      // Resaltar títulos: Beneficios, Intereses financiación, Total compra
+      return ['beneficioAntesImpuestos', 'interesesPrimerAnio', 'totalCompra'];
     case 'cashflowAntesAmortizar':
-      // Resaltar campos que componen beneficioAntesImpuestos
-      return ['alquilerMensual', 'comunidadAnual', 'ibi', 'seguroHogar', 'seguroImpago', 'basura', 'agua', 'electricidad', 'gas', 'internet', 'mantenimiento', 'periodoSinAlquilar', 'seguroVidaHipoteca'];
+      // Resaltar solo el título Beneficios (Cashflow antes de amortizar = BeneficioAntesImpuestos)
+      return ['beneficioAntesImpuestos'];
     case 'cashflowFinal':
-      // Resaltar campos que componen beneficioAntesImpuestos y capitalAmortizadoAnual
-      return ['alquilerMensual', 'comunidadAnual', 'ibi', 'seguroHogar', 'seguroImpago', 'basura', 'agua', 'electricidad', 'gas', 'internet', 'mantenimiento', 'periodoSinAlquilar', 'seguroVidaHipoteca', 'capitalAmortizadoAnual', 'importeHipoteca', 'tipoInteres', 'plazoHipoteca'];
+      // Resaltar solo Beneficios y Capital amortizado (año)
+      return ['beneficioAntesImpuestos', 'capitalAmortizadoAnual'];
     case 'roceAntes':
-      // Resaltar campos que componen beneficioAntesImpuestos y capitalPropio (totalCompra e importeHipoteca)
-      return ['alquilerMensual', 'comunidadAnual', 'ibi', 'seguroHogar', 'seguroImpago', 'basura', 'agua', 'electricidad', 'gas', 'internet', 'mantenimiento', 'periodoSinAlquilar', 'seguroVidaHipoteca', 'precioCompra', 'reforma', 'notaria', 'registro', 'comisionInmobiliaria', 'otrosGastosCompra', 'totalITP', 'tasacion', 'gestoriaBanco', 'importeHipoteca'];
+      // Resaltar solo Beneficios y Capital Propio
+      return ['beneficioAntesImpuestos', 'capitalPropio'];
     case 'roceFinal':
-      // Resaltar campos que componen cashflowFinal y capitalPropio
-      return ['alquilerMensual', 'comunidadAnual', 'ibi', 'seguroHogar', 'seguroImpago', 'basura', 'agua', 'electricidad', 'gas', 'internet', 'mantenimiento', 'periodoSinAlquilar', 'seguroVidaHipoteca', 'capitalAmortizadoAnual', 'importeHipoteca', 'tipoInteres', 'plazoHipoteca', 'precioCompra', 'reforma', 'notaria', 'registro', 'comisionInmobiliaria', 'otrosGastosCompra', 'totalITP', 'tasacion', 'gestoriaBanco'];
+      // Resaltar solo Cashflow final y Capital propio
+      return ['cashflowFinal', 'capitalPropio'];
     default:
       return [];
   }
@@ -596,12 +563,17 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
         <section className="detalle-gastos-full" style={{ marginBottom: 20 }}>
           <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', flexWrap: { xs: 'wrap', lg: 'nowrap' }, justifyContent: 'flex-start', position: 'relative' }}>
             <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: { xs: 1, md: 1.5 }, minWidth: { xs: '100%', md: 0 }, maxWidth: { xs: '100%', md: 'none' }, flex: { xs: '0 0 100%', md: '1 1 auto' }, flexShrink: 0, width: { xs: '100%', md: 'auto' }, boxSizing: 'border-box' }}>
-              <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                Importe Total Compra
-                <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 'auto' }}>
-                  {formatEuro(resultado.totalCompra)}
-                </Typography>
-              </Typography>
+              {(() => {
+                const isTotalCompraHighlighted = highlightedFields.includes('totalCompra');
+                return (
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 2, display: 'flex', alignItems: 'center', gap: 1, backgroundColor: isTotalCompraHighlighted ? '#fff9c4' : 'transparent', padding: isTotalCompraHighlighted ? '4px 8px' : '0', borderRadius: isTotalCompraHighlighted ? '4px' : '0', transition: 'background-color 0.2s ease, padding 0.2s ease' }}>
+                    Importe Total Compra
+                    <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 'auto' }}>
+                      {formatEuro(resultado.totalCompra)}
+                    </Typography>
+                  </Typography>
+                );
+              })()}
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(2, 1fr)', lg: 'repeat(3, auto)' }, gap: { xs: 1.5, md: 2, lg: 3 }, columnGap: { xs: 1, md: 1.5, lg: 3 } }}>
             {/* Columna 1 - Inmueble */}
             <Box sx={{ gridColumn: { xs: '1 / -1', md: 'auto' } }}>
@@ -779,7 +751,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                               onChange={(e) => handleOptionalChange('tasacion', Number(e.target.value) || 0)} 
                               size="small" 
                               inputProps={{ min: 0 }} 
-                              sx={{ maxWidth: { xs: '100%', md: 130 }, width: '100%', '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} 
+                              sx={{ width: { xs: '100%', md: 130 }, minWidth: { xs: '100%', md: 130 }, maxWidth: { xs: '100%', md: 130 }, '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} 
                               id="tasacion"
                             />
                           </Box>
@@ -796,7 +768,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                               onChange={(e) => handleOptionalChange('gestoriaBanco', Number(e.target.value) || 0)} 
                               size="small" 
                               inputProps={{ min: 0 }} 
-                              sx={{ maxWidth: { xs: '100%', md: 130 }, width: '100%', '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} 
+                              sx={{ width: { xs: '100%', md: 130 }, minWidth: { xs: '100%', md: 130 }, maxWidth: { xs: '100%', md: 130 }, '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} 
                               id="gestoriaBanco"
                             />
                           </Box>
@@ -813,7 +785,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                               onChange={(e) => handleOptionalChange('seguroVidaHipoteca', Number(e.target.value) || 0)} 
                               size="small" 
                               inputProps={{ min: 0 }} 
-                              sx={{ maxWidth: { xs: '100%', md: 130 }, width: '100%', '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} 
+                              sx={{ width: { xs: '100%', md: 130 }, minWidth: { xs: '100%', md: 130 }, maxWidth: { xs: '100%', md: 130 }, '& .MuiInputBase-root': { fontSize: { xs: '0.75rem', md: '0.875rem' } } }} 
                               id="seguroVidaHipoteca"
                             />
                           </Box>
@@ -829,21 +801,31 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
             
             {/* Panel Beneficios */}
             <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1.5, ml: { xs: 0, md: 1.5 }, mt: { xs: 1.5, md: 0 }, minWidth: { xs: '100%', md: 0 }, maxWidth: { xs: '100%', md: 'none' }, flex: { xs: '0 0 100%', md: '1 1 auto' }, flexShrink: 0 }}>
-              <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                Beneficios
-                <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 'auto' }}>
-                  {formatEuro(resultado.beneficioAntesImpuestos)}
-                </Typography>
-              </Typography>
+              {(() => {
+                const isBeneficiosHighlighted = highlightedFields.includes('beneficioAntesImpuestos');
+                return (
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 2, display: 'flex', alignItems: 'center', gap: 1, backgroundColor: isBeneficiosHighlighted ? '#fff9c4' : 'transparent', padding: isBeneficiosHighlighted ? '4px 8px' : '0', borderRadius: isBeneficiosHighlighted ? '4px' : '0', transition: 'background-color 0.2s ease, padding 0.2s ease' }}>
+                    Beneficios
+                    <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 'auto' }}>
+                      {formatEuro(resultado.beneficioAntesImpuestos)}
+                    </Typography>
+                  </Typography>
+                );
+              })()}
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, auto)' }, gap: 3 }}>
                 {/* Panel Ingresos Anuales */}
                 <Box>
-                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    Ingresos Anuales
-                    <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 'auto' }}>
-                      {formatEuro(resultado.ingresosAnuales)}
-                    </Typography>
-                  </Typography>
+                  {(() => {
+                    const isIngresosAnualesHighlighted = highlightedFields.includes('ingresosAnuales');
+                    return (
+                      <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1, display: 'flex', alignItems: 'center', gap: 1, backgroundColor: isIngresosAnualesHighlighted ? '#fff9c4' : 'transparent', padding: isIngresosAnualesHighlighted ? '4px 8px' : '0', borderRadius: isIngresosAnualesHighlighted ? '4px' : '0', transition: 'background-color 0.2s ease, padding 0.2s ease' }}>
+                        Ingresos Anuales
+                        <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 'auto' }}>
+                          {formatEuro(resultado.ingresosAnuales)}
+                        </Typography>
+                      </Typography>
+                    );
+                  })()}
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 2 } }}>
                     {(() => {
                       const isAlquilerMensualHighlighted = highlightedFields.includes('alquilerMensual');
@@ -1073,6 +1055,11 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                           />
                         </Box>
                         {effective.hayHipoteca && capitalPropioValue > 0 && (
+                          <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', mt: 0.5, display: 'block', backgroundColor: isCapitalPropioHighlighted ? '#fff9c4' : 'transparent', padding: isCapitalPropioHighlighted ? '4px 8px' : '0', borderRadius: isCapitalPropioHighlighted ? '4px' : '0', transition: 'background-color 0.2s ease, padding 0.2s ease' }}>
+                            {porcentajeCapitalPropio}% del total compra
+                          </Typography>
+                        )}
+                        {effective.hayHipoteca && capitalPropioValue > 0 && (
                           <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', mt: 0.5, display: 'block' }}>
                             {porcentajeCapitalPropio}% del total compra
                           </Typography>
@@ -1158,8 +1145,15 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                           <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: isCapitalAmortizadoHighlighted ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>Capital amortizado (año):</Typography>
                           <Typography variant="body2" sx={{ fontWeight: 500, textAlign: 'right', whiteSpace: 'nowrap', flexShrink: 0, minWidth: 'fit-content' }} id="capitalAmortizadoAnual">{formatEuro(String(datosHipoteca.capitalAmortizadoPrimerAnio))}</Typography>
                         </Box>
-                        <Typography variant="body2" sx={{ color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>Intereses primer año:</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 500, textAlign: 'right', whiteSpace: 'nowrap', flexShrink: 0, minWidth: 'fit-content' }}>{formatEuro(String(datosHipoteca.interesesPrimerAnio))}</Typography>
+                        {(() => {
+                          const isInteresesPrimerAnioHighlighted = highlightedFields.includes('interesesPrimerAnio');
+                          return (
+                            <>
+                              <Typography variant="body2" sx={{ color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, backgroundColor: isInteresesPrimerAnioHighlighted ? '#fff9c4' : 'transparent', padding: isInteresesPrimerAnioHighlighted ? '4px 8px' : '0', borderRadius: isInteresesPrimerAnioHighlighted ? '4px' : '0', transition: 'background-color 0.2s ease, padding 0.2s ease' }}>Intereses primer año:</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 500, textAlign: 'right', whiteSpace: 'nowrap', flexShrink: 0, minWidth: 'fit-content', backgroundColor: isInteresesPrimerAnioHighlighted ? '#fff9c4' : 'transparent', padding: isInteresesPrimerAnioHighlighted ? '4px 8px' : '0', borderRadius: isInteresesPrimerAnioHighlighted ? '4px' : '0', transition: 'background-color 0.2s ease, padding 0.2s ease' }}>{formatEuro(String(datosHipoteca.interesesPrimerAnio))}</Typography>
+                            </>
+                          );
+                        })()}
                         <Typography variant="body2" sx={{ color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>Intereses totales:</Typography>
                         <Typography variant="body2" sx={{ fontWeight: 500, textAlign: 'right', whiteSpace: 'nowrap', flexShrink: 0, minWidth: 'fit-content' }}>{formatEuro(String(datosHipoteca.interesesTotales))}</Typography>
                         <Typography variant="body2" sx={{ color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>Total a devolver:</Typography>
@@ -1220,17 +1214,18 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                           variant="body2" 
                           sx={{ 
                             fontWeight: 500, 
-                            color: 'text.primary',
+                            color: 'primary.main',
                             fontSize: { xs: 12, sm: 13 },
                             cursor: 'pointer',
                             textDecoration: 'underline',
                             textDecorationStyle: 'dotted',
-                            textDecorationColor: 'transparent',
+                            textDecorationColor: 'primary.main',
                             whiteSpace: 'nowrap',
                             flexShrink: 0,
                             flex: '0 0 auto',
                             '&:hover': {
-                              textDecorationColor: 'inherit',
+                              color: 'primary.dark',
+                              textDecorationColor: 'primary.dark',
                             }
                           }}
                           onClick={() => setDesgloseAbierto((k) => (k === id ? null : id))}
