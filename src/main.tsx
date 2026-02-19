@@ -1,9 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
-import { theme } from './theme'
+import { ThemeSwitcherProvider } from './context/ThemeSwitcherContext'
 import './index.css'
 import App from './App.tsx'
 import { Layout } from './Layout.tsx'
@@ -15,7 +14,7 @@ import { Contacto } from './pages/Contacto.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ThemeProvider theme={theme}>
+    <ThemeSwitcherProvider>
       <CssBaseline />
       <BrowserRouter>
       <Routes>
@@ -31,6 +30,6 @@ createRoot(document.getElementById('root')!).render(
         <Route path="*" element={null} />
       </Routes>
     </BrowserRouter>
-    </ThemeProvider>
+    </ThemeSwitcherProvider>
   </StrictMode>,
 )
