@@ -696,7 +696,7 @@
 
   /* Panel de stats del portfolio */
   [aria-label="Resumen del portfolio"] {
-    background-color: #2d2d2d !important;
+    background-color: transparent !important;
   }
 
   [aria-label="Resumen del portfolio"] strong {
@@ -844,7 +844,7 @@
 
   /* Panel de stats del portfolio */
   .portfolio-stats {
-    background-color: #2d2d2d !important;
+    background-color: transparent !important;
   }
 
   .portfolio-stats strong {

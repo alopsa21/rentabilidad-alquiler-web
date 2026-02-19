@@ -1339,13 +1339,12 @@ function App() {
               <Box
                 className="portfolio-stats"
                 sx={{
-                  padding: { xs: '12px 16px', md: '16px' },
-                  marginBottom: 8,
-                  borderRadius: { xs: 0, md: 2 },
+                  padding: { xs: '8px 16px', md: '8px 16px' },
+                  marginBottom: 1,
                 }}
                 aria-label="Resumen del portfolio"
               >
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: { xs: 1.5, md: 2 } }}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1.5, md: 3 }, justifyContent: 'flex-end' }}>
                   {/* 1. Rentabilidad neta media */}
                   <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, gap: { xs: 0.5, md: 1 } }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
