@@ -568,7 +568,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                 const otrosGastosCompra = effective.otrosGastosCompra || 0;
                 const subtotalInmueble = precioCompra + reforma + notaria + registro + comisionInmobiliaria + otrosGastosCompra;
                 return (
-                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                     Inmueble
                     <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 'auto' }}>
                       {formatEuro(String(subtotalInmueble))}
@@ -652,7 +652,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
 
               return (
                 <Box sx={{ width: { xs: '100%', md: 'auto' } }}>
-                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                     Impuestos
                     <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 'auto' }}>
                       {totalITP > 0 ? formatEuro(String(totalITP)) : formatEuro('0')}
@@ -687,7 +687,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                             value={totalITP > 0 ? formatEuro(String(totalITP)) : '—'}
                             disabled
                             size="small"
-                            sx={{ maxWidth: { xs: '100%', md: 130 }, width: '100%' }}
+                            sx={{ maxWidth: { xs: '100%', md: 150 }, width: '100%' }}
                             id="totalITP"
                           />
                         </Box>
@@ -707,7 +707,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
               const subtotalGastosFinanciacion = tasacion + gestoriaBanco + seguroVidaHipoteca;
               return (
                 <Box sx={{ width: { xs: '100%', md: 'auto' } }}>
-                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 2, display: 'flex', alignItems: 'center', gap: 1, whiteSpace: 'nowrap' }}>
                     G. Financiación
                     <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 'auto' }}>
                       {formatEuro(String(subtotalGastosFinanciacion))}
@@ -800,7 +800,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                   {(() => {
                     const isIngresosAnualesHighlighted = highlightedFields.includes('ingresosAnuales');
                     return (
-                      <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1, display: 'flex', alignItems: 'center', gap: 1, backgroundColor: isIngresosAnualesHighlighted ? '#fff9c4' : 'transparent', padding: isIngresosAnualesHighlighted ? '4px 8px' : '0', borderRadius: isIngresosAnualesHighlighted ? '4px' : '0', transition: 'background-color 0.2s ease, padding 0.2s ease' }}>
+                      <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 2, display: 'flex', alignItems: 'center', gap: 1, backgroundColor: isIngresosAnualesHighlighted ? '#fff9c4' : 'transparent', padding: isIngresosAnualesHighlighted ? '4px 8px' : '0', borderRadius: isIngresosAnualesHighlighted ? '4px' : '0', transition: 'background-color 0.2s ease, padding 0.2s ease' }}>
                         Ingresos Anuales
                         <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 'auto' }}>
                           {formatEuro(resultado.ingresosAnuales)}
@@ -837,7 +837,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                 {/* Panel Gastos Anuales */}
                 <Box>
                   <Tooltip title="Incluye los intereses de financiación" arrow>
-                    <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1, display: 'flex', alignItems: 'center', gap: 1, cursor: 'help' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 2, display: 'flex', alignItems: 'center', gap: 1, cursor: 'help' }}>
                       Gastos Anuales
                       <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 'auto' }}>
                         {formatEuro(resultado.gastosAnuales)}
@@ -1053,7 +1053,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                       }}>
                         <TextField
                           type="number"
-                          label="Tipo interés (%)"
+                          label="% Tipo interés"
                           value={effective.hayHipoteca && tipoInteresNum > 0 ? tipoInteresNum : ''}
                           onChange={(e) => handleOptionalChange('tipoInteres', Number(e.target.value) || 0)}
                           disabled={!effective.hayHipoteca}
