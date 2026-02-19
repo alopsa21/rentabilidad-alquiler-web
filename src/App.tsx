@@ -10,6 +10,7 @@ import { ModalNotas } from './components/ModalNotas'
 import { ModalCompartirSelectivo } from './components/ModalCompartirSelectivo'
 import { ModalCompletarCampos } from './components/ModalCompletarCampos'
 import { calcularRentabilidadApiForCard, autofillFromUrlApi } from './services/api'
+import { getCiudadesPorCodauto } from './services/territorio'
 import { NOMBRE_COMUNIDAD_POR_CODIGO } from './constants/comunidades'
 import type { RentabilidadApiResponse } from './types/api'
 import type { FormularioRentabilidadState } from './types/formulario'
@@ -195,6 +196,10 @@ function App() {
           createdAt[card.id] = cardCreatedAt
         }
       })
+
+      // Precargar ciudades para todas las comunidades únicas de las tarjetas cargadas
+      const codautosUnicos = [...new Set(cards.map(c => c.currentInput.codigoComunidadAutonoma).filter(c => c >= 1 && c <= 19))]
+      codautosUnicos.forEach(codauto => { getCiudadesPorCodauto(codauto) })
 
       setAnalisis(cards)
       setResultadosPorTarjeta(resultados)

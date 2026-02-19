@@ -131,7 +131,7 @@ function calcularDatosHipoteca(
     tipoInteres: new Decimal(tipoInteres),
     plazoHipoteca,
   });
-  
+
   return {
     cuotaMensual: resultado.cuotaMensual.toNumber(),
     interesesPrimerAnio: resultado.interesesPrimerAnio.toNumber(),
@@ -172,14 +172,14 @@ function getDesgloseCalculo(
       const tasacion = effective?.tasacion || 0;
       const gestoriaBanco = effective?.gestoriaBanco || 0;
       const seguroVidaHipoteca = (effective?.hayHipoteca && effective?.seguroVidaHipoteca) ? effective.seguroVidaHipoteca : 0;
-      
+
       const inmueble = precioCompra + reforma + notaria + registro + comisionInmobiliaria + otrosGastosCompra;
       const gastosFinanciacion = tasacion + gestoriaBanco + seguroVidaHipoteca;
-      
+
       // ITP se calcula en el backend según comunidad autónoma, aquí lo obtenemos por diferencia
       const totalCompraNum = Number(resultado.totalCompra);
       const itp = totalCompraNum - inmueble - gastosFinanciacion;
-      
+
       const lines: string[] = [
         `Fórmula: Inmueble + Impuestos (ITP) + Gastos de financiación`,
         ``,
@@ -203,7 +203,7 @@ function getDesgloseCalculo(
         ``,
         `Total compra: ${formatEuro(resultado.totalCompra)}`,
       ].filter(Boolean) as string[];
-      
+
       return {
         title: 'Total compra',
         lines,
@@ -234,7 +234,7 @@ function getDesgloseCalculo(
       const ingresosAnuales = Number(resultado.ingresosAnuales);
       const mantenimiento = ingresosAnuales * 0.07;
       const periodoSinAlquilar = ingresosAnuales * 0.03;
-      
+
       // Obtener valores efectivos de la tarjeta (defaults + currentInput + overrides)
       const effective = card ? getEffectiveOptionals(card) : null;
       const comunidadAnual = effective?.comunidadAnual || 0;
@@ -247,14 +247,14 @@ function getDesgloseCalculo(
       const electricidad = effective?.electricidad || 0;
       const gas = effective?.gas || 0;
       const internet = effective?.internet || 0;
-      
+
       // Calcular intereses de financiación (del primer año)
       // Fórmula inversa desde rentabilidadNeta: RentabilidadNeta = (BeneficioAntesImpuestos + Intereses) / TotalCompra
       // Por tanto: Intereses = RentabilidadNeta × TotalCompra − BeneficioAntesImpuestos
       const interesesFinanciacion = Number(resultado.rentabilidadNeta) * Number(resultado.totalCompra) - Number(resultado.beneficioAntesImpuestos);
-      
+
       const gastosFijos = comunidadAnual + ibi + seguroHogar + seguroImpago + seguroVidaHipoteca + basura + agua + electricidad + gas + internet;
-      
+
       const lines: string[] = [
         `Fórmula: Gastos fijos + Mantenimiento + Periodo sin alquilar + Intereses`,
         ``,
@@ -278,7 +278,7 @@ function getDesgloseCalculo(
         ``,
         `Total gastos anuales: ${formatEuro(resultado.gastosAnuales)}`,
       ].filter(Boolean) as string[];
-      
+
       return {
         title: 'Gastos anuales',
         lines,
@@ -368,7 +368,7 @@ interface DetalleAnalisisProps {
  */
 function getHighlightedFields(metricId: string | null): string[] {
   if (!metricId) return [];
-  
+
   switch (metricId) {
     case 'totalCompra':
       return ['precioCompra', 'reforma', 'notaria', 'registro', 'comisionInmobiliaria', 'otrosGastosCompra', 'totalITP', 'tasacion', 'gestoriaBanco', 'seguroVidaHipoteca'];
@@ -426,16 +426,16 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
   useEffect(() => {
     if (!editable || !onOverrideChange) return;
     if (!card.currentInput.hayHipoteca) return;
-    
+
     const precioCompra = Number(card.currentInput.precioCompra) || 0;
     if (precioCompra === 0) return;
-    
+
     // Verificar overrides originales de la tarjeta, no los locales (para evitar bucles)
     const originalOverrides = card.overrides ?? {};
     const currentOverrides = localOverridesRef.current;
     const needsUpdate: Partial<MotorInputOptionals> = {};
     let hasChanges = false;
-    
+
     // Solo aplicar defaults si no hay overrides explícitos (ni en card.overrides ni en localOverrides)
     if (!('tasacion' in originalOverrides) && !('tasacion' in currentOverrides)) {
       needsUpdate.tasacion = 400;
@@ -449,7 +449,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
       needsUpdate.seguroVidaHipoteca = 250;
       hasChanges = true;
     }
-    
+
     if (hasChanges) {
       const nextOverrides = { ...currentOverrides, ...needsUpdate };
       localOverridesRef.current = nextOverrides;
@@ -469,7 +469,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
       if (!onOverrideChange) return;
       const prev = localOverridesRef.current;
       const updates: Partial<MotorInputOptionals> = { [field]: value };
-      
+
       if (field === 'hayHipoteca' && value === true) {
         const precioCompra = Number(card.currentInput.precioCompra) || 0;
         const effective = getEffectiveOptionals({ ...card, overrides: prev });
@@ -509,7 +509,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
         updates.gestoriaBanco = 0;
         updates.seguroVidaHipoteca = 0;
       }
-      
+
       const nextOverrides = { ...prev, ...updates };
       localOverridesRef.current = nextOverrides;
       setLocalOverrides(nextOverrides);
@@ -586,60 +586,60 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                   const isOtrosGastosHighlighted = highlightedFields.includes('otrosGastosCompra');
                   return (
                     <>
-                      <Box sx={{ 
+                      <Box sx={{
                         backgroundColor: isPrecioCompraHighlighted ? '#fff9c4' : 'transparent',
                         padding: isPrecioCompraHighlighted ? '4px 8px' : '0',
                         borderRadius: isPrecioCompraHighlighted ? '4px' : '0',
                         transition: 'background-color 0.2s ease, padding 0.2s ease',
                       }}>
-                        <TextField type="number" label="Precio compra" value={card.currentInput.precioCompra || ''} disabled size="small" inputProps={{ min: 0 }} sx={{ width: '100%' }} id="precioCompra" />
+                        <TextField type="number" label="Precio compra (€)" value={card.currentInput.precioCompra || ''} disabled size="small" inputProps={{ min: 0 }} sx={{ width: '100%' }} id="precioCompra" />
                       </Box>
-                      <Box sx={{ 
+                      <Box sx={{
                         backgroundColor: isReformaHighlighted ? '#fff9c4' : 'transparent',
                         padding: isReformaHighlighted ? '4px 8px' : '0',
                         borderRadius: isReformaHighlighted ? '4px' : '0',
                         transition: 'background-color 0.2s ease, padding 0.2s ease',
                       }}>
-                        <TextField type="number" label="Reforma" value={effective.reforma || ''} onChange={(e) => handleOptionalChange('reforma', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ width: '100%' }} id="reforma" />
+                        <TextField type="number" label="Reforma (€)" value={effective.reforma || ''} onChange={(e) => handleOptionalChange('reforma', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ width: '100%' }} id="reforma" />
                       </Box>
-                      <Box sx={{ 
+                      <Box sx={{
                         backgroundColor: isNotariaHighlighted ? '#fff9c4' : 'transparent',
                         padding: isNotariaHighlighted ? '4px 8px' : '0',
                         borderRadius: isNotariaHighlighted ? '4px' : '0',
                         transition: 'background-color 0.2s ease, padding 0.2s ease',
                       }}>
-                        <TextField type="number" label="Notaría" value={effective.notaria || ''} onChange={(e) => handleOptionalChange('notaria', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ width: '100%' }} id="notaria" />
+                        <TextField type="number" label="Notaría (€)" value={effective.notaria || ''} onChange={(e) => handleOptionalChange('notaria', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ width: '100%' }} id="notaria" />
                       </Box>
-                      <Box sx={{ 
+                      <Box sx={{
                         backgroundColor: isRegistroHighlighted ? '#fff9c4' : 'transparent',
                         padding: isRegistroHighlighted ? '4px 8px' : '0',
                         borderRadius: isRegistroHighlighted ? '4px' : '0',
                         transition: 'background-color 0.2s ease, padding 0.2s ease',
                       }}>
-                        <TextField type="number" label="Registro" value={effective.registro || ''} onChange={(e) => handleOptionalChange('registro', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ width: '100%' }} id="registro" />
+                        <TextField type="number" label="Registro (€)" value={effective.registro || ''} onChange={(e) => handleOptionalChange('registro', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ width: '100%' }} id="registro" />
                       </Box>
-                      <Box sx={{ 
+                      <Box sx={{
                         backgroundColor: isComisionHighlighted ? '#fff9c4' : 'transparent',
                         padding: isComisionHighlighted ? '4px 8px' : '0',
                         borderRadius: isComisionHighlighted ? '4px' : '0',
                         transition: 'background-color 0.2s ease, padding 0.2s ease',
                       }}>
-                        <TextField type="number" label="Comisión inmob." value={effective.comisionInmobiliaria || ''} onChange={(e) => handleOptionalChange('comisionInmobiliaria', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ width: '100%' }} id="comisionInmobiliaria" />
+                        <TextField type="number" label="Comisión inmob. (€)" value={effective.comisionInmobiliaria || ''} onChange={(e) => handleOptionalChange('comisionInmobiliaria', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ width: '100%' }} id="comisionInmobiliaria" />
                       </Box>
-                      <Box sx={{ 
+                      <Box sx={{
                         backgroundColor: isOtrosGastosHighlighted ? '#fff9c4' : 'transparent',
                         padding: isOtrosGastosHighlighted ? '4px 8px' : '0',
                         borderRadius: isOtrosGastosHighlighted ? '4px' : '0',
                         transition: 'background-color 0.2s ease, padding 0.2s ease',
                       }}>
-                        <TextField type="number" label="Otros gastos" value={effective.otrosGastosCompra || ''} onChange={(e) => handleOptionalChange('otrosGastosCompra', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ width: '100%' }} id="otrosGastosCompra" />
+                        <TextField type="number" label="Otros gastos (€)" value={effective.otrosGastosCompra || ''} onChange={(e) => handleOptionalChange('otrosGastosCompra', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ width: '100%' }} id="otrosGastosCompra" />
                       </Box>
                     </>
                   );
                 })()}
               </Box>
             </Box>
-            
+
             {/* Columna 2 - Impuestos */}
             {(() => {
               const codigoComunidad = card.currentInput.codigoComunidadAutonoma;
@@ -649,7 +649,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
               const nombreComunidad = codigoComunidad >= 1 && codigoComunidad <= 19
                 ? NOMBRE_COMUNIDAD_POR_CODIGO[codigoComunidad] || '—'
                 : '—';
-              
+
               return (
                 <Box sx={{ width: { xs: '100%', md: 'auto' } }}>
                   <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -659,35 +659,35 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                     </Typography>
                   </Typography>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 2 } }}>
-                    <TextField 
-                      label="Comunidad autónoma" 
-                      value={nombreComunidad} 
-                      disabled 
-                      size="small" 
-                      sx={{ maxWidth: { xs: '100%', md: 150 }, width: '100%' }} 
+                    <TextField
+                      label="Comunidad autónoma"
+                      value={nombreComunidad}
+                      disabled
+                      size="small"
+                      sx={{ maxWidth: { xs: '100%', md: 150 }, width: '100%' }}
                     />
-                    <TextField 
-                      label="% ITP" 
-                      value={porcentajeITP > 0 ? `${porcentajeITP}%` : '—'} 
-                      disabled 
-                      size="small" 
-                      sx={{ maxWidth: { xs: '100%', md: 150 }, width: '100%' }} 
+                    <TextField
+                      label="% ITP"
+                      value={porcentajeITP > 0 ? `${porcentajeITP}%` : '—'}
+                      disabled
+                      size="small"
+                      sx={{ maxWidth: { xs: '100%', md: 150 }, width: '100%' }}
                     />
                     {(() => {
                       const isTotalITPHighlighted = highlightedFields.includes('totalITP');
                       return (
-                        <Box sx={{ 
+                        <Box sx={{
                           backgroundColor: isTotalITPHighlighted ? '#fff9c4' : 'transparent',
                           padding: isTotalITPHighlighted ? '4px 8px' : '0',
                           borderRadius: isTotalITPHighlighted ? '4px' : '0',
                           transition: 'background-color 0.2s ease, padding 0.2s ease',
                         }}>
-                          <TextField 
-                            label="Total ITP" 
-                            value={totalITP > 0 ? formatEuro(String(totalITP)) : '—'} 
-                            disabled 
-                            size="small" 
-                            sx={{ maxWidth: { xs: '100%', md: 130 }, width: '100%' }} 
+                          <TextField
+                            label="Total ITP"
+                            value={totalITP > 0 ? formatEuro(String(totalITP)) : '—'}
+                            disabled
+                            size="small"
+                            sx={{ maxWidth: { xs: '100%', md: 130 }, width: '100%' }}
                             id="totalITP"
                           />
                         </Box>
@@ -697,7 +697,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                 </Box>
               );
             })()}
-            
+
             {/* Columna 3 - Gastos Financiación */}
             {(() => {
               // Obtener valores efectivos, asegurando que se muestren los defaults cuando hay hipoteca
@@ -720,54 +720,54 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                       const isSeguroVidaHighlighted = highlightedFields.includes('seguroVidaHipoteca');
                       return (
                         <>
-                          <Box sx={{ 
+                          <Box sx={{
                             backgroundColor: isTasacionHighlighted ? '#fff9c4' : 'transparent',
                             padding: isTasacionHighlighted ? '4px 8px' : '0',
                             borderRadius: isTasacionHighlighted ? '4px' : '0',
                             transition: 'background-color 0.2s ease, padding 0.2s ease',
                           }}>
-                            <TextField 
-                              type="number" 
-                              label="Tasación" 
-                              value={tasacion > 0 ? tasacion : ''} 
-                              onChange={(e) => handleOptionalChange('tasacion', Number(e.target.value) || 0)} 
-                              size="small" 
-                              inputProps={{ min: 0 }} 
-                              sx={{ width: { xs: '100%', md: 130 }, minWidth: { xs: '100%', md: 130 }, maxWidth: { xs: '100%', md: 130 } }} 
+                            <TextField
+                              type="number"
+                              label="Tasación (€)"
+                              value={tasacion > 0 ? tasacion : ''}
+                              onChange={(e) => handleOptionalChange('tasacion', Number(e.target.value) || 0)}
+                              size="small"
+                              inputProps={{ min: 0 }}
+                              sx={{ width: { xs: '100%', md: 130 }, minWidth: { xs: '100%', md: 130 }, maxWidth: { xs: '100%', md: 130 } }}
                               id="tasacion"
                             />
                           </Box>
-                          <Box sx={{ 
+                          <Box sx={{
                             backgroundColor: isGestoriaHighlighted ? '#fff9c4' : 'transparent',
                             padding: isGestoriaHighlighted ? '4px 8px' : '0',
                             borderRadius: isGestoriaHighlighted ? '4px' : '0',
                             transition: 'background-color 0.2s ease, padding 0.2s ease',
                           }}>
-                            <TextField 
-                              type="number" 
-                              label="Gestoría" 
-                              value={gestoriaBanco > 0 ? gestoriaBanco : ''} 
-                              onChange={(e) => handleOptionalChange('gestoriaBanco', Number(e.target.value) || 0)} 
-                              size="small" 
-                              inputProps={{ min: 0 }} 
-                              sx={{ width: { xs: '100%', md: 130 }, minWidth: { xs: '100%', md: 130 }, maxWidth: { xs: '100%', md: 130 } }} 
+                            <TextField
+                              type="number"
+                              label="Gestoría (€)"
+                              value={gestoriaBanco > 0 ? gestoriaBanco : ''}
+                              onChange={(e) => handleOptionalChange('gestoriaBanco', Number(e.target.value) || 0)}
+                              size="small"
+                              inputProps={{ min: 0 }}
+                              sx={{ width: { xs: '100%', md: 130 }, minWidth: { xs: '100%', md: 130 }, maxWidth: { xs: '100%', md: 130 } }}
                               id="gestoriaBanco"
                             />
                           </Box>
-                          <Box sx={{ 
+                          <Box sx={{
                             backgroundColor: isSeguroVidaHighlighted ? '#fff9c4' : 'transparent',
                             padding: isSeguroVidaHighlighted ? '4px 8px' : '0',
                             borderRadius: isSeguroVidaHighlighted ? '4px' : '0',
                             transition: 'background-color 0.2s ease, padding 0.2s ease',
                           }}>
-                            <TextField 
-                              type="number" 
-                              label="Seguro vida" 
-                              value={seguroVidaHipoteca > 0 ? seguroVidaHipoteca : ''} 
-                              onChange={(e) => handleOptionalChange('seguroVidaHipoteca', Number(e.target.value) || 0)} 
-                              size="small" 
-                              inputProps={{ min: 0 }} 
-                              sx={{ width: { xs: '100%', md: 130 }, minWidth: { xs: '100%', md: 130 }, maxWidth: { xs: '100%', md: 130 } }} 
+                            <TextField
+                              type="number"
+                              label="Seguro vida (€)"
+                              value={seguroVidaHipoteca > 0 ? seguroVidaHipoteca : ''}
+                              onChange={(e) => handleOptionalChange('seguroVidaHipoteca', Number(e.target.value) || 0)}
+                              size="small"
+                              inputProps={{ min: 0 }}
+                              sx={{ width: { xs: '100%', md: 130 }, minWidth: { xs: '100%', md: 130 }, maxWidth: { xs: '100%', md: 130 } }}
                               id="seguroVidaHipoteca"
                             />
                           </Box>
@@ -780,7 +780,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
             })()}
               </Box>
             </Box>
-            
+
             {/* Panel Beneficios */}
             <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1.5, ml: { xs: 0, md: 1.5 }, mt: { xs: 1.5, md: 0 }, minWidth: { xs: '100%', md: 0 }, maxWidth: { xs: '100%', md: 'none' }, flex: { xs: '0 0 100%', md: '1 1 auto' }, flexShrink: 0 }}>
               {(() => {
@@ -812,20 +812,20 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                     {(() => {
                       const isAlquilerMensualHighlighted = highlightedFields.includes('alquilerMensual');
                       return (
-                        <Box sx={{ 
+                        <Box sx={{
                           backgroundColor: isAlquilerMensualHighlighted ? '#fff9c4' : 'transparent',
                           padding: isAlquilerMensualHighlighted ? '4px 8px' : '0',
                           borderRadius: isAlquilerMensualHighlighted ? '4px' : '0',
                           transition: 'background-color 0.2s ease, padding 0.2s ease',
                         }}>
-                          <TextField 
-                            type="number" 
-                            label="Alquiler mensual" 
-                            value={card.currentInput.alquilerMensual || ''} 
-                            disabled 
-                            size="small" 
-                            inputProps={{ min: 0 }} 
-                            sx={{ maxWidth: 130 }} 
+                          <TextField
+                            type="number"
+                            label="Alquiler mensual (€)"
+                            value={card.currentInput.alquilerMensual || ''}
+                            disabled
+                            size="small"
+                            inputProps={{ min: 0 }}
+                            sx={{ maxWidth: 130 }}
                             id="alquilerMensual"
                           />
                         </Box>
@@ -833,7 +833,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                     })()}
                   </Box>
                 </Box>
-                
+
                 {/* Panel Gastos Anuales */}
                 <Box>
                   <Tooltip title="Incluye los intereses de financiación" arrow>
@@ -854,45 +854,45 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                     const isBasuraHighlighted = highlightedFields.includes('basura');
                     return (
                       <>
-                        <Box sx={{ 
+                        <Box sx={{
                           backgroundColor: isComunidadHighlighted ? '#fff9c4' : 'transparent',
                           padding: isComunidadHighlighted ? '4px 8px' : '0',
                           borderRadius: isComunidadHighlighted ? '4px' : '0',
                           transition: 'background-color 0.2s ease, padding 0.2s ease',
                         }}>
-                          <TextField type="number" label="Comunidad" value={effective.comunidadAnual || ''} onChange={(e) => handleOptionalChange('comunidadAnual', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="comunidadAnual" />
+                          <TextField type="number" label="Comunidad (€)" value={effective.comunidadAnual || ''} onChange={(e) => handleOptionalChange('comunidadAnual', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="comunidadAnual" />
                         </Box>
-                        <Box sx={{ 
+                        <Box sx={{
                           backgroundColor: isIbiHighlighted ? '#fff9c4' : 'transparent',
                           padding: isIbiHighlighted ? '4px 8px' : '0',
                           borderRadius: isIbiHighlighted ? '4px' : '0',
                           transition: 'background-color 0.2s ease, padding 0.2s ease',
                         }}>
-                          <TextField type="number" label="IBI" value={effective.ibi || ''} onChange={(e) => handleOptionalChange('ibi', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="ibi" />
+                          <TextField type="number" label="IBI (€)" value={effective.ibi || ''} onChange={(e) => handleOptionalChange('ibi', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="ibi" />
                         </Box>
-                        <Box sx={{ 
+                        <Box sx={{
                           backgroundColor: isSeguroHogarHighlighted ? '#fff9c4' : 'transparent',
                           padding: isSeguroHogarHighlighted ? '4px 8px' : '0',
                           borderRadius: isSeguroHogarHighlighted ? '4px' : '0',
                           transition: 'background-color 0.2s ease, padding 0.2s ease',
                         }}>
-                          <TextField type="number" label="Seguro hogar" value={effective.seguroHogar || ''} onChange={(e) => handleOptionalChange('seguroHogar', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="seguroHogar" />
+                          <TextField type="number" label="Seguro hogar (€)" value={effective.seguroHogar || ''} onChange={(e) => handleOptionalChange('seguroHogar', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="seguroHogar" />
                         </Box>
-                        <Box sx={{ 
+                        <Box sx={{
                           backgroundColor: isSeguroImpagoHighlighted ? '#fff9c4' : 'transparent',
                           padding: isSeguroImpagoHighlighted ? '4px 8px' : '0',
                           borderRadius: isSeguroImpagoHighlighted ? '4px' : '0',
                           transition: 'background-color 0.2s ease, padding 0.2s ease',
                         }}>
-                          <TextField type="number" label="Seguro impago" value={effective.seguroImpago || ''} onChange={(e) => handleOptionalChange('seguroImpago', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="seguroImpago" />
+                          <TextField type="number" label="Seguro impago (€)" value={effective.seguroImpago || ''} onChange={(e) => handleOptionalChange('seguroImpago', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="seguroImpago" />
                         </Box>
-                        <Box sx={{ 
+                        <Box sx={{
                           backgroundColor: isBasuraHighlighted ? '#fff9c4' : 'transparent',
                           padding: isBasuraHighlighted ? '4px 8px' : '0',
                           borderRadius: isBasuraHighlighted ? '4px' : '0',
                           transition: 'background-color 0.2s ease, padding 0.2s ease',
                         }}>
-                          <TextField type="number" label="Basura" value={effective.basura || ''} onChange={(e) => handleOptionalChange('basura', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="basura" />
+                          <TextField type="number" label="Basura (€)" value={effective.basura || ''} onChange={(e) => handleOptionalChange('basura', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="basura" />
                         </Box>
                       </>
                     );
@@ -911,53 +911,53 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                     const periodoSinAlquilarDisplay = effective.periodoSinAlquilar > 0 ? effective.periodoSinAlquilar : Math.round(ingresosAnuales * 0.03);
                     return (
                       <>
-                        <Box sx={{ 
+                        <Box sx={{
                           backgroundColor: isAguaHighlighted ? '#fff9c4' : 'transparent',
                           padding: isAguaHighlighted ? '4px 8px' : '0',
                           borderRadius: isAguaHighlighted ? '4px' : '0',
                           transition: 'background-color 0.2s ease, padding 0.2s ease',
                         }}>
-                          <TextField type="number" label="Agua" value={effective.agua || ''} onChange={(e) => handleOptionalChange('agua', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="agua" />
+                          <TextField type="number" label="Agua (€)" value={effective.agua || ''} onChange={(e) => handleOptionalChange('agua', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="agua" />
                         </Box>
-                        <Box sx={{ 
+                        <Box sx={{
                           backgroundColor: isElectricidadHighlighted ? '#fff9c4' : 'transparent',
                           padding: isElectricidadHighlighted ? '4px 8px' : '0',
                           borderRadius: isElectricidadHighlighted ? '4px' : '0',
                           transition: 'background-color 0.2s ease, padding 0.2s ease',
                         }}>
-                          <TextField type="number" label="Electricidad" value={effective.electricidad || ''} onChange={(e) => handleOptionalChange('electricidad', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="electricidad" />
+                          <TextField type="number" label="Electricidad (€)" value={effective.electricidad || ''} onChange={(e) => handleOptionalChange('electricidad', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="electricidad" />
                         </Box>
-                        <Box sx={{ 
+                        <Box sx={{
                           backgroundColor: isGasHighlighted ? '#fff9c4' : 'transparent',
                           padding: isGasHighlighted ? '4px 8px' : '0',
                           borderRadius: isGasHighlighted ? '4px' : '0',
                           transition: 'background-color 0.2s ease, padding 0.2s ease',
                         }}>
-                          <TextField type="number" label="Gas" value={effective.gas || ''} onChange={(e) => handleOptionalChange('gas', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="gas" />
+                          <TextField type="number" label="Gas (€)" value={effective.gas || ''} onChange={(e) => handleOptionalChange('gas', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="gas" />
                         </Box>
-                        <Box sx={{ 
+                        <Box sx={{
                           backgroundColor: isInternetHighlighted ? '#fff9c4' : 'transparent',
                           padding: isInternetHighlighted ? '4px 8px' : '0',
                           borderRadius: isInternetHighlighted ? '4px' : '0',
                           transition: 'background-color 0.2s ease, padding 0.2s ease',
                         }}>
-                          <TextField type="number" label="Internet" value={effective.internet || ''} onChange={(e) => handleOptionalChange('internet', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="internet" />
+                          <TextField type="number" label="Internet (€)" value={effective.internet || ''} onChange={(e) => handleOptionalChange('internet', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="internet" />
                         </Box>
-                        <Box sx={{ 
+                        <Box sx={{
                           backgroundColor: isMantenimientoHighlighted ? '#fff9c4' : 'transparent',
                           padding: isMantenimientoHighlighted ? '4px 8px' : '0',
                           borderRadius: isMantenimientoHighlighted ? '4px' : '0',
                           transition: 'background-color 0.2s ease, padding 0.2s ease',
                         }}>
-                          <TextField type="number" label="Mantenimiento" value={mantenimientoDisplay || ''} onChange={(e) => handleOptionalChange('mantenimiento', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="mantenimiento" />
+                          <TextField type="number" label="Mantenimiento (€)" value={mantenimientoDisplay || ''} onChange={(e) => handleOptionalChange('mantenimiento', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="mantenimiento" />
                         </Box>
-                        <Box sx={{ 
+                        <Box sx={{
                           backgroundColor: isPeriodoSinAlquilarHighlighted ? '#fff9c4' : 'transparent',
                           padding: isPeriodoSinAlquilarHighlighted ? '4px 8px' : '0',
                           borderRadius: isPeriodoSinAlquilarHighlighted ? '4px' : '0',
                           transition: 'background-color 0.2s ease, padding 0.2s ease',
                         }}>
-                          <TextField type="number" label="Periodo sin alquilar" value={periodoSinAlquilarDisplay || ''} onChange={(e) => handleOptionalChange('periodoSinAlquilar', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="periodoSinAlquilar" />
+                          <TextField type="number" label="Vacancia" value={periodoSinAlquilarDisplay || ''} onChange={(e) => handleOptionalChange('periodoSinAlquilar', Number(e.target.value) || 0)} size="small" inputProps={{ min: 0 }} sx={{ maxWidth: 150 }} id="periodoSinAlquilar" />
                         </Box>
                       </>
                     );
@@ -967,7 +967,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
             </Box>
               </Box>
             </Box>
-            
+
             {/* Financiación y Rentabilidades - en la misma fila */}
             <Box sx={{ display: 'flex', gap: 1.5, ml: { xs: 0, md: 1.5 }, mt: { xs: 1.5, md: 0 }, alignItems: 'flex-start', flexShrink: 0, flexWrap: { xs: 'wrap', md: 'nowrap' }, minWidth: { xs: '100%', md: 0 }, maxWidth: { xs: '100%', md: 'none' }, flex: { xs: '0 0 100%', md: '1 1 auto' }, width: { xs: '100%', md: 'auto' }, overflow: 'visible' }}>
               {/* Financiación */}
@@ -986,21 +986,21 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                     const porcentajeHipoteca = precioCompra > 0 ? ((importeHipoteca / precioCompra) * 100).toFixed(1) : '0';
                     return (
                       <Box>
-                        <Box sx={{ 
+                        <Box sx={{
                           backgroundColor: isImporteHipotecaHighlighted ? '#fff9c4' : 'transparent',
                           padding: isImporteHipotecaHighlighted ? '4px 8px' : '0',
                           borderRadius: isImporteHipotecaHighlighted ? '4px' : '0',
                           transition: 'background-color 0.2s ease, padding 0.2s ease',
                         }}>
-                          <TextField 
-                            type="number" 
+                          <TextField
+                            type="number"
                             label="Importe hipoteca (€)"
-                            value={effective.hayHipoteca ? (importeHipoteca || '') : 0} 
-                            onChange={(e) => handleOptionalChange('importeHipoteca', Number(e.target.value) || 0)} 
+                            value={effective.hayHipoteca ? (importeHipoteca || '') : 0}
+                            onChange={(e) => handleOptionalChange('importeHipoteca', Number(e.target.value) || 0)}
                             disabled={!effective.hayHipoteca}
-                            size="small" 
-                            inputProps={{ min: 0 }} 
-                            sx={{ width: '100%', maxWidth: { xs: '100%', md: 130 } }} 
+                            size="small"
+                            inputProps={{ min: 0 }}
+                            sx={{ width: '100%', maxWidth: { xs: '100%', md: 130 } }}
                             id="importeHipoteca"
                           />
                         </Box>
@@ -1020,21 +1020,20 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                     const capitalPropioValue = Number(resultado.capitalPropio) || capitalPropioCalculado;
                     return (
                       <Box>
-                        <Box sx={{ 
+                        <Box sx={{
                           backgroundColor: isCapitalPropioHighlighted ? '#fff9c4' : 'transparent',
                           padding: isCapitalPropioHighlighted ? '4px 8px' : '0',
                           borderRadius: isCapitalPropioHighlighted ? '4px' : '0',
                           transition: 'background-color 0.2s ease, padding 0.2s ease',
                         }}>
-                          <TextField 
-                            type="number" 
+                          <TextField
+                            type="number"
                             label="Capital propio (€)"
-                            value={effective.hayHipoteca ? (capitalPropioValue || '') : ''} 
-                            onChange={(e) => handleOptionalChange('capitalPropio', Number(e.target.value) || 0)} 
-                            disabled={!effective.hayHipoteca}
-                            size="small" 
-                            inputProps={{ min: 0 }} 
-                            sx={{ width: '100%', maxWidth: { xs: '100%', md: 130 } }} 
+                            value={effective.hayHipoteca ? (capitalPropioValue || '') : ''}
+                            disabled
+                            size="small"
+                            inputProps={{ min: 0 }}
+                            sx={{ width: '100%', maxWidth: { xs: '100%', md: 130 } }}
                             id="capitalPropio"
                           />
                         </Box>
@@ -1046,21 +1045,21 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                     const tipoInteresValue = effective.hayHipoteca ? (effective.tipoInteres ?? (localOverrides.tipoInteres ?? 0)) : 0;
                     const tipoInteresNum = typeof tipoInteresValue === 'number' ? tipoInteresValue : Number(tipoInteresValue) || 0;
                     return (
-                      <Box sx={{ 
+                      <Box sx={{
                         backgroundColor: isTipoInteresHighlighted ? '#fff9c4' : 'transparent',
                         padding: isTipoInteresHighlighted ? '4px 8px' : '0',
                         borderRadius: isTipoInteresHighlighted ? '4px' : '0',
                         transition: 'background-color 0.2s ease, padding 0.2s ease',
                       }}>
-                        <TextField 
-                          type="number" 
-                          label="Tipo interés (% anual)" 
-                          value={effective.hayHipoteca && tipoInteresNum > 0 ? tipoInteresNum : ''} 
-                          onChange={(e) => handleOptionalChange('tipoInteres', Number(e.target.value) || 0)} 
+                        <TextField
+                          type="number"
+                          label="Tipo interés (%)"
+                          value={effective.hayHipoteca && tipoInteresNum > 0 ? tipoInteresNum : ''}
+                          onChange={(e) => handleOptionalChange('tipoInteres', Number(e.target.value) || 0)}
                           disabled={!effective.hayHipoteca}
-                          size="small" 
-                          inputProps={{ min: 0, step: 0.1 }} 
-                          sx={{ width: '100%', maxWidth: { xs: '100%', md: 130 } }} 
+                          size="small"
+                          inputProps={{ min: 0, step: 0.1 }}
+                          sx={{ width: '100%', maxWidth: { xs: '100%', md: 130 } }}
                           id="tipoInteres"
                         />
                       </Box>
@@ -1071,21 +1070,21 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                     const plazoHipotecaValue = effective.hayHipoteca ? (effective.plazoHipoteca ?? (localOverrides.plazoHipoteca ?? 0)) : 0;
                     const plazoHipotecaNum = typeof plazoHipotecaValue === 'number' ? plazoHipotecaValue : Number(plazoHipotecaValue) || 0;
                     return (
-                      <Box sx={{ 
+                      <Box sx={{
                         backgroundColor: isPlazoHipotecaHighlighted ? '#fff9c4' : 'transparent',
                         padding: isPlazoHipotecaHighlighted ? '4px 8px' : '0',
                         borderRadius: isPlazoHipotecaHighlighted ? '4px' : '0',
                         transition: 'background-color 0.2s ease, padding 0.2s ease',
                       }}>
-                        <TextField 
-                          type="number" 
-                          label="Plazo (años)" 
-                          value={effective.hayHipoteca && plazoHipotecaNum > 0 ? plazoHipotecaNum : ''} 
-                          onChange={(e) => handleOptionalChange('plazoHipoteca', Number(e.target.value) || 0)} 
+                        <TextField
+                          type="number"
+                          label="Plazo (años)"
+                          value={effective.hayHipoteca && plazoHipotecaNum > 0 ? plazoHipotecaNum : ''}
+                          onChange={(e) => handleOptionalChange('plazoHipoteca', Number(e.target.value) || 0)}
                           disabled={!effective.hayHipoteca}
-                          size="small" 
-                          inputProps={{ min: 0 }} 
-                          sx={{ width: '100%', maxWidth: { xs: '100%', md: 130 } }} 
+                          size="small"
+                          inputProps={{ min: 0 }}
+                          sx={{ width: '100%', maxWidth: { xs: '100%', md: 130 } }}
                           id="plazoHipoteca"
                         />
                       </Box>
@@ -1106,7 +1105,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr) minmax(min-content, max-content)', sm: '1fr auto' }, gap: { xs: '4px 8px', sm: '4px 16px' }, width: '100%', overflow: 'visible' }}>
                         <Typography variant="body2" sx={{ color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>Cuota mensual:</Typography>
                         <Typography variant="body2" sx={{ fontWeight: 500, textAlign: 'right', whiteSpace: 'nowrap', flexShrink: 0, minWidth: 'fit-content' }}>{formatEuro(String(datosHipoteca.cuotaMensual))}</Typography>
-                        <Box sx={{ 
+                        <Box sx={{
                           gridColumn: '1 / -1',
                           backgroundColor: isCapitalAmortizadoHighlighted ? '#fff9c4' : 'transparent',
                           padding: isCapitalAmortizadoHighlighted ? '4px 8px' : '0',
@@ -1140,7 +1139,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
                 })()}
               </Box>
               </Box>
-              
+
               {/* Panel Rentabilidades - misma topografía y separaciones que Datos calculados de la hipoteca */}
               <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1.5, minWidth: { xs: '100%', md: 0 }, maxWidth: { xs: '100%', md: 'none' }, flex: { xs: '0 0 100%', md: '1 1 auto' }, flexShrink: 0, width: { xs: '100%', md: 'auto' }, overflow: 'visible' }}>
                 <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 0.5, display: 'block' }}>Rentabilidades</Typography>
@@ -1225,12 +1224,12 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
         )}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           {card.url && (
-            <a 
-              href={card.url} 
-              target="_blank" 
+            <a
+              href={card.url}
+              target="_blank"
               rel="noopener noreferrer"
-              style={{ 
-                color: '#1976d2', 
+              style={{
+                color: '#1976d2',
                 textDecoration: 'none',
                 fontSize: 14,
                 fontWeight: 500,
