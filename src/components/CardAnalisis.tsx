@@ -86,6 +86,8 @@ function DeltaLabel({ delta, unit, className }: { delta: number; unit: '%' | '�
         ml: 0.5,
         display: 'inline-flex',
         alignItems: 'center',
+        flexShrink: 0,
+        whiteSpace: 'nowrap',
       }}
     >
       (
@@ -546,7 +548,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
     >
       <CardContent sx={{ p: 0.75, '&:last-child': { pb: 0.75 }, position: 'relative' }}>
       {/* Desktop: Información horizontal */}
-      <Box className="card-info-horizontal card-info-desktop" sx={{ position: 'relative', alignItems: 'center', minHeight: 32, display: 'flex', overflow: 'visible', pr: 10 }}>
+      <Box className="card-info-horizontal card-info-desktop" sx={{ position: 'relative', alignItems: 'center', minHeight: 32, display: 'flex', overflow: 'visible', pr: 15 }}>
         {/* Icono expandir/colapsar al inicio de la fila */}
         {onClick && (
           <Tooltip title={isActive ? 'Colapsar detalle' : 'Ver detalle'}>
@@ -1209,8 +1211,8 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
           </Typography>
           {showDeltas && <DeltaLabel delta={deltaCashflow} unit="€" className={highlightMetrics && deltaCashflow !== 0 ? 'metric-pulse' : undefined} />}
         </Box>
-        <Box sx={{ flex: '1 1 0', minWidth: 90, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'wrap', pl: 0.5 }}>
-          <Typography component="span" variant="body2" className="semaforo-value" sx={{ fontSize: 17, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2 }}>
+        <Box sx={{ flex: '1 1 0', minWidth: 105, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'nowrap', whiteSpace: 'nowrap', pl: 0.5 }}>
+          <Typography component="span" variant="body2" className="semaforo-value" sx={{ fontSize: 17, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2, flexShrink: 0 }}>
             {roceFinal !== null ? `${roceFinal.toFixed(2)} %` : '—'}
           </Typography>
           {showDeltas && <DeltaLabel delta={deltaRoce} unit="%" className={highlightMetrics && deltaRoce !== 0 ? 'metric-pulse' : undefined} />}
@@ -1855,7 +1857,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
           </Box>
         </Box>
         {/* Métricas - cuarta fila con icono expandir en la esquina inferior derecha */}
-        <Box className="card-metrics-values" sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', pt: 1, borderTop: '1px solid', borderColor: 'divider', position: 'relative' }}>
+        <Box className="card-metrics-values" sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', pt: 1, pr: 6, borderTop: '1px solid', borderColor: 'divider', position: 'relative' }}>
           <Box sx={{ flex: '1 1 0', minWidth: 70 }}>
             <Typography variant="caption" sx={{ fontSize: 11, fontWeight: 600, color: 'text.secondary', mb: 0.25, textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: '14px', display: 'flex', alignItems: 'flex-start' }}>Rent. neta</Typography>
             <Box sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', minHeight: 28 }}>
@@ -1874,10 +1876,10 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
               {showDeltas && <DeltaLabel delta={deltaCashflow} unit="€" className={highlightMetrics && deltaCashflow !== 0 ? 'metric-pulse' : undefined} />}
             </Box>
           </Box>
-          <Box sx={{ flex: '1 1 0', minWidth: 70 }}>
+          <Box sx={{ flex: '1 1 0', minWidth: 95 }}>
             <Typography variant="caption" sx={{ fontSize: 11, fontWeight: 600, color: 'text.secondary', mb: 0.25, textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: '14px', display: 'flex', alignItems: 'flex-start' }}>ROCE</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', minHeight: 28 }}>
-              <Typography variant="body2" className="semaforo-value" sx={{ fontSize: 18, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'nowrap', minHeight: 28, whiteSpace: 'nowrap' }}>
+              <Typography component="span" variant="body2" className="semaforo-value" sx={{ fontSize: 18, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2, flexShrink: 0 }}>
                 {roceFinal !== null ? `${roceFinal.toFixed(2)} %` : '—'}
               </Typography>
               {showDeltas && <DeltaLabel delta={deltaRoce} unit="%" className={highlightMetrics && deltaRoce !== 0 ? 'metric-pulse' : undefined} />}

@@ -114,7 +114,9 @@ function optionalsFromForm(input: FormularioRentabilidadState): Partial<MotorInp
 export function getEffectiveOptionals(card: { currentInput: FormularioRentabilidadState; overrides?: Partial<MotorInputOptionals> }): MotorInputOptionals {
   const precioCompra = Number(card.currentInput.precioCompra) || 0;
   const alquilerMensual = Number(card.currentInput.alquilerMensual) || 0;
-  const calculated = getDefaultOptionalsForPrice(precioCompra, alquilerMensual, card.currentInput.hayHipoteca);
+  // hayHipoteca puede venir de overrides (panel) o currentInput; overrides gana
+  const hayHipoteca = card.overrides?.hayHipoteca ?? card.currentInput.hayHipoteca;
+  const calculated = getDefaultOptionalsForPrice(precioCompra, alquilerMensual, hayHipoteca);
   return {
     ...DEFAULT_PANEL_OPTIONALS,
     ...calculated,

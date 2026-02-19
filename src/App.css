@@ -81,12 +81,12 @@
   position: sticky;
   top: 60px;
   z-index: 9;
-  background-color: #f8f9fa;
+  background-color: #e3f2fd; /* Material UI blue 50 */
   padding: 12px 0 8px;
   margin-bottom: 0.5rem;
   font-weight: bold;
   width: 100%;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 2px solid #90caf9; /* Material UI blue 200 */
   margin-top: 0;
 }
 
@@ -102,9 +102,7 @@
   border-radius: 4px;
 }
 
-.card-header-row > div:hover {
-  background-color: #f5f5f5;
-}
+/* Sin hover en títulos - el azul está en la cabecera .card-header-sticky */
 
 /* Layout horizontal para información de tarjetas */
 .card-info-horizontal {
@@ -222,8 +220,8 @@
     position: sticky;
     top: 60px;
     z-index: 10;
-    background-color: #f8f9fa;
-    border-bottom: 2px solid #e0e0e0;
+    background-color: #e3f2fd; /* Material UI blue 50 - fondo azul en cabecera */
+    border-bottom: 2px solid #90caf9; /* Material UI blue 200 */
     margin-bottom: 0.5rem;
     margin-top: 0;
   }
@@ -273,7 +271,7 @@
     position: relative;
     width: 100%;
     box-sizing: border-box;
-    padding-right: 100px; /* espacio para iconos editar/estrella/notas y que el delta ROCE no se solape */
+    padding-right: 115px; /* espacio para iconos editar/estrella/notas, expandir y que el delta ROCE no se solape */
   }
   
   .card-info-extra {
@@ -316,6 +314,21 @@
   border-radius: 8px;
   border: 1px solid #e8e8e8;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Unificar tamaño de fuente en campos del panel de detalle */
+.detalle-analisis .MuiTextField-root .MuiInputBase-input,
+.detalle-analisis .MuiTextField-root .MuiInputBase-root {
+  font-size: 0.875rem !important;
+}
+.detalle-analisis .MuiTextField-root .MuiInputLabel-root {
+  font-size: 0.875rem !important;
+}
+.detalle-analisis .MuiTypography-caption {
+  font-size: 0.75rem !important;
+}
+.detalle-analisis .MuiTypography-body2 {
+  font-size: 0.875rem !important;
 }
 
 /* Layout horizontal: primera fila (Datos básicos, Métricas, Rentabilidades, Financiación) en fila; Gastos debajo a ancho completo */
@@ -582,10 +595,6 @@
 
   .card-header-sticky strong {
     color: #b0b0b0 !important;
-  }
-
-  .card-header-row > div:hover {
-    background-color: #3d3d3d !important;
   }
 
   .card-analisis {

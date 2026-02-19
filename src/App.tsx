@@ -856,7 +856,23 @@ function App() {
       
       // Todos los campos están completos, calcular rentabilidad (merge defaults + currentInput + overrides)
       const cardForApi: AnalisisCard = { ...tarjetaActual, currentInput: input };
-      const nuevoResultado = await calcularRentabilidadApiForCard(cardForApi);
+
+      // Si hay hipoteca y cambió el precio de compra: quitar importeHipoteca de overrides
+      // para que se recalcule igual que IBI (80% precio desde getDefaultOptionalsForPrice)
+      const hayHipoteca = tarjetaActual.overrides?.hayHipoteca ?? input.hayHipoteca;
+      const precioCompraCambio = tarjetaActual.currentInput.precioCompra !== input.precioCompra;
+      let cardParaApi = cardForApi;
+      let overridesActualizados: Partial<MotorInputOptionals> | undefined;
+
+      if (hayHipoteca && precioCompraCambio && input.precioCompra > 0) {
+        const overridesSinImporte = { ...(tarjetaActual.overrides ?? {}) };
+        delete overridesSinImporte.importeHipoteca;
+        overridesActualizados = Object.keys(overridesSinImporte).length > 0 ? overridesSinImporte : undefined;
+        cardParaApi = { ...cardForApi, overrides: overridesActualizados };
+      }
+
+      const nuevoResultado = await calcularRentabilidadApiForCard(cardParaApi);
+
       const nuevoVeredicto = mapResultadosToVerdict(nuevoResultado);
 
       // Actualizar resultado
@@ -894,6 +910,8 @@ function App() {
                 veredictoRazones: nuevoVeredicto.razones,
                 // Limpiar camposFaltantes si todos están completos
                 camposFaltantes: undefined,
+                // Actualizar overrides si importeHipoteca/capitalPropio se recalcularon por cambio de totalCompra
+                ...(overridesActualizados ? { overrides: overridesActualizados } : {}),
               }
             : c
         );
@@ -932,7 +950,37 @@ function App() {
         card.banos <= 0;
       if (faltanCamposEnInput) return;
 
-      const nuevoResultado = await calcularRentabilidadApiForCard(card);
+      let nuevoResultado = await calcularRentabilidadApiForCard(card);
+
+      // Si hay hipoteca y totalCompra cambió (p. ej. por reforma, notaría), mantener % de financiación
+      const oldResultado = resultadosPorTarjetaRef.current[tarjetaId];
+      const oldTotalCompra = oldResultado ? Number(oldResultado.totalCompra) : 0;
+      const newTotalCompra = Number(nuevoResultado.totalCompra);
+      const oldImporteHipoteca =
+        oldResultado && input.hayHipoteca
+          ? oldTotalCompra - Number(oldResultado.capitalPropio)
+          : 0;
+      let overridesActualizados: Partial<MotorInputOptionals> | undefined;
+
+      if (
+        input.hayHipoteca &&
+        oldTotalCompra > 0 &&
+        oldImporteHipoteca > 0 &&
+        Math.abs(newTotalCompra - oldTotalCompra) > 0.01
+      ) {
+        const newImporteHipoteca = Math.round(
+          (oldImporteHipoteca / oldTotalCompra) * newTotalCompra
+        );
+        const newCapitalPropio = Math.round(newTotalCompra - newImporteHipoteca);
+        overridesActualizados = {
+          ...(card.overrides ?? {}),
+          importeHipoteca: newImporteHipoteca,
+          capitalPropio: newCapitalPropio,
+        };
+        const cardConOverrides = { ...card, overrides: overridesActualizados };
+        nuevoResultado = await calcularRentabilidadApiForCard(cardConOverrides);
+      }
+
       const nuevoVeredicto = mapResultadosToVerdict(nuevoResultado);
       setResultadosPorTarjeta((prev) => ({ ...prev, [tarjetaId]: nuevoResultado }));
 
@@ -953,6 +1001,7 @@ function App() {
                 estado: nuevoVeredicto.estado,
                 veredictoTitulo: nuevoVeredicto.titulo,
                 veredictoRazones: nuevoVeredicto.razones,
+                ...(overridesActualizados ? { overrides: overridesActualizados } : {}),
               }
             : c
         )
@@ -1347,9 +1396,9 @@ function App() {
                 </Box>
               </Box>
             )}
-            {/* Cabecera sticky con títulos de columnas (espaciador = ancho icono expandir + gap 2rem para alinear con filas) */}
+            {/* Cabecera sticky con títulos de columnas (espaciador = ancho icono expandir para alinear con filas) */}
             <div className="card-header-sticky card-header-full-width" style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 0, width: '100%', paddingRight: '80px' }}>
-              <div style={{ width: 72, minWidth: 72, flexShrink: 0 }} aria-hidden />
+              <div style={{ width: 48, minWidth: 48, flexShrink: 0 }} aria-hidden />
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', minWidth: 0, paddingLeft: '4px' }} className="card-info-horizontal card-header-row">
                 <Tooltip title="Habitaciones, metros cuadrados y número de baños del inmueble">
                   <div style={{ flex: '1.2 1 0', minWidth: 0, display: 'flex', alignItems: 'center' }}>
