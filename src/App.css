@@ -760,6 +760,12 @@
     border-color: #444 !important;
   }
 
+  /* Móvil dark mode: importes (Importe Total Compra, Inmueble, Impuestos, etc.) */
+  .modal-detalle-content .detalle-analisis .MuiTypography-caption,
+  .modal-detalle-content .detalle-analisis .MuiTypography-caption span {
+    color: #e4e4e4 !important;
+  }
+
   .modal-detalle-content button[aria-label="Cerrar detalle"] {
     color: #e4e4e4 !important;
     background-color: transparent !important;
