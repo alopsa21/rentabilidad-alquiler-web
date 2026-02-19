@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } fro
 import { useLocation } from 'react-router-dom'
 import { HeroSearch } from './components/HeroSearch'
 import { CompactSearchHeader } from './components/CompactSearchHeader'
-import { CardAnalisis } from './components/CardAnalisis'
+import { CardAnalisis, CardAnalisisSkeleton } from './components/CardAnalisis'
 // Lazy load de componentes pesados para mejorar rendimiento inicial
 const DetalleAnalisis = lazy(() => import('./components/DetalleAnalisis').then(m => ({ default: m.DetalleAnalisis })))
 import { ModalDetalle } from './components/ModalDetalle'
@@ -221,7 +221,9 @@ function App() {
 
     // Debounce de 500ms para evitar escrituras constantes en localStorage (bloqueante)
     const timeoutId = setTimeout(() => {
-      saveCards(analisis, resultadosPorTarjeta, resultadoOriginalPorTarjeta, createdAtPorTarjeta)
+      const cardsToSave = analisis.filter((c) => !c.isLoading)
+      if (cardsToSave.length === 0) return
+      saveCards(cardsToSave, resultadosPorTarjeta, resultadoOriginalPorTarjeta, createdAtPorTarjeta)
     }, 500)
 
     return () => clearTimeout(timeoutId)
@@ -248,10 +250,36 @@ function App() {
       (c) => normalizeUrlForCompare(c.url) === urlNorm
     )
     if (yaExiste) {
-      mostrarNotificacion('Este piso ya ha sido analizado y está en el panel', 'error')
+      mostrarNotificacion(yaExiste.isLoading ? 'Ya se está analizando este piso' : 'Este piso ya ha sido analizado y está en el panel', 'error')
       setTarjetaResaltadaPorUrlId(yaExiste.id)
       return
     }
+
+    const placeholderId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`
+    const placeholderCard: AnalisisCard = {
+      id: placeholderId,
+      url: _url,
+      ciudad: '',
+      precioCompra: 0,
+      alquilerEstimado: 0,
+      rentabilidadNetaPct: 0,
+      estado: 'amarillo',
+      veredictoTitulo: '',
+      veredictoRazones: [],
+      habitaciones: 0,
+      metrosCuadrados: 0,
+      banos: 0,
+      originalHabitaciones: 0,
+      originalMetrosCuadrados: 0,
+      originalBanos: 0,
+      originalCiudad: '',
+      originalInput: { ...DEFAULT_PAYLOAD },
+      currentInput: { ...DEFAULT_PAYLOAD },
+      isFavorite: false,
+      notes: '',
+      isLoading: true,
+    }
+    setAnalisis((prev) => [placeholderCard, ...prev])
 
     setLoading(true)
     try {
@@ -269,9 +297,10 @@ function App() {
         alquilerMensual: !(alquilerDelApi != null && alquilerDelApi > 0),
       }
       
-      // Crear la tarjeta siempre, incluso si faltan campos (se resaltarán en la tarjeta)
-      await crearTarjetaConDatos(_url, autofillData, camposFaltantes)
+      // Reemplazar el placeholder por la tarjeta real
+      await crearTarjetaConDatos(_url, autofillData, camposFaltantes, placeholderId)
     } catch (err) {
+      setAnalisis((prev) => prev.filter((c) => c.id !== placeholderId))
       setError(err instanceof Error ? err.message : 'Error al analizar')
     } finally {
       setLoading(false)
@@ -315,7 +344,8 @@ function App() {
   const crearTarjetaConDatos = async (
     _url: string,
     autofillData: any,
-    camposFaltantes: any
+    camposFaltantes: any,
+    placeholderId?: string
   ) => {
     // Usar datos extraídos o valores vacíos (0 o '') si faltan
     const precioCompra = autofillData.buyPrice ?? 0
@@ -385,7 +415,7 @@ function App() {
     }
 
     const nuevaTarjeta: AnalisisCard = {
-      id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+      id: placeholderId ?? (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`),
       url: _url,
       ciudad: ciudad,
       precioCompra: precioCompra,
@@ -411,12 +441,10 @@ function App() {
 
     const ahora = new Date().toISOString()
     setAnalisis((prev) => {
-      const nuevasTarjetas = [nuevaTarjeta, ...prev]
-      // Log temporal para debug
-      console.log('📊 Nueva tarjeta creada:', nuevaTarjeta)
-      console.log('📋 Campos faltantes:', nuevaTarjeta.camposFaltantes)
-      console.log('📦 Todas las tarjetas:', nuevasTarjetas)
-      return nuevasTarjetas
+      if (placeholderId) {
+        return prev.map((c) => (c.id === placeholderId ? nuevaTarjeta : c))
+      }
+      return [nuevaTarjeta, ...prev]
     })
     if (data) {
       setResultadosPorTarjeta((prev) => ({ ...prev, [nuevaTarjeta.id]: data }))
@@ -1470,6 +1498,13 @@ function App() {
                 </Box>
               ) : (
                 analisisOrdenados.map((card) => {
+                if (card.isLoading) {
+                  return (
+                    <div key={card.id} data-card-id={card.id}>
+                      <CardAnalisisSkeleton />
+                    </div>
+                  )
+                }
                 const mostrarDetalle = tarjetasExpandidas.has(card.id)
                 const resultadoParaDetalle = resultadosPorTarjeta[card.id] || null
                 return (

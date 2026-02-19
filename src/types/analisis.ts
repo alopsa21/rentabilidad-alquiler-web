@@ -46,5 +46,7 @@ export interface AnalisisCard {
   source?: "idealista:v1" | "openai:v2";
   /** Si el usuario ha editado manualmente el alquiler estimado */
   alquilerEditado?: boolean;
+  /** Tarjeta placeholder mientras se cargan los datos del análisis */
+  isLoading?: boolean;
 }
 

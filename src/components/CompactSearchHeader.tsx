@@ -3,6 +3,7 @@ import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -117,6 +118,7 @@ export function CompactSearchHeader({ onAnalizar, loading = false }: CompactSear
             onClick={handleButtonClick}
             onTouchEnd={handleButtonClick}
             disableRipple
+            startIcon={loading ? <CircularProgress size={18} color="inherit" /> : undefined}
             sx={{
               whiteSpace: 'nowrap',
               minHeight: 40,
@@ -140,7 +142,7 @@ export function CompactSearchHeader({ onAnalizar, loading = false }: CompactSear
               '&:active': { outline: 'none', border: 'none', boxShadow: 'none' },
             }}
           >
-            Analizar
+            {loading ? 'Analizando...' : 'Analizar'}
           </Button>
         </Box>
       </Box>

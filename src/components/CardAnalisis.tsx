@@ -21,12 +21,15 @@ import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import CheckIcon from '@mui/icons-material/Check';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
+import Skeleton from '@mui/material/Skeleton';
+import CircularProgress from '@mui/material/CircularProgress';
 import type { AnalisisCard } from '../types/analisis';
 import type { RentabilidadApiResponse } from '../types/api';
 import type { FormularioRentabilidadState } from '../types/formulario';
@@ -348,6 +351,12 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
   const handleRevertAlquiler = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (alquilerCambiado && onRevertField) setRevertPending({ type: 'field', campo: 'alquilerMensual' });
+  };
+  const handleAceptarAlquiler = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onInputChange && card.alquilerEstimado > 0) {
+      onInputChange('alquilerMensual', card.alquilerEstimado);
+    }
   };
   const handleRevertComunidad = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -1188,6 +1197,13 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
                     </Box>
                   </Tooltip>
                 )}
+                {!card.alquilerEditado && card.source && card.alquilerEstimado > 0 && onInputChange && (
+                  <Tooltip title="Aceptar alquiler estimado">
+                    <IconButton size="small" onClick={handleAceptarAlquiler} aria-label="Aceptar alquiler estimado" sx={{ p: 0.25, color: 'success.main', '&:hover': { color: 'success.dark', backgroundColor: 'action.hover' } }}>
+                      <CheckIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
               </Box>
               {alquilerCambiado && onRevertField && (
                 <Tooltip title="Deshacer alquiler estimado">
@@ -1845,6 +1861,13 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
                 >
                   {card.alquilerEstimado > 0 ? formatEuro(card.alquilerEstimado) : (campoFalta('alquilerMensual') ? 'Alquiler' : formatEuro(card.alquilerEstimado))}/mes
                 </Typography>
+                {!card.alquilerEditado && card.source && card.alquilerEstimado > 0 && onInputChange && (
+                  <Tooltip title="Aceptar alquiler estimado">
+                    <IconButton size="small" onClick={handleAceptarAlquiler} aria-label="Aceptar alquiler estimado" sx={{ ...sxRevertMobile, color: 'success.main', '&:hover': { color: 'success.dark' } }}>
+                      <CheckIcon sx={iconSxRevertMobile} />
+                    </IconButton>
+                  </Tooltip>
+                )}
                 {alquilerCambiado && onRevertField && (
                   <Tooltip title="Deshacer alquiler estimado">
                     <IconButton size="small" onClick={handleRevertAlquiler} aria-label="Deshacer alquiler estimado" sx={sxRevertMobile}>
@@ -1946,6 +1969,13 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
               </Box>
             </Tooltip>
           )}
+          {!card.alquilerEditado && card.source && card.alquilerEstimado > 0 && onInputChange && (
+            <Tooltip title="Aceptar alquiler estimado">
+              <IconButton size="small" onClick={handleAceptarAlquiler} aria-label="Aceptar alquiler estimado" sx={{ p: 0.25, color: 'success.main', '&:hover': { color: 'success.dark' } }}>
+                <CheckIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+          )}
         </Typography>
         {card.veredictoRazones.length > 0 && (
           <ul style={{ margin: '4px 0 0 1rem', padding: 0, fontSize: 13 }}>
@@ -2013,6 +2043,56 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
     </Card>
   );
 }
+
+/** Tarjeta skeleton mientras se cargan los datos del análisis. Mismo layout que CardAnalisis para evitar saltos. */
+function CardAnalisisSkeletonComponent() {
+  return (
+    <Card
+      className="card-analisis card-analisis-skeleton"
+      sx={{
+        position: 'relative',
+        opacity: 0.92,
+      }}
+    >
+      <CardContent sx={{ p: 0.75, '&:last-child': { pb: 0.75 }, position: 'relative' }}>
+        <Box className="card-info-horizontal card-info-desktop" sx={{ position: 'relative', alignItems: 'center', minHeight: 32, display: 'flex', overflow: 'visible', pr: 15 }}>
+          {/* Icono placeholder */}
+          <Box sx={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <CircularProgress size={18} sx={{ color: 'action.disabled' }} />
+          </Box>
+          <Box sx={{ flex: '1.2 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', gap: 1, pl: 0.5 }}>
+            <Skeleton variant="rounded" width={36} height={20} animation="wave" />
+            <Skeleton variant="rounded" width={28} height={20} animation="wave" />
+            <Skeleton variant="rounded" width={28} height={20} animation="wave" />
+          </Box>
+          <Box sx={{ flex: '1.4 1 0', minWidth: 80, display: 'flex', alignItems: 'center' }}>
+            <Skeleton variant="text" width="60%" animation="wave" sx={{ fontSize: 14 }} />
+          </Box>
+          <Box sx={{ flex: '1 1 0', minWidth: 60, display: 'flex', alignItems: 'center' }}>
+            <Skeleton variant="text" width="50%" animation="wave" sx={{ fontSize: 14 }} />
+          </Box>
+          <Box sx={{ flex: '1 1 0', minWidth: 70, display: 'flex', alignItems: 'center' }}>
+            <Skeleton variant="text" width={50} height={20} animation="wave" />
+          </Box>
+          <Box sx={{ flex: '1 1 0', minWidth: 60, display: 'flex', alignItems: 'center' }}>
+            <Skeleton variant="text" width={45} height={20} animation="wave" />
+          </Box>
+          <Box sx={{ flex: '1 1 0', minWidth: 50, display: 'flex', alignItems: 'center' }}>
+            <Skeleton variant="text" width={40} height={20} animation="wave" />
+          </Box>
+          <Box sx={{ flex: '1 1 0', minWidth: 55, display: 'flex', alignItems: 'center' }}>
+            <Skeleton variant="text" width={45} height={20} animation="wave" />
+          </Box>
+          <Box sx={{ flex: '1 1 0', minWidth: 50, display: 'flex', alignItems: 'center' }}>
+            <Skeleton variant="text" width={40} height={20} animation="wave" />
+          </Box>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+}
+
+export const CardAnalisisSkeleton = memo(CardAnalisisSkeletonComponent);
 
 // Memoizar el componente para evitar re-renders innecesarios
 export const CardAnalisis = memo(CardAnalisisComponent);

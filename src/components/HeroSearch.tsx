@@ -3,6 +3,7 @@ import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
 import ClearIcon from '@mui/icons-material/Clear';
 import { STORAGE_KEY_URL } from '../constants/storage';
@@ -118,6 +119,7 @@ export function HeroSearch({ onAnalizar, loading = false }: HeroSearchProps) {
           onClick={handleButtonClick}
           onTouchEnd={handleButtonClick}
           disableRipple
+          startIcon={loading ? <CircularProgress size={20} color="inherit" /> : undefined}
           sx={{
             py: 1.75,
             fontSize: 16,
@@ -141,7 +143,7 @@ export function HeroSearch({ onAnalizar, loading = false }: HeroSearchProps) {
             '&:active': { outline: 'none', border: 'none', boxShadow: 'none' },
           }}
         >
-          Analizar piso
+          {loading ? 'Analizando...' : 'Analizar piso'}
         </Button>
       </form>
       <Typography variant="body2" color="text.disabled" sx={{ mt: 3 }}>
