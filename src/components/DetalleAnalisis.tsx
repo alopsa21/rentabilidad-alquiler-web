@@ -517,7 +517,7 @@ function DetalleAnalisisComponent({ card, resultado, isHorizontalLayout = false,
       debounceRef.current = setTimeout(() => {
         debounceRef.current = null;
         onOverrideChange(localOverridesRef.current);
-      }, 500);
+      }, 2000);
     },
     [onOverrideChange, card]
   );

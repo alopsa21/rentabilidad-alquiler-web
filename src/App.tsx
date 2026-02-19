@@ -9,7 +9,7 @@ import { ModalDetalle } from './components/ModalDetalle'
 import { ModalNotas } from './components/ModalNotas'
 import { ModalCompartirSelectivo } from './components/ModalCompartirSelectivo'
 import { ModalCompletarCampos } from './components/ModalCompletarCampos'
-import { calcularRentabilidadApi, calcularRentabilidadApiForCard, autofillFromUrlApi } from './services/api'
+import { calcularRentabilidadApiForCard, autofillFromUrlApi } from './services/api'
 import { NOMBRE_COMUNIDAD_POR_CODIGO } from './constants/comunidades'
 import type { RentabilidadApiResponse } from './types/api'
 import type { FormularioRentabilidadState } from './types/formulario'
@@ -382,9 +382,12 @@ function App() {
     let veredictoTitulo = 'Completa los datos faltantes'
     let veredictoRazones: string[] = []
     
-    // Solo calcular rentabilidad si NO faltan campos obligatorios
+    // Solo calcular rentabilidad si NO faltan campos obligatorios.
+    // Usar la misma lógica que al recalcular: enviar opcionales con defaults (notaría, IBI, comunidad, etc.)
+    // para que totalCompra y métricas sean correctos desde el inicio.
     if (!faltanCamposObligatorios) {
-      data = await calcularRentabilidadApi(inputReal)
+      const tempCard = { currentInput: inputReal, overrides: undefined } as AnalisisCard
+      data = await calcularRentabilidadApiForCard(tempCard)
       setResultado(data)
 
       veredicto = mapResultadosToVerdict(data)
@@ -666,6 +669,9 @@ function App() {
     
     // Si editan el alquiler, marcar como editado manualmente
     const esEdicionAlquiler = campo === 'alquilerMensual';
+    // Delegar recalc al useEffect: evita llamadas duplicadas (React Strict Mode ejecuta
+    // los updaters dos veces, y los efectos secundarios aquí provocaban 2 llamadas a la API).
+    pendingRecalcCardIdRef.current = tarjetaId;
     setAnalisis((prev) => {
       const tarjetaActualizada = prev.find((c) => c.id === tarjetaId);
       if (!tarjetaActualizada) return prev;
@@ -674,11 +680,6 @@ function App() {
         ...tarjetaActualizada.currentInput,
         [campo]: valor,
       };
-
-      // Usar queueMicrotask en lugar de setTimeout(0) para mejor rendimiento
-      queueMicrotask(() => {
-        recalcularTarjetaConInput(tarjetaId, nuevoCurrentInput);
-      });
 
       return prev.map((c) => {
         if (c.id !== tarjetaId) return c;
@@ -757,16 +758,9 @@ function App() {
           c.metrosCuadrados > 0 &&
           c.banos > 0;
         
-        // Si todos están completos, limpiar camposFaltantes y recalcular
+        // Si todos están completos, limpiar camposFaltantes y delegar recalc al useEffect
         if (todosCompletos) {
-          // Recalcular en el siguiente tick para evitar problemas de sincronización
-          setTimeout(() => {
-            const tarjetaActualizada = analisisRef.current.find((t) => t.id === tarjetaId);
-            if (tarjetaActualizada) {
-              recalcularTarjetaConInput(tarjetaId, tarjetaActualizada.currentInput);
-            }
-          }, 0);
-          
+          pendingRecalcCardIdRef.current = tarjetaId;
           return {
             ...c,
             ciudad,
@@ -804,15 +798,9 @@ function App() {
           (campo === 'metrosCuadrados' ? valor : c.metrosCuadrados) > 0 &&
           (campo === 'banos' ? valor : c.banos) > 0;
         
-        // Si todos están completos, recalcular
+        // Si todos están completos, delegar recalc al useEffect
         if (todosCompletos) {
-          setTimeout(() => {
-            const tarjetaActualizada = analisisRef.current.find((t) => t.id === tarjetaId);
-            if (tarjetaActualizada) {
-              recalcularTarjetaConInput(tarjetaId, tarjetaActualizada.currentInput);
-            }
-          }, 0);
-          
+          pendingRecalcCardIdRef.current = tarjetaId;
           return {
             ...c,
             [campo]: valor,
@@ -1157,7 +1145,7 @@ function App() {
         });
       }
 
-      recalcularTarjetaConInput(tarjetaId, nuevoCurrentInput);
+      pendingRecalcCardIdRef.current = tarjetaId;
 
       return prev.map((c) =>
         c.id === tarjetaId
@@ -1192,14 +1180,9 @@ function App() {
           (campo === 'metrosCuadrados' ? valorOriginal : c.metrosCuadrados) > 0 &&
           (campo === 'banos' ? valorOriginal : c.banos) > 0;
         
-        // Si todos están completos, recalcular
+        // Si todos están completos, delegar recalc al useEffect
         if (todosCompletos) {
-          setTimeout(() => {
-            const tarjetaActualizada = analisisRef.current.find((t) => t.id === tarjetaId);
-            if (tarjetaActualizada) {
-              recalcularTarjetaConInput(tarjetaId, tarjetaActualizada.currentInput);
-            }
-          }, 0);
+          pendingRecalcCardIdRef.current = tarjetaId;
         }
         
         return {

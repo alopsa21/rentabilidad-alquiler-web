@@ -100,6 +100,55 @@ function DeltaLabel({ delta, unit, className }: { delta: number; unit: '%' | '�
   );
 }
 
+/**
+ * Input numérico con debounce: estado local para escritura fluida, notifica al padre tras inactividad.
+ * Evita que CardAnalisis (2000+ líneas) re-renderice en cada pulsación.
+ */
+const DebouncedNumberInput = memo(function DebouncedNumberInput({
+  value,
+  onDebouncedChange,
+  debounceMs = 2000,
+  emptyPlaceholder = '',
+  ...textFieldProps
+}: {
+  value: number;
+  onDebouncedChange: (n: number) => void;
+  debounceMs?: number;
+  emptyPlaceholder?: string;
+} & React.ComponentProps<typeof TextField>) {
+  const [localValue, setLocalValue] = useState(() =>
+    value > 0 ? value.toString() : emptyPlaceholder
+  );
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setLocalValue(value > 0 ? value.toString() : emptyPlaceholder);
+  }, [value, emptyPlaceholder]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    setLocalValue(v);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    const num = parseFloat(v);
+    if (!isNaN(num) && num >= 0) {
+      timeoutRef.current = setTimeout(() => {
+        timeoutRef.current = null;
+        onDebouncedChange(num);
+      }, debounceMs);
+    }
+  };
+
+  return (
+    <TextField
+      type="number"
+      variant="outlined"
+      value={localValue}
+      onChange={handleChange}
+      {...textFieldProps}
+    />
+  );
+});
+
 function CardAnalisisComponent({ card, isActive = false, highlightBorder = false, onClick, onDelete, onToggleFavorite, onOpenNotes, resultado, resultadoOriginal, onInputChange, onRevertField, onRevertInmueble, onCiudadChange, onInmuebleChange, isInFavoritesView = false }: CardAnalisisProps) {
   // Detectar modo oscuro
   const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
@@ -146,18 +195,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
   const touchStartY = useRef<number | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   
-  // Estados locales para inputs editables (con debounce)
-  // Si el campo falta y el valor es 0, mostrar vacío en lugar de "0"
-  const [precioCompra, setPrecioCompra] = useState(
-    card.currentInput.precioCompra > 0 || !card.camposFaltantes?.precioCompra 
-      ? card.currentInput.precioCompra.toString() 
-      : ''
-  );
-  const [alquilerMensual, setAlquilerMensual] = useState(
-    card.currentInput.alquilerMensual > 0 || !card.camposFaltantes?.alquilerMensual 
-      ? card.currentInput.alquilerMensual.toString() 
-      : ''
-  );
+  // Estados locales para inputs (precio/alquiler usan DebouncedNumberInput con estado interno)
   const [codigoComunidadAutonoma, setCodigoComunidadAutonoma] = useState(card.currentInput.codigoComunidadAutonoma);
   const [ciudad, setCiudad] = useState(card.ciudad || '');
   const [highlightMetrics, setHighlightMetrics] = useState(false);
@@ -205,23 +243,9 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
     return [ciudad, ...ciudadesDisponibles];
   }, [ciudad, ciudadesDisponibles]);
   
-  // Refs para debounce
-  const precioTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const alquilerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  
   // Sincronizar estados locales cuando cambia currentInput externamente (ej. revert)
+  // precioCompra y alquilerMensual se sincronizan vía value prop en DebouncedNumberInput
   useEffect(() => {
-    // Si el campo falta y el valor es 0, mostrar vacío
-    setPrecioCompra(
-      card.currentInput.precioCompra > 0 || !card.camposFaltantes?.precioCompra 
-        ? card.currentInput.precioCompra.toString() 
-        : ''
-    );
-    setAlquilerMensual(
-      card.currentInput.alquilerMensual > 0 || !card.camposFaltantes?.alquilerMensual 
-        ? card.currentInput.alquilerMensual.toString() 
-        : ''
-    );
     setCodigoComunidadAutonoma(card.currentInput.codigoComunidadAutonoma);
     setCiudad(card.ciudad || '');
     // Actualizar campos del inmueble solo si no estamos editando
@@ -230,7 +254,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
       setMetrosCuadradosInput(card.metrosCuadrados > 0 ? card.metrosCuadrados.toString() : '');
       setBanosInput(card.banos > 0 ? card.banos.toString() : '');
     }
-  }, [card.currentInput.precioCompra, card.currentInput.alquilerMensual, card.currentInput.codigoComunidadAutonoma, card.ciudad, card.habitaciones, card.metrosCuadrados, card.banos, card.camposFaltantes, editingField, editAllMode]);
+  }, [card.currentInput.codigoComunidadAutonoma, card.ciudad, card.habitaciones, card.metrosCuadrados, card.banos, editingField, editAllMode]);
 
   // Verificar si hay cambios pendientes (global y por campo) - comparación eficiente sin JSON.stringify
   const tieneCambios = useMemo(
@@ -268,28 +292,6 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
     return () => clearTimeout(t);
   }, [hasAnyDelta, showDeltas, deltaRentabilidad, deltaCashflow, deltaRoce]);
 
-  // Handlers con debounce - AUMENTADO a 1000ms para reducir llamadas a la API
-  const handlePrecioChange = (valor: string) => {
-    setPrecioCompra(valor);
-    const numValor = parseFloat(valor);
-    if (!isNaN(numValor) && numValor >= 0) {
-      if (precioTimeoutRef.current) clearTimeout(precioTimeoutRef.current);
-      precioTimeoutRef.current = setTimeout(() => {
-        onInputChange?.('precioCompra', numValor);
-      }, 1000); // Aumentado de 300ms a 1000ms
-    }
-  };
-  
-  const handleAlquilerChange = (valor: string) => {
-    setAlquilerMensual(valor);
-    const numValor = parseFloat(valor);
-    if (!isNaN(numValor) && numValor >= 0) {
-      if (alquilerTimeoutRef.current) clearTimeout(alquilerTimeoutRef.current);
-      alquilerTimeoutRef.current = setTimeout(() => {
-        onInputChange?.('alquilerMensual', numValor);
-      }, 1000); // Aumentado de 300ms a 1000ms
-    }
-  };
   
   const handleComunidadChange = (codigo: number) => {
     if (codigo === 0) {
@@ -335,11 +337,9 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
     }
   };
   
-  // Cleanup de timeouts al desmontar
+  // Cleanup de timeouts al desmontar (precio/alquiler usan DebouncedNumberInput con cleanup propio)
   useEffect(() => {
     return () => {
-      if (precioTimeoutRef.current) clearTimeout(precioTimeoutRef.current);
-      if (alquilerTimeoutRef.current) clearTimeout(alquilerTimeoutRef.current);
       if (longPressTimer.current) clearTimeout(longPressTimer.current);
     };
   }, []);
@@ -1052,12 +1052,11 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
         <Box sx={{ flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32, pl: 0.5 }}>
           {(isEditing || editingField === 'precioCompra' || editAllMode) && onInputChange ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32 }}>
-              <TextField
-                type="number"
+              <DebouncedNumberInput
+                value={card.currentInput.precioCompra}
+                onDebouncedChange={(n) => onInputChange('precioCompra', n)}
+                emptyPlaceholder={card.camposFaltantes?.precioCompra ? '' : '0'}
                 size="small"
-                variant="outlined"
-                value={precioCompra}
-                onChange={(e) => handlePrecioChange(e.target.value)}
                 onBlur={() => setEditingField(null)}
                 onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                 onClick={(e) => e.stopPropagation()}
@@ -1117,12 +1116,11 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
         <Box sx={{ flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32, pl: 0.5 }}>
           {(isEditing || editingField === 'alquilerMensual' || editAllMode) && onInputChange ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32 }}>
-              <TextField
-                type="number"
+              <DebouncedNumberInput
+                value={card.currentInput.alquilerMensual}
+                onDebouncedChange={(n) => onInputChange('alquilerMensual', n)}
+                emptyPlaceholder={card.camposFaltantes?.alquilerMensual ? '' : '0'}
                 size="small"
-                variant="outlined"
-                value={alquilerMensual}
-                onChange={(e) => handleAlquilerChange(e.target.value)}
                 onBlur={() => setEditingField(null)}
                 onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                 onClick={(e) => e.stopPropagation()}
@@ -1718,12 +1716,11 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
             <Typography variant="caption" sx={{ display: 'block', fontSize: 11, color: '#666', mb: 0.25, textTransform: 'uppercase' }}>Precio compra</Typography>
             {(isEditing || editingField === 'precioCompra' || editAllMode) && onInputChange ? (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <TextField
-                  type="number"
+                <DebouncedNumberInput
+                  value={card.currentInput.precioCompra}
+                  onDebouncedChange={(n) => onInputChange('precioCompra', n)}
+                  emptyPlaceholder={card.camposFaltantes?.precioCompra ? '' : '0'}
                   size="small"
-                  variant="outlined"
-                  value={precioCompra}
-                  onChange={(e) => handlePrecioChange(e.target.value)}
                   onBlur={() => setEditingField(null)}
                   onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                   onClick={(e) => e.stopPropagation()}
@@ -1804,12 +1801,11 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
             </Box>
             {(isEditing || editingField === 'alquilerMensual' || editAllMode) && onInputChange ? (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <TextField
-                  type="number"
+                <DebouncedNumberInput
+                  value={card.currentInput.alquilerMensual}
+                  onDebouncedChange={(n) => onInputChange('alquilerMensual', n)}
+                  emptyPlaceholder={card.camposFaltantes?.alquilerMensual ? '' : '0'}
                   size="small"
-                  variant="outlined"
-                  value={alquilerMensual}
-                  onChange={(e) => handleAlquilerChange(e.target.value)}
                   onBlur={() => setEditingField(null)}
                   onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                   onClick={(e) => e.stopPropagation()}
