@@ -32,6 +32,7 @@ import PercentIcon from '@mui/icons-material/Percent'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents'
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
+import AddIcon from '@mui/icons-material/Add'
 import './App.css'
 
 /** Payload por defecto para mantener la API conectada hasta que la URL se use para obtener datos */
@@ -1111,6 +1112,43 @@ function App() {
     setModalLimpiarPanelOpen(true)
   }
 
+  const handleCrearManual = useCallback(() => {
+    const id = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`
+    const inputVacio: FormularioRentabilidadState = {
+      ...DEFAULT_PAYLOAD,
+      precioCompra: 0,
+      codigoComunidadAutonoma: 0,
+      alquilerMensual: 0,
+    }
+    const nuevaTarjeta: AnalisisCard = {
+      id,
+      url: '',
+      ciudad: '',
+      precioCompra: 0,
+      alquilerEstimado: 0,
+      rentabilidadNetaPct: 0,
+      estado: 'amarillo',
+      veredictoTitulo: 'Completa los datos del inmueble',
+      veredictoRazones: ['Introduce los datos del inmueble para calcular la rentabilidad'],
+      habitaciones: 0,
+      metrosCuadrados: 0,
+      banos: 0,
+      originalHabitaciones: 0,
+      originalMetrosCuadrados: 0,
+      originalBanos: 0,
+      originalCiudad: '',
+      originalInput: { ...inputVacio },
+      currentInput: inputVacio,
+      isFavorite: false,
+      isManual: true,
+      notes: '',
+    }
+    setAnalisis((prev) => [nuevaTarjeta, ...prev])
+    setVistaFiltro('all')
+    setHasUserAnalyzedBefore(true)
+    try { localStorage.setItem(STORAGE_KEY_HAS_ANALYZED, '1') } catch { /* ignore */ }
+  }, [])
+
   /**
    * Revierte los cambios de una tarjeta restaurando originalInput.
    */
@@ -1294,7 +1332,44 @@ function App() {
         </>
       ) : (
         <>
-          <CompactSearchHeader onAnalizar={handleAnalizar} loading={loading} />
+          <CompactSearchHeader
+            onAnalizar={handleAnalizar}
+            loading={loading}
+            vistaFiltro={vistaFiltro}
+            extraContent={vistaFiltro === 'favorites' ? (
+              <Box aria-label="Resumen del portfolio" sx={{ flex: 1, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: { xs: 1.5, md: 3 } }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <PercentIcon sx={{ fontSize: 14, color: rentabilidadColor }} />
+                  <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Rent. neta:</Typography>
+                  <Typography variant="body2" sx={{ fontSize: 14, fontWeight: 600, color: rentabilidadColor, whiteSpace: 'nowrap' }}>
+                    {portfolioStats.avgRentabilidadNeta !== null ? `${portfolioStats.avgRentabilidadNeta.toFixed(2)} %` : '—'}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <TrendingUpIcon sx={{ fontSize: 14, color: roeColor }} />
+                  <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>ROE:</Typography>
+                  <Typography variant="body2" sx={{ fontSize: 14, fontWeight: 600, color: roeColor, whiteSpace: 'nowrap' }}>
+                    {portfolioStats.avgROE !== null ? `${portfolioStats.avgROE.toFixed(2)} %` : '—'}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <AttachMoneyIcon sx={{ fontSize: 14, color: cashflowColor }} />
+                  <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Cashflow:</Typography>
+                  <Typography variant="body2" sx={{ fontSize: 14, fontWeight: 600, color: cashflowColor, whiteSpace: 'nowrap' }}>
+                    {portfolioStats.totalCashflow >= 0 ? '+' : ''}
+                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(portfolioStats.totalCashflow)}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <EmojiEventsIcon sx={{ fontSize: 14, color: '#f9a825' }} />
+                  <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Score:</Typography>
+                  <Typography variant="body2" sx={{ fontSize: 14, fontWeight: 600, color: scoreColor, whiteSpace: 'nowrap' }}>
+                    {portfolioScore} / 100
+                  </Typography>
+                </Box>
+              </Box>
+            ) : undefined}
+          />
           <main className="app-main">
         {error && (
           <p role="alert" className="app-error">
@@ -1339,78 +1414,6 @@ function App() {
                 Mi Portfolio
               </Button>
             </Box>
-            {/* Stats del portfolio (solo en vista Mi Portfolio) */}
-            {vistaFiltro === 'favorites' && (
-              <Box
-                className="portfolio-stats"
-                sx={{
-                  padding: { xs: '8px 16px', md: '8px 16px' },
-                  marginBottom: 1,
-                }}
-                aria-label="Resumen del portfolio"
-              >
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1.5, md: 3 }, justifyContent: 'flex-end' }}>
-                  {/* 1. Rentabilidad neta media */}
-                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, gap: { xs: 0.5, md: 1 } }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <PercentIcon sx={{ fontSize: 16, color: rentabilidadColor }} />
-                      <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                        Rent. neta media:
-                      </Typography>
-                    </Box>
-                    <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 600, color: rentabilidadColor }}>
-                      {portfolioStats.avgRentabilidadNeta !== null
-                        ? `${portfolioStats.avgRentabilidadNeta.toFixed(2)} %`
-                        : '—'}
-                    </Typography>
-                  </Box>
-                  {/* 2. ROE medio */}
-                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, gap: { xs: 0.5, md: 1 } }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <TrendingUpIcon sx={{ fontSize: 16, color: roeColor }} />
-                      <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                        ROE medio:
-                      </Typography>
-                    </Box>
-                    <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 600, color: roeColor }}>
-                      {portfolioStats.avgROE !== null
-                        ? `${portfolioStats.avgROE.toFixed(2)} %`
-                        : '—'}
-                    </Typography>
-                  </Box>
-                  {/* 3. Cashflow anual total */}
-                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, gap: { xs: 0.5, md: 1 } }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <AttachMoneyIcon sx={{ fontSize: 16, color: cashflowColor }} />
-                      <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                        Cashflow anual total:
-                      </Typography>
-                    </Box>
-                    <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 600, color: cashflowColor }}>
-                      {portfolioStats.totalCashflow >= 0 ? '+' : ''}
-                      {new Intl.NumberFormat('es-ES', {
-                        style: 'currency',
-                        currency: 'EUR',
-                        maximumFractionDigits: 0,
-                        minimumFractionDigits: 0,
-                      }).format(portfolioStats.totalCashflow)}
-                    </Typography>
-                  </Box>
-                  {/* 4. Score */}
-                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, gap: { xs: 0.5, md: 1 } }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <EmojiEventsIcon sx={{ fontSize: 16, color: '#f9a825' }} />
-                      <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                        Score:
-                      </Typography>
-                    </Box>
-                    <Typography variant="body2" sx={{ fontSize: 16, fontWeight: 600, color: scoreColor, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      {portfolioScore} / 100
-                    </Typography>
-                  </Box>
-                </Box>
-              </Box>
-            )}
             {/* Cabecera sticky - misma estructura flex que CardAnalisis para alineación perfecta */}
             <div className="card-header-sticky card-header-full-width card-info-horizontal card-header-row" style={{ display: 'flex', alignItems: 'center', width: '100%', paddingLeft: 6, paddingRight: 126 }}>
               <div style={{ flexShrink: 0, width: 26, minWidth: 26 }} aria-hidden />
@@ -1475,7 +1478,13 @@ function App() {
             </div>
             {/* Panel de tarjetas: ancho completo */}
             <section aria-label="Panel de tarjetas" className="app-panel-tarjetas app-panel-tarjetas-horizontal">
-              {analisisOrdenados.length === 0 && vistaFiltro === 'all' ? (
+              {analisisOrdenados.length === 0 && vistaFiltro === 'favorites' ? (
+                <Box sx={{ py: 6, textAlign: 'center' }}>
+                  <Typography variant="body1" sx={{ color: 'text.secondary' }}>
+                    Tu portfolio está vacío. Marca inmuebles como favoritos para verlos aquí.
+                  </Typography>
+                </Box>
+              ) : analisisOrdenados.length === 0 && vistaFiltro === 'all' ? (
                 <Box sx={{ py: 6, textAlign: 'center' }}>
                   <Typography variant="body1" sx={{ fontSize: 15, color: 'text.secondary' }}>
                     Aún no has analizado ningún piso.
@@ -1532,6 +1541,24 @@ function App() {
             </section>
             {/* Botones de acción debajo de las tarjetas */}
             <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
+              {vistaFiltro !== 'favorites' && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleCrearManual}
+                  startIcon={<AddIcon />}
+                  title="Crear análisis manual sin URL"
+                  disableRipple
+                  sx={{
+                    outline: 'none',
+                    '&:focus': { outline: 'none', boxShadow: 'none' },
+                    '&:focus-visible': { outline: 'none', boxShadow: 'none' },
+                    '&:active': { outline: 'none', boxShadow: 'none' },
+                  }}
+                >
+                  Análisis Manual
+                </Button>
+              )}
               <Button
                 variant="contained"
                 color="success"

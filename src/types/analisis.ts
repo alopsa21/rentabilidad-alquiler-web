@@ -48,5 +48,7 @@ export interface AnalisisCard {
   alquilerEditado?: boolean;
   /** Tarjeta placeholder mientras se cargan los datos del análisis */
   isLoading?: boolean;
+  /** Tarjeta creada manualmente (sin URL de anuncio) */
+  isManual?: boolean;
 }
 

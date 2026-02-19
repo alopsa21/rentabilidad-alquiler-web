@@ -256,6 +256,8 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
     }
   }, [card.currentInput.codigoComunidadAutonoma, card.ciudad, card.habitaciones, card.metrosCuadrados, card.banos, editingField, editAllMode]);
 
+  const canRevert = !card.isManual;
+
   // Verificar si hay cambios pendientes (global y por campo) - comparación eficiente sin JSON.stringify
   const tieneCambios = useMemo(
     () => !inputsAreEqual(card.currentInput, card.originalInput),
@@ -577,7 +579,27 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
           </Tooltip>
         )}
         {/* Botones de acción posicionados absolutamente */}
-        <Box sx={{ position: 'absolute', top: '50%', right: -8, transform: 'translateY(-50%)', display: 'flex', gap: 0, zIndex: 2 }}>
+        <Box sx={{ position: 'absolute', top: '50%', right: -8, transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 0, zIndex: 2 }}>
+          {card.isManual && (
+            <Box
+              sx={{
+                fontSize: 10,
+                fontWeight: 700,
+                color: '#1565c0',
+                backgroundColor: prefersDarkMode ? 'rgba(21, 101, 192, 0.2)' : '#e3f2fd',
+                border: '1px solid',
+                borderColor: 'rgba(21, 101, 192, 0.35)',
+                borderRadius: '4px',
+                px: 0.75,
+                py: 0.25,
+                lineHeight: 1.4,
+                userSelect: 'none',
+                mr: 0.5,
+              }}
+            >
+              Manual
+            </Box>
+          )}
           {onInputChange && (
             <Tooltip title={editAllMode ? 'Salir de edición' : 'Editar vivienda, comunidad, ciudad, precio y alquiler'}>
               <IconButton
@@ -635,7 +657,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
             </Tooltip>
           )}
         </Box>
-        <Box sx={{ flex: '0.9 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', pl: 0 }}>
+        <Box sx={{ flex: '0.9 1 0', minWidth: editAllMode ? 220 : 0, minHeight: 32, display: 'flex', alignItems: 'center', pl: 0 }}>
           {((editingField === 'inmueble' || editAllMode) && onInmuebleChange) ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap' }}>
               <TextField
@@ -658,9 +680,9 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
                 inputProps={{ min: 0, step: 1 }}
                 error={campoFalta('habitaciones')}
                 sx={{
-                  width: 60,
+                  width: 48,
                   '& .MuiInputBase-root': { minHeight: 28 },
-                  '& .MuiInputBase-input': { fontSize: 13, textAlign: 'center', padding: '4px 8px' },
+                  '& .MuiInputBase-input': { fontSize: 13, textAlign: 'center', padding: '4px 6px' },
                   ...(campoFalta('habitaciones') ? {
                     '& .MuiOutlinedInput-root': {
                       borderColor: '#f44336',
@@ -691,9 +713,9 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
                 inputProps={{ min: 0, step: 1 }}
                 error={campoFalta('metrosCuadrados')}
                 sx={{
-                  width: 70,
+                  width: 65,
                   '& .MuiInputBase-root': { minHeight: 28 },
-                  '& .MuiInputBase-input': { fontSize: 13, textAlign: 'center', padding: '4px 8px' },
+                  '& .MuiInputBase-input': { fontSize: 13, textAlign: 'center', padding: '4px 6px' },
                   ...(campoFalta('metrosCuadrados') ? {
                     '& .MuiOutlinedInput-root': {
                       borderColor: '#f44336',
@@ -703,7 +725,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
                   } : {})
                 }}
               />
-              {metrosCuadradosCambiado && onRevertInmueble && (
+              {metrosCuadradosCambiado && onRevertInmueble && canRevert && (
                 <Tooltip title="Deshacer metros cuadrados">
                   <IconButton size="small" onClick={handleRevertInmueble('metrosCuadrados')} aria-label="Deshacer metros cuadrados" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
                     <UndoIcon sx={{ fontSize: 14 }} />
@@ -731,9 +753,9 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
                 inputProps={{ min: 0, step: 1 }}
                 error={campoFalta('banos')}
                 sx={{
-                  width: 70,
+                  width: 48,
                   '& .MuiInputBase-root': { minHeight: 28 },
-                  '& .MuiInputBase-input': { fontSize: 13, textAlign: 'center', padding: '4px 8px' },
+                  '& .MuiInputBase-input': { fontSize: 13, textAlign: 'center', padding: '4px 6px' },
                   ...(campoFalta('banos') ? {
                     '& .MuiOutlinedInput-root': {
                       borderColor: '#f44336',
@@ -743,7 +765,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
                   } : {})
                 }}
               />
-              {banosCambiado && onRevertInmueble && (
+              {banosCambiado && onRevertInmueble && canRevert && (
                 <Tooltip title="Deshacer baños">
                   <IconButton size="small" onClick={handleRevertInmueble('banos')} aria-label="Deshacer baños" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
                     <UndoIcon sx={{ fontSize: 14 }} />
@@ -784,21 +806,21 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
                 {(!card.habitaciones && !campoFalta('habitaciones')) && (!card.metrosCuadrados && !campoFalta('metrosCuadrados')) && (!card.banos && !campoFalta('banos')) && '—'}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0, flexShrink: 0 }}>
-                {habitacionesCambiado && onRevertInmueble && (
+                {habitacionesCambiado && onRevertInmueble && canRevert && (
                   <Tooltip title="Deshacer habitaciones">
                     <IconButton size="small" onClick={handleRevertInmueble('habitaciones')} aria-label="Deshacer habitaciones" sx={{ p: 0.15, minWidth: 20, width: 20, height: 20, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
                       <UndoIcon sx={{ fontSize: 12 }} />
                     </IconButton>
                   </Tooltip>
                 )}
-                {metrosCuadradosCambiado && onRevertInmueble && (
+                {metrosCuadradosCambiado && onRevertInmueble && canRevert && (
                   <Tooltip title="Deshacer metros cuadrados">
                     <IconButton size="small" onClick={handleRevertInmueble('metrosCuadrados')} aria-label="Deshacer metros cuadrados" sx={{ p: 0.15, minWidth: 20, width: 20, height: 20, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
                       <UndoIcon sx={{ fontSize: 12 }} />
                     </IconButton>
                   </Tooltip>
                 )}
-                {banosCambiado && onRevertInmueble && (
+                {banosCambiado && onRevertInmueble && canRevert && (
                   <Tooltip title="Deshacer baños">
                     <IconButton size="small" onClick={handleRevertInmueble('banos')} aria-label="Deshacer baños" sx={{ p: 0.15, minWidth: 20, width: 20, height: 20, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
                       <UndoIcon sx={{ fontSize: 12 }} />
@@ -908,7 +930,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
                     ? '⚠️ Falta'
                     : '—'}
               </Typography>
-              {comunidadCambiado && onRevertField && (
+              {comunidadCambiado && onRevertField && canRevert && (
                 <Tooltip title="Deshacer comunidad">
                   <IconButton size="small" onClick={handleRevertComunidad} aria-label="Deshacer comunidad" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
                     <UndoIcon sx={{ fontSize: 14 }} />
@@ -933,7 +955,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
             </Typography>
           )}
         </Box>
-        <Box sx={{ flex: '0.85 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', gap: 0.5, pl: 0.5 }}>
+        <Box sx={{ flex: '0.85 1 0', minWidth: editAllMode ? 160 : 0, minHeight: 32, display: 'flex', alignItems: 'center', gap: 0.5, pl: 0.5 }}>
           {onCiudadChange && (editingField === 'ciudad' || editAllMode) ? (
             <Autocomplete
               size="small"
@@ -1028,7 +1050,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
               >
                 {card.ciudad || (campoFalta('ciudad') ? '⚠️ Falta' : '—')}
               </Typography>
-              {ciudadCambiado && onRevertField && (
+              {ciudadCambiado && onRevertField && canRevert && (
                 <Tooltip title="Deshacer ciudad">
                   <IconButton size="small" onClick={handleRevertCiudad} aria-label="Deshacer ciudad" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
                     <UndoIcon sx={{ fontSize: 14 }} />
@@ -1049,7 +1071,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
             </Typography>
           )}
         </Box>
-        <Box sx={{ flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32, pl: 0.5 }}>
+        <Box sx={{ flex: '1 1 0', minWidth: editAllMode ? 120 : 0, display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32, pl: 0.5 }}>
           {(isEditing || editingField === 'precioCompra' || editAllMode) && onInputChange ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32 }}>
               <DebouncedNumberInput
@@ -1076,7 +1098,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
                   } : {})
                 }}
               />
-              {precioCambiado && onRevertField && (
+              {precioCambiado && onRevertField && canRevert && (
                 <Tooltip title="Deshacer precio compra">
                   <IconButton size="small" onClick={handleRevertPrecio} aria-label="Deshacer precio compra" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
                     <UndoIcon sx={{ fontSize: 14 }} />
@@ -1103,7 +1125,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
               >
                 {card.precioCompra > 0 ? formatEuro(card.precioCompra) : (campoFalta('precioCompra') ? '⚠️ Falta' : formatEuro(card.precioCompra))}
               </Typography>
-              {precioCambiado && onRevertField && (
+              {precioCambiado && onRevertField && canRevert && (
                 <Tooltip title="Deshacer precio compra">
                   <IconButton size="small" onClick={handleRevertPrecio} aria-label="Deshacer precio compra" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
                     <UndoIcon sx={{ fontSize: 14 }} />
@@ -1113,7 +1135,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
             </>
           )}
         </Box>
-        <Box sx={{ flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32, pl: 0.5 }}>
+        <Box sx={{ flex: '1 1 0', minWidth: editAllMode ? 105 : 0, display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32, pl: 0.5 }}>
           {(isEditing || editingField === 'alquilerMensual' || editAllMode) && onInputChange ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32 }}>
               <DebouncedNumberInput
@@ -1140,7 +1162,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
                   } : {})
                 }}
               />
-              {alquilerCambiado && onRevertField && (
+              {alquilerCambiado && onRevertField && canRevert && (
                 <Tooltip title="Deshacer alquiler estimado">
                   <IconButton size="small" onClick={handleRevertAlquiler} aria-label="Deshacer alquiler estimado" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
                     <UndoIcon sx={{ fontSize: 14 }} />
@@ -1203,7 +1225,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
                   </Tooltip>
                 )}
               </Box>
-              {alquilerCambiado && onRevertField && (
+              {alquilerCambiado && onRevertField && canRevert && (
                 <Tooltip title="Deshacer alquiler estimado">
                   <IconButton size="small" onClick={handleRevertAlquiler} aria-label="Deshacer alquiler estimado" sx={{ p: 0.25, color: '#c62828', '&:hover': { color: '#b71c1c' } }}>
                     <UndoIcon sx={{ fontSize: 14 }} />
@@ -1236,7 +1258,26 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
       {/* Mobile: Información vertical compacta */}
       <Box className="card-info-mobile" sx={{ position: 'relative', pt: 1 }}>
         {/* Botones de acción - esquina superior derecha */}
-        <Box sx={{ position: 'absolute', top: 0, right: 8, display: 'flex', gap: 1, zIndex: 10 }}>
+        <Box sx={{ position: 'absolute', top: 0, right: 8, display: 'flex', alignItems: 'center', gap: 1, zIndex: 10 }}>
+          {card.isManual && (
+            <Box
+              sx={{
+                fontSize: 10,
+                fontWeight: 700,
+                color: '#1565c0',
+                backgroundColor: prefersDarkMode ? 'rgba(21, 101, 192, 0.2)' : '#e3f2fd',
+                border: '1px solid',
+                borderColor: 'rgba(21, 101, 192, 0.35)',
+                borderRadius: '4px',
+                px: 0.75,
+                py: 0.25,
+                lineHeight: 1.4,
+                userSelect: 'none',
+              }}
+            >
+              Manual
+            </Box>
+          )}
           {onInputChange && (
             <Tooltip title={editAllMode ? 'Salir de edición' : 'Editar vivienda, comunidad, ciudad, precio y alquiler'}>
               <IconButton
@@ -1384,7 +1425,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
                     ? '⚠️ Falta'
                     : '—'}
               </Typography>
-              {comunidadCambiado && onRevertField && (
+              {comunidadCambiado && onRevertField && canRevert && (
                 <Tooltip title="Deshacer comunidad">
                   <IconButton size="small" onClick={handleRevertComunidad} aria-label="Deshacer comunidad" sx={sxRevertMobile}>
                     <UndoIcon sx={iconSxRevertMobile} />
@@ -1506,7 +1547,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
               >
                 {card.ciudad || (campoFalta('ciudad') ? '⚠️ Falta' : '—')}
               </Typography>
-              {ciudadCambiado && onRevertField && (
+              {ciudadCambiado && onRevertField && canRevert && (
                 <Tooltip title="Deshacer ciudad">
                   <IconButton size="small" onClick={handleRevertCiudad} aria-label="Deshacer ciudad" sx={sxRevertMobile}>
                     <UndoIcon sx={iconSxRevertMobile} />
@@ -1567,7 +1608,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
                   } : {})
                 }}
               />
-              {habitacionesCambiado && onRevertInmueble && (
+              {habitacionesCambiado && onRevertInmueble && canRevert && (
                 <Tooltip title="Deshacer habitaciones">
                   <IconButton size="small" onClick={handleRevertInmueble('habitaciones')} aria-label="Deshacer habitaciones" sx={sxRevertMobile}>
                     <UndoIcon sx={iconSxRevertMobile} />
@@ -1607,7 +1648,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
                   } : {})
                 }}
               />
-              {metrosCuadradosCambiado && onRevertInmueble && (
+              {metrosCuadradosCambiado && onRevertInmueble && canRevert && (
                 <Tooltip title="Deshacer metros cuadrados">
                   <IconButton size="small" onClick={handleRevertInmueble('metrosCuadrados')} aria-label="Deshacer metros cuadrados" sx={sxRevertMobile}>
                     <UndoIcon sx={iconSxRevertMobile} />
@@ -1647,7 +1688,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
                   } : {})
                 }}
               />
-              {banosCambiado && onRevertInmueble && (
+              {banosCambiado && onRevertInmueble && canRevert && (
                 <Tooltip title="Deshacer baños">
                   <IconButton size="small" onClick={handleRevertInmueble('banos')} aria-label="Deshacer baños" sx={sxRevertMobile}>
                     <UndoIcon sx={iconSxRevertMobile} />
@@ -1686,21 +1727,21 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
               {card.banos || campoFalta('banos') ? `${card.banos || '?'} ${card.banos === 1 ? 'baño' : 'baños'}` : ''}
                 {(!card.habitaciones && !campoFalta('habitaciones')) && (!card.metrosCuadrados && !campoFalta('metrosCuadrados')) && (!card.banos && !campoFalta('banos')) && '—'}
               </Typography>
-              {habitacionesCambiado && onRevertInmueble && (
+              {habitacionesCambiado && onRevertInmueble && canRevert && (
                 <Tooltip title="Deshacer habitaciones">
                   <IconButton size="small" onClick={handleRevertInmueble('habitaciones')} aria-label="Deshacer habitaciones" sx={sxRevertMobile}>
                     <UndoIcon sx={iconSxRevertMobile} />
                   </IconButton>
                 </Tooltip>
               )}
-              {metrosCuadradosCambiado && onRevertInmueble && (
+              {metrosCuadradosCambiado && onRevertInmueble && canRevert && (
                 <Tooltip title="Deshacer metros cuadrados">
                   <IconButton size="small" onClick={handleRevertInmueble('metrosCuadrados')} aria-label="Deshacer metros cuadrados" sx={sxRevertMobile}>
                     <UndoIcon sx={iconSxRevertMobile} />
                   </IconButton>
                 </Tooltip>
               )}
-              {banosCambiado && onRevertInmueble && (
+              {banosCambiado && onRevertInmueble && canRevert && (
                 <Tooltip title="Deshacer baños">
                   <IconButton size="small" onClick={handleRevertInmueble('banos')} aria-label="Deshacer baños" sx={sxRevertMobile}>
                     <UndoIcon sx={iconSxRevertMobile} />
@@ -1739,7 +1780,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
                     } : {})
                   }}
                 />
-                {precioCambiado && onRevertField && (
+                {precioCambiado && onRevertField && canRevert && (
                   <Tooltip title="Deshacer precio compra">
                     <IconButton size="small" onClick={handleRevertPrecio} aria-label="Deshacer precio compra" sx={sxRevertMobile}>
                       <UndoIcon sx={iconSxRevertMobile} />
@@ -1766,7 +1807,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
                 >
                   {card.precioCompra > 0 ? formatEuro(card.precioCompra) : (campoFalta('precioCompra') ? '⚠️ Falta' : formatEuro(card.precioCompra))}
                 </Typography>
-                {precioCambiado && onRevertField && (
+                {precioCambiado && onRevertField && canRevert && (
                   <Tooltip title="Deshacer precio compra">
                     <IconButton size="small" onClick={handleRevertPrecio} aria-label="Deshacer precio compra" sx={sxRevertMobile}>
                       <UndoIcon sx={iconSxRevertMobile} />
@@ -1824,7 +1865,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
                     } : {})
                   }}
                 />
-                {alquilerCambiado && onRevertField && (
+                {alquilerCambiado && onRevertField && canRevert && (
                   <Tooltip title="Deshacer alquiler estimado">
                     <IconButton size="small" onClick={handleRevertAlquiler} aria-label="Deshacer alquiler estimado" sx={sxRevertMobile}>
                       <UndoIcon sx={iconSxRevertMobile} />
@@ -1864,7 +1905,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
                     </IconButton>
                   </Tooltip>
                 )}
-                {alquilerCambiado && onRevertField && (
+                {alquilerCambiado && onRevertField && canRevert && (
                   <Tooltip title="Deshacer alquiler estimado">
                     <IconButton size="small" onClick={handleRevertAlquiler} aria-label="Deshacer alquiler estimado" sx={sxRevertMobile}>
                       <UndoIcon sx={iconSxRevertMobile} />

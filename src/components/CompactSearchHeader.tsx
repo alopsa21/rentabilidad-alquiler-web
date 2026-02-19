@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
@@ -12,9 +12,11 @@ import { STORAGE_KEY_URL } from '../constants/storage';
 interface CompactSearchHeaderProps {
   onAnalizar: (url: string) => void;
   loading?: boolean;
+  vistaFiltro?: 'all' | 'favorites';
+  extraContent?: ReactNode;
 }
 
-export function CompactSearchHeader({ onAnalizar, loading = false }: CompactSearchHeaderProps) {
+export function CompactSearchHeader({ onAnalizar, loading = false, vistaFiltro, extraContent }: CompactSearchHeaderProps) {
   const [url, setUrl] = useState(() => {
     try {
       return localStorage.getItem(STORAGE_KEY_URL) ?? '';
@@ -62,7 +64,8 @@ export function CompactSearchHeader({ onAnalizar, loading = false }: CompactSear
         <Typography variant="h6" component="h1" sx={{ margin: 0, whiteSpace: 'nowrap', flexShrink: 0 }}>
           Rentabilidad Alquiler
         </Typography>
-        <Box
+        {extraContent}
+        {vistaFiltro !== 'favorites' && <Box
           component="form"
           onSubmit={handleSubmit}
           sx={{
@@ -96,8 +99,8 @@ export function CompactSearchHeader({ onAnalizar, loading = false }: CompactSear
                 </InputAdornment>
               ) : null,
             }}
-            sx={{ 
-              flex: 1, 
+            sx={{
+              flex: 1,
               minWidth: 0,
               width: { xs: '100%', sm: 'auto' },
               '& .MuiOutlinedInput-root': {
@@ -144,7 +147,7 @@ export function CompactSearchHeader({ onAnalizar, loading = false }: CompactSear
           >
             {loading ? 'Analizando...' : 'Analizar'}
           </Button>
-        </Box>
+        </Box>}
       </Box>
     </header>
   );
