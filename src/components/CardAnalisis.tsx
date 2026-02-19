@@ -635,7 +635,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
             </Tooltip>
           )}
         </Box>
-        <Box sx={{ flex: '1.2 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', pl: 0.5 }}>
+        <Box sx={{ flex: '0.9 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', pl: 0 }}>
           {((editingField === 'inmueble' || editAllMode) && onInmuebleChange) ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap' }}>
               <TextField
@@ -809,7 +809,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
             </Box>
           )}
         </Box>
-        <Box sx={{ flex: '1.4 1 0', minWidth: 240, minHeight: 32, display: 'flex', alignItems: 'center', gap: 0.5, pl: 0.5 }}>
+        <Box sx={{ flex: '1.1 1 0', minWidth: 160, minHeight: 32, display: 'flex', alignItems: 'center', gap: 0.5, pl: 0.5 }}>
           {onInputChange && (editingField === 'codigoComunidadAutonoma' || editAllMode) ? (
             <Autocomplete
               size="small"
@@ -933,7 +933,7 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
             </Typography>
           )}
         </Box>
-        <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', gap: 0.5, pl: 0.5 }}>
+        <Box sx={{ flex: '0.85 1 0', minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center', gap: 0.5, pl: 0.5 }}>
           {onCiudadChange && (editingField === 'ciudad' || editAllMode) ? (
             <Autocomplete
               size="small"
@@ -1213,19 +1213,19 @@ function CardAnalisisComponent({ card, isActive = false, highlightBorder = false
             </>
           )}
         </Box>
-        <Box sx={{ flex: '1 1 0', minWidth: 90, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'wrap', pl: 0.5 }}>
-          <Typography component="span" variant="body2" className="semaforo-value" sx={{ fontSize: 17, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2 }}>
+        <Box sx={{ flex: '1.15 1 0', minWidth: 115, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'nowrap', whiteSpace: 'nowrap', pl: 0.5 }}>
+          <Typography component="span" variant="body2" className="semaforo-value" sx={{ fontSize: 17, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2, flexShrink: 0 }}>
             {card.rentabilidadNetaPct.toFixed(2)} %
           </Typography>
           {showDeltas && <DeltaLabel delta={deltaRentabilidad} unit="%" className={highlightMetrics && deltaRentabilidad !== 0 ? 'metric-pulse' : undefined} />}
         </Box>
-        <Box sx={{ flex: '1 1 0', minWidth: 90, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'wrap', pl: 0.5 }}>
-          <Typography component="span" variant="body2" className="semaforo-value" sx={{ fontSize: 17, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2 }}>
+        <Box sx={{ flex: '1.15 1 0', minWidth: 120, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'nowrap', whiteSpace: 'nowrap', pl: 0.5 }}>
+          <Typography component="span" variant="body2" className="semaforo-value" sx={{ fontSize: 17, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2, flexShrink: 0 }}>
             {cashflowFinal !== null ? formatEuro(cashflowFinal) : '—'}
           </Typography>
           {showDeltas && <DeltaLabel delta={deltaCashflow} unit="€" className={highlightMetrics && deltaCashflow !== 0 ? 'metric-pulse' : undefined} />}
         </Box>
-        <Box sx={{ flex: '1 1 0', minWidth: 105, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'nowrap', whiteSpace: 'nowrap', pl: 0.5 }}>
+        <Box sx={{ flex: '1.15 1 0', minWidth: 115, minHeight: 32, display: 'flex', alignItems: 'center', flexWrap: 'nowrap', whiteSpace: 'nowrap', pl: 0.5 }}>
           <Typography component="span" variant="body2" className="semaforo-value" sx={{ fontSize: 17, fontWeight: 700, color: colorSemaforo, lineHeight: 1.2, flexShrink: 0 }}>
             {roceFinal !== null ? `${roceFinal.toFixed(2)} %` : '—'}
           </Typography>
