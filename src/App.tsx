@@ -11,7 +11,6 @@ import { ModalCompartirSelectivo } from './components/ModalCompartirSelectivo'
 import { ModalCompletarCampos } from './components/ModalCompletarCampos'
 import { calcularRentabilidadApiForCard, autofillFromUrlApi } from './services/api'
 import { getCiudadesPorCodauto } from './services/territorio'
-import { NOMBRE_COMUNIDAD_POR_CODIGO } from './constants/comunidades'
 import type { RentabilidadApiResponse } from './types/api'
 import type { FormularioRentabilidadState } from './types/formulario'
 import type { AnalisisCard } from './types/analisis'
@@ -100,6 +99,8 @@ function App() {
   const resultadoOriginalPorTarjetaRef = useRef(resultadoOriginalPorTarjeta)
   /** ID de tarjeta pendiente de recalcular tras actualizar overrides (evita doble llamada en Strict Mode) */
   const pendingRecalcCardIdRef = useRef<string | null>(null)
+  /** Precio de compra usado en el último cálculo por tarjeta, para mantener LTV correcto en recalculos */
+  const precioCompraPorTarjetaRef = useRef<Record<string, number>>({})
 
   // Mantener refs actualizados
   useEffect(() => {
@@ -160,6 +161,7 @@ function App() {
           console.error('Error clearing localStorage:', error)
         }
         
+        cards.forEach(c => { precioCompraPorTarjetaRef.current[c.id] = c.currentInput.precioCompra; });
         setAnalisis(cards)
         setResultadosPorTarjeta(resultados)
         setResultadoOriginalPorTarjeta(resultadosOriginal)
@@ -202,6 +204,7 @@ function App() {
       const codautosUnicos = [...new Set(cards.map(c => c.currentInput.codigoComunidadAutonoma).filter(c => c >= 1 && c <= 19))]
       codautosUnicos.forEach(codauto => { getCiudadesPorCodauto(codauto) })
 
+      cards.forEach(c => { precioCompraPorTarjetaRef.current[c.id] = c.currentInput.precioCompra; });
       setAnalisis(cards)
       setResultadosPorTarjeta(resultados)
       setResultadoOriginalPorTarjeta(resultadosOriginal)
@@ -456,6 +459,7 @@ function App() {
       return [nuevaTarjeta, ...prev]
     })
     if (data) {
+      precioCompraPorTarjetaRef.current[nuevaTarjeta.id] = nuevaTarjeta.currentInput.precioCompra;
       setResultadosPorTarjeta((prev) => ({ ...prev, [nuevaTarjeta.id]: data }))
     }
     setCreatedAtPorTarjeta((prev) => ({ ...prev, [nuevaTarjeta.id]: ahora }))
@@ -824,136 +828,6 @@ function App() {
   }, []);
 
   /**
-   * Recalcula las métricas de una tarjeta usando un input específico.
-   * Versión interna que acepta el input directamente para evitar problemas de sincronización.
-   */
-  const recalcularTarjetaConInput = async (tarjetaId: string, input: FormularioRentabilidadState) => {
-    try {
-      // Verificar si todos los campos obligatorios están completos
-      const tarjetaActual = analisisRef.current.find((c) => c.id === tarjetaId);
-      if (!tarjetaActual) return;
-      
-      const camposFaltantes = tarjetaActual.camposFaltantes;
-      const faltanCamposObligatorios = camposFaltantes && (
-        camposFaltantes.habitaciones ||
-        camposFaltantes.metrosCuadrados ||
-        camposFaltantes.banos ||
-        camposFaltantes.codigoComunidadAutonoma ||
-        camposFaltantes.ciudad ||
-        camposFaltantes.precioCompra ||
-        camposFaltantes.alquilerMensual
-      );
-      
-      // Verificar también directamente desde el input y la tarjeta
-      const faltanCamposEnInput = 
-        input.precioCompra <= 0 ||
-        input.codigoComunidadAutonoma < 1 ||
-        input.codigoComunidadAutonoma > 19 ||
-        input.alquilerMensual <= 0 ||
-        !tarjetaActual.ciudad ||
-        tarjetaActual.habitaciones <= 0 ||
-        tarjetaActual.metrosCuadrados <= 0 ||
-        tarjetaActual.banos <= 0;
-      
-      // Si faltan campos obligatorios, NO calcular rentabilidad
-      if (faltanCamposObligatorios || faltanCamposEnInput) {
-        // Actualizar solo los valores del input, sin calcular rentabilidad
-        setAnalisis((prev) => {
-          return prev.map((c) =>
-            c.id === tarjetaId
-              ? {
-                  ...c,
-                  precioCompra: input.precioCompra,
-                  alquilerEstimado: input.alquilerMensual,
-                  rentabilidadNetaPct: 0,
-                  estado: 'amarillo' as const,
-                  veredictoTitulo: 'Completa los datos faltantes',
-                  veredictoRazones: ['Completa todos los campos obligatorios para calcular la rentabilidad'],
-                }
-              : c
-          );
-        });
-        return;
-      }
-      
-      // Todos los campos están completos, calcular rentabilidad (merge defaults + currentInput + overrides)
-      const cardForApi: AnalisisCard = { ...tarjetaActual, currentInput: input };
-
-      // Si hay hipoteca y cambió el precio de compra: quitar importeHipoteca de overrides
-      // para que se recalcule igual que IBI (80% precio desde getDefaultOptionalsForPrice)
-      const hayHipoteca = tarjetaActual.overrides?.hayHipoteca ?? input.hayHipoteca;
-      const precioCompraCambio = tarjetaActual.currentInput.precioCompra !== input.precioCompra;
-      let cardParaApi = cardForApi;
-      let overridesActualizados: Partial<MotorInputOptionals> | undefined;
-
-      if (hayHipoteca && precioCompraCambio && input.precioCompra > 0) {
-        const overridesSinImporte = { ...(tarjetaActual.overrides ?? {}) };
-        delete overridesSinImporte.importeHipoteca;
-        overridesActualizados = Object.keys(overridesSinImporte).length > 0 ? overridesSinImporte : undefined;
-        cardParaApi = { ...cardForApi, overrides: overridesActualizados };
-      }
-
-      const nuevoResultado = await calcularRentabilidadApiForCard(cardParaApi);
-
-      const nuevoVeredicto = mapResultadosToVerdict(nuevoResultado);
-
-      // Actualizar resultado
-      setResultadosPorTarjeta((prev) => ({ ...prev, [tarjetaId]: nuevoResultado }));
-
-      // Actualizar tarjeta con nuevos valores derivados
-      const rentNetaRaw = Number(nuevoResultado.rentabilidadNeta);
-      const rentNetaPct =
-        !Number.isNaN(rentNetaRaw) && rentNetaRaw > -1 && rentNetaRaw < 1
-          ? rentNetaRaw * 100
-          : rentNetaRaw;
-
-      // Resolver nueva ciudad si cambió la comunidad (fuera del setState para poder usar await)
-      let nuevaCiudad: string | null = null;
-      if (tarjetaActual.currentInput.codigoComunidadAutonoma !== input.codigoComunidadAutonoma) {
-        const { obtenerCiudadAleatoria } = await import('./utils/ciudades');
-        const nombreComunidad = NOMBRE_COMUNIDAD_POR_CODIGO[input.codigoComunidadAutonoma];
-        nuevaCiudad = nombreComunidad ? obtenerCiudadAleatoria(nombreComunidad) : null;
-      }
-
-      setAnalisis((prev) => {
-        const t = prev.find((c) => c.id === tarjetaId);
-        if (!t) return prev;
-        const ciudad = nuevaCiudad !== null ? nuevaCiudad : t.ciudad;
-        return prev.map((c) =>
-          c.id === tarjetaId
-            ? {
-                ...c,
-                precioCompra: input.precioCompra,
-                alquilerEstimado: input.alquilerMensual,
-                ciudad,
-                rentabilidadNetaPct: rentNetaPct,
-                estado: nuevoVeredicto.estado,
-                veredictoTitulo: nuevoVeredicto.titulo,
-                veredictoRazones: nuevoVeredicto.razones,
-                // Limpiar camposFaltantes si todos están completos
-                camposFaltantes: undefined,
-                // Actualizar overrides si importeHipoteca/capitalPropio se recalcularon por cambio de totalCompra
-                ...(overridesActualizados ? { overrides: overridesActualizados } : {}),
-              }
-            : c
-        );
-      });
-
-      // Si es la tarjeta activa, actualizar también el resultado global
-      setTarjetaActivaId((activaId) => {
-        if (activaId === tarjetaId) {
-          setResultado(nuevoResultado);
-          setVeredictoGlobal(nuevoVeredicto);
-        }
-        return activaId;
-      });
-    } catch (err) {
-      console.error('Error al recalcular tarjeta:', err);
-      // No mostrar error global, solo en consola para no interrumpir la UX
-    }
-  }
-
-  /**
    * Recalcula las métricas de una tarjeta usando la tarjeta completa (incl. overrides del panel).
    * Usado cuando el usuario edita overrides en el panel de detalle.
    */
@@ -978,21 +852,27 @@ function App() {
       const oldResultado = resultadosPorTarjetaRef.current[tarjetaId];
       const oldTotalCompra = oldResultado ? Number(oldResultado.totalCompra) : 0;
       const newTotalCompra = Number(nuevoResultado.totalCompra);
+      const hayHipoteca = card.overrides?.hayHipoteca ?? input.hayHipoteca;
       const oldImporteHipoteca =
-        oldResultado && input.hayHipoteca
+        oldResultado && hayHipoteca
           ? oldTotalCompra - Number(oldResultado.capitalPropio)
           : 0;
       let overridesActualizados: Partial<MotorInputOptionals> | undefined;
 
       if (
-        input.hayHipoteca &&
+        hayHipoteca &&
         oldTotalCompra > 0 &&
         oldImporteHipoteca > 0 &&
         Math.abs(newTotalCompra - oldTotalCompra) > 0.01
       ) {
-        const newImporteHipoteca = Math.round(
-          (oldImporteHipoteca / oldTotalCompra) * newTotalCompra
-        );
+        // Mantener LTV (importeHipoteca / precioCompra) en lugar de la ratio sobre totalCompra.
+        // totalCompra incluye gastos fijos (tasación, gestoría…) que no escalan con el precio,
+        // lo que provocaba errores de ~0.4% al cambiar el precio de compra.
+        const oldPrecioCompra = precioCompraPorTarjetaRef.current[tarjetaId] ?? 0;
+        const newPrecioCompra = card.currentInput.precioCompra;
+        const newImporteHipoteca = oldPrecioCompra > 0
+          ? Math.round((oldImporteHipoteca / oldPrecioCompra) * newPrecioCompra)
+          : Math.round((oldImporteHipoteca / oldTotalCompra) * newTotalCompra); // fallback legacy
         const newCapitalPropio = Math.round(newTotalCompra - newImporteHipoteca);
         overridesActualizados = {
           ...(card.overrides ?? {}),
@@ -1004,6 +884,7 @@ function App() {
       }
 
       const nuevoVeredicto = mapResultadosToVerdict(nuevoResultado);
+      precioCompraPorTarjetaRef.current[tarjetaId] = card.currentInput.precioCompra;
       setResultadosPorTarjeta((prev) => ({ ...prev, [tarjetaId]: nuevoResultado }));
 
       const rentNetaRaw = Number(nuevoResultado.rentabilidadNeta);
