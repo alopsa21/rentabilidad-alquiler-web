@@ -733,9 +733,16 @@ function App() {
             };
           }
         }
-        
+
+        // Actualizar campos de visualización directamente para que aparezcan
+        // aunque falten otros campos (ej: tarjetas manuales incompletas)
+        const displayUpdates: Partial<typeof c> = {};
+        if (campo === 'precioCompra' && typeof valor === 'number') displayUpdates.precioCompra = valor;
+        if (campo === 'alquilerMensual' && typeof valor === 'number') displayUpdates.alquilerEstimado = valor;
+
         return {
           ...c,
+          ...displayUpdates,
           currentInput: nuevoCurrentInput,
           camposFaltantes: camposFaltantesActualizados,
           alquilerEditado: alquilerEditadoFlag,
