@@ -49,6 +49,7 @@ interface PersistedCard {
   isFavorite?: boolean; // Opcional para compatibilidad con versiones anteriores
   notes?: string;
   overrides?: Partial<MotorInputOptionals>; // Overrides del panel de detalle por anuncio
+  isManual?: boolean;
 }
 
 /**
@@ -85,6 +86,7 @@ function cardToPersisted(
     isFavorite: card.isFavorite,
     notes: card.notes ?? '',
     overrides: card.overrides,
+    isManual: card.isManual,
   };
 }
 
@@ -114,6 +116,7 @@ function persistedToCard(persisted: PersistedCard): AnalisisCard {
     overrides: persisted.overrides,
     isFavorite: persisted.isFavorite ?? false,
     notes: persisted.notes ?? '',
+    isManual: persisted.isManual,
   };
 }
 
