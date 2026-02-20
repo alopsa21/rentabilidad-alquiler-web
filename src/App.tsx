@@ -1234,18 +1234,18 @@ function App() {
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <TrendingUpIcon sx={{ fontSize: 14, color: roeColor }} />
-                  <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>ROE:</Typography>
-                  <Typography variant="body2" sx={{ fontSize: 14, fontWeight: 600, color: roeColor, whiteSpace: 'nowrap' }}>
-                    {portfolioStats.avgROE !== null ? `${portfolioStats.avgROE.toFixed(2)} %` : '—'}
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   <AttachMoneyIcon sx={{ fontSize: 14, color: cashflowColor }} />
                   <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Cashflow:</Typography>
                   <Typography variant="body2" sx={{ fontSize: 14, fontWeight: 600, color: cashflowColor, whiteSpace: 'nowrap' }}>
                     {portfolioStats.totalCashflow >= 0 ? '+' : ''}
                     {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(portfolioStats.totalCashflow)}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <TrendingUpIcon sx={{ fontSize: 14, color: roeColor }} />
+                  <Typography variant="caption" sx={{ fontSize: 11, color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>ROE:</Typography>
+                  <Typography variant="body2" sx={{ fontSize: 14, fontWeight: 600, color: roeColor, whiteSpace: 'nowrap' }}>
+                    {portfolioStats.avgROE !== null ? `${portfolioStats.avgROE.toFixed(2)} %` : '—'}
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
